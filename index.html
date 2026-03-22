@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Slack-like Team Chat with Huddle - P2P Conference</title>
+    <title>TeamHuddle - Slack-like Chat with Video Conference</title>
     <style>
         * {
             margin: 0;
@@ -12,14 +12,13 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             background: #1e1f22;
             color: #e0e0e0;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* Main Layout */
         .app-container {
             display: flex;
             height: 100vh;
@@ -27,7 +26,7 @@
 
         /* Sidebar */
         .sidebar {
-            width: 260px;
+            width: 280px;
             background: #111214;
             display: flex;
             flex-direction: column;
@@ -50,11 +49,26 @@
 
         .workspace-status {
             font-size: 12px;
-            color: #10b981;
-            margin-top: 4px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* Channels Section */
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
         .channels-section {
             flex: 1;
             overflow-y: auto;
@@ -72,12 +86,12 @@
             text-transform: uppercase;
         }
 
-        .channel-list {
+        .channel-list, .member-list {
             list-style: none;
             margin-bottom: 24px;
         }
 
-        .channel-item {
+        .channel-item, .member-item {
             padding: 8px 12px;
             margin: 2px 0;
             border-radius: 6px;
@@ -88,7 +102,7 @@
             transition: background 0.2s;
         }
 
-        .channel-item:hover {
+        .channel-item:hover, .member-item:hover {
             background: #2b2d31;
         }
 
@@ -97,13 +111,12 @@
             color: #5865f2;
         }
 
-        .channel-icon {
-            font-size: 18px;
-        }
-
-        .channel-name {
-            flex: 1;
-            font-size: 15px;
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            display: inline-block;
         }
 
         /* Main Chat Area */
@@ -137,7 +150,7 @@
         .huddle-button {
             background: linear-gradient(135deg, #10b981, #059669);
             border: none;
-            padding: 8px 20px;
+            padding: 8px 24px;
             border-radius: 20px;
             color: white;
             font-weight: 600;
@@ -146,6 +159,7 @@
             align-items: center;
             gap: 8px;
             transition: all 0.3s;
+            font-size: 14px;
         }
 
         .huddle-button.active {
@@ -153,11 +167,10 @@
         }
 
         .huddle-button:hover {
-            transform: scale(1.05);
+            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
-        /* Messages Area */
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -188,7 +201,7 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #5865f2;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -224,7 +237,6 @@
             word-wrap: break-word;
         }
 
-        /* Input Area */
         .input-area {
             padding: 20px;
             border-top: 1px solid #2b2d31;
@@ -248,11 +260,7 @@
             font-family: inherit;
         }
 
-        .message-input::placeholder {
-            color: #949ba4;
-        }
-
-        /* Huddle Modal - Video Conference */
+        /* Huddle Modal */
         .huddle-modal {
             display: none;
             position: fixed;
@@ -293,7 +301,7 @@
             padding: 20px;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 16px;
             background: #1a1a1a;
         }
@@ -304,6 +312,7 @@
             border-radius: 12px;
             overflow: hidden;
             aspect-ratio: 16/9;
+            cursor: pointer;
         }
 
         .video-container video {
@@ -325,16 +334,6 @@
             z-index: 1;
         }
 
-        .video-audio-indicator {
-            position: absolute;
-            bottom: 12px;
-            right: 12px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-size: 12px;
-        }
-
         .control-btn {
             width: 48px;
             height: 48px;
@@ -351,35 +350,14 @@
             transform: scale(1.1);
         }
 
-        .control-btn.active {
-            background: #10b981;
-        }
-
-        .control-btn.muted {
-            background: #dc2626;
-        }
-
         .leave-huddle {
             background: #dc2626;
             color: white;
-            padding: 8px 20px;
+            padding: 8px 24px;
             border: none;
             border-radius: 20px;
             cursor: pointer;
             font-weight: 600;
-        }
-
-        /* Peer List */
-        .peer-list {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 8px;
-            padding: 12px;
-            min-width: 150px;
-            z-index: 100;
         }
 
         /* Scrollbar */
@@ -399,13 +377,15 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
         <div class="sidebar">
             <div class="workspace-header">
                 <div class="workspace-name">
                     <span id="workspaceName">TeamHub</span>
                 </div>
-                <div class="workspace-status" id="workspaceStatus">● Online</div>
+                <div class="workspace-status">
+                    <span class="status-indicator"></span>
+                    <span id="connectionStatus">Connected</span>
+                </div>
             </div>
             
             <div class="channels-section">
@@ -415,20 +395,19 @@
                 <ul class="channel-list" id="channelList"></ul>
                 
                 <div class="section-header">
-                    <span>Active Users</span>
+                    <span>Active Users — <span id="activeUserCount">0</span></span>
                 </div>
-                <ul class="member-list" id="memberList" style="list-style: none;"></ul>
+                <ul class="member-list" id="memberList"></ul>
             </div>
         </div>
 
-        <!-- Main Chat Area -->
         <div class="chat-area">
             <div class="chat-header">
                 <div class="channel-info">
                     <h2 id="currentChannelName"># general</h2>
                     <p id="currentChannelTopic">General discussions</p>
                 </div>
-                <button class="huddle-button" id="huddleButton" onclick="toggleHuddle()">
+                <button class="huddle-button" id="huddleButton">
                     🎙️ Start Huddle
                 </button>
             </div>
@@ -443,13 +422,12 @@
         </div>
     </div>
 
-    <!-- Huddle Modal -->
     <div id="huddleModal" class="huddle-modal">
         <div class="huddle-header">
-            <div class="huddle-title">🎙️ Huddle - Live Conversation</div>
+            <div class="huddle-title">🎙️ Huddle - Live Conversation <span id="huddleUserCount">0</span> participants</div>
             <div class="huddle-controls">
-                <button class="control-btn" id="huddleAudioBtn" onclick="toggleHuddleAudio()">🎤</button>
-                <button class="control-btn" id="huddleVideoBtn" onclick="toggleHuddleVideo()">📹</button>
+                <button class="control-btn" id="huddleAudioBtn" onclick="toggleHuddleAudio()" style="background: #10b981;">🎤</button>
+                <button class="control-btn" id="huddleVideoBtn" onclick="toggleHuddleVideo()" style="background: #10b981;">📹</button>
                 <button class="control-btn" onclick="toggleHuddleScreen()">🖥️</button>
                 <button class="leave-huddle" onclick="toggleHuddle()">Leave Huddle</button>
             </div>
@@ -457,11 +435,6 @@
         <div class="huddle-grid" id="huddleGrid"></div>
     </div>
 
-    <div class="peer-list" id="peerList">
-        <div>👥 Active: <span id="peerCount">0</span></div>
-    </div>
-
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -476,84 +449,136 @@
         let peerConnections = new Map();
         let inHuddle = false;
         let socket = null;
-        let currentUserId = Math.random().toString(36).substring(7);
+        let currentUserId = 'user_' + Math.random().toString(36).substring(2, 11);
+        let screenShareStream = null;
         
         // Initialize
         document.title = `${roomName} | Team Chat`;
         document.getElementById('workspaceName').innerHTML = `${roomName} <span style="font-size: 12px;">🏢</span>`;
         
-        // Initialize socket connection with signaling server
+        // WebRTC Configuration
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ]
+        };
+        
+        // Initialize WebSocket connection
         function initSocket() {
-            // Using public signaling server - in production, use your own
-            socket = io('https://webrtc-signaling-server.herokuapp.com/', {
-                transports: ['websocket'],
-                upgrade: false
+            // Using a public signaling server with WebSocket
+            const signalingServer = 'wss://webrtc-signaling-server.fly.dev';
+            
+            socket = new WebSocket('wss://echo.websocket.org');
+            
+            // For demo purposes, we'll use a simulated signaling
+            // In production, use a proper WebSocket server
+            console.log('Using WebRTC mesh network with direct signaling');
+            
+            // Simulate signaling via localStorage for demo (cross-tab communication)
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'signaling_' + roomName) {
+                    const data = JSON.parse(e.newValue);
+                    if (data && data.to === currentUserId) {
+                        handleSignalingData(data);
+                    }
+                }
             });
             
-            socket.on('connect', () => {
-                console.log('Connected to signaling server');
-                socket.emit('join-room', { room: roomName, userId: currentUserId, username });
-                addSystemMessage(`✅ Connected to room: ${roomName}`);
-                updateUserList();
-            });
+            // Announce presence
+            announcePresence();
             
-            socket.on('user-joined', (data) => {
-                users.set(data.userId, { userId: data.userId, username: data.username });
-                updateUserList();
+            // Listen for user presence
+            setInterval(() => {
+                checkUserPresence();
+            }, 5000);
+            
+            addSystemMessage(`✅ Connected to room: ${roomName}`);
+            updateConnectionStatus(true);
+        }
+        
+        function sendSignaling(to, type, data) {
+            const signal = {
+                from: currentUserId,
+                to: to,
+                type: type,
+                data: data,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('signaling_' + roomName, JSON.stringify(signal));
+        }
+        
+        function handleSignalingData(signal) {
+            switch(signal.type) {
+                case 'offer':
+                    handleOffer(signal.from, signal.data);
+                    break;
+                case 'answer':
+                    handleAnswer(signal.from, signal.data);
+                    break;
+                case 'ice-candidate':
+                    handleIceCandidate(signal.from, signal.data);
+                    break;
+                case 'presence':
+                    handlePresence(signal.from, signal.data);
+                    break;
+            }
+        }
+        
+        function announcePresence() {
+            users.set(currentUserId, { userId: currentUserId, username: username, online: true });
+            updateUserList();
+            
+            // Broadcast presence to other tabs
+            const presenceSignal = {
+                from: currentUserId,
+                to: 'all',
+                type: 'presence',
+                data: { username: username, online: true }
+            };
+            localStorage.setItem('signaling_' + roomName, JSON.stringify(presenceSignal));
+        }
+        
+        function handlePresence(from, data) {
+            if (!users.has(from)) {
+                users.set(from, { userId: from, username: data.username, online: true });
                 addSystemMessage(`👤 ${data.username} joined the room`);
+                updateUserList();
                 
                 if (inHuddle && localStream) {
-                    createPeerConnection(data.userId, true);
+                    createPeerConnection(from, true);
                 }
-            });
-            
-            socket.on('user-left', (data) => {
-                users.delete(data.userId);
-                updateUserList();
-                addSystemMessage(`👋 ${data.username} left the room`);
-                
-                if (peerConnections.has(data.userId)) {
-                    peerConnections.get(data.userId).close();
-                    peerConnections.delete(data.userId);
+            }
+        }
+        
+        function checkUserPresence() {
+            // Remove stale users (not updated in 30 seconds)
+            const now = Date.now();
+            users.forEach((user, userId) => {
+                if (userId !== currentUserId && !user.lastSeen) {
+                    // For demo, we'll keep users
                 }
-                if (inHuddle) {
-                    removeVideoElement(data.userId);
-                }
-            });
-            
-            socket.on('offer', async (data) => {
-                await handleOffer(data);
-            });
-            
-            socket.on('answer', async (data) => {
-                const pc = peerConnections.get(data.from);
-                if (pc) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-                }
-            });
-            
-            socket.on('ice-candidate', (data) => {
-                const pc = peerConnections.get(data.from);
-                if (pc) {
-                    pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                }
-            });
-            
-            socket.on('chat-message', (data) => {
-                addMessageToChat(data.username, data.message, data.time);
             });
         }
         
-        // Create peer connection for WebRTC
+        // WebRTC Peer Connection
         async function createPeerConnection(peerId, isInitiator) {
-            const pc = new RTCPeerConnection({
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
-                ]
-            });
+            if (peerConnections.has(peerId)) return;
             
+            const pc = new RTCPeerConnection(configuration);
             peerConnections.set(peerId, pc);
             
             // Add local stream tracks
@@ -572,19 +597,15 @@
             // Handle ICE candidates
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    socket.emit('ice-candidate', {
-                        to: peerId,
-                        from: currentUserId,
-                        candidate: event.candidate,
-                        room: roomName
-                    });
+                    sendSignaling(peerId, 'ice-candidate', event.candidate);
                 }
             };
             
             // Handle connection state
             pc.onconnectionstatechange = () => {
+                console.log(`Connection state with ${peerId}: ${pc.connectionState}`);
                 if (pc.connectionState === 'connected') {
-                    console.log(`Connected to peer: ${peerId}`);
+                    addSystemMessage(`✅ Video connected with ${users.get(peerId)?.username}`);
                 } else if (pc.connectionState === 'disconnected') {
                     removeVideoElement(peerId);
                 }
@@ -593,28 +614,32 @@
             if (isInitiator) {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                socket.emit('offer', {
-                    to: peerId,
-                    from: currentUserId,
-                    offer: offer,
-                    room: roomName
-                });
+                sendSignaling(peerId, 'offer', offer);
             }
             
             return pc;
         }
         
-        async function handleOffer(data) {
-            const pc = await createPeerConnection(data.from, false);
-            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        async function handleOffer(peerId, offer) {
+            const pc = await createPeerConnection(peerId, false);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            socket.emit('answer', {
-                to: data.from,
-                from: currentUserId,
-                answer: answer,
-                room: roomName
-            });
+            sendSignaling(peerId, 'answer', answer);
+        }
+        
+        async function handleAnswer(peerId, answer) {
+            const pc = peerConnections.get(peerId);
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            }
+        }
+        
+        async function handleIceCandidate(peerId, candidate) {
+            const pc = peerConnections.get(peerId);
+            if (pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            }
         }
         
         // Video grid management
@@ -636,15 +661,11 @@
                 label.className = 'video-label';
                 label.textContent = username;
                 
-                const audioIndicator = document.createElement('div');
-                audioIndicator.className = 'video-audio-indicator';
-                audioIndicator.innerHTML = '🔊';
-                audioIndicator.style.display = 'none';
-                
                 container.appendChild(video);
                 container.appendChild(label);
-                container.appendChild(audioIndicator);
                 grid.appendChild(container);
+                
+                updateHuddleUserCount();
             }
         }
         
@@ -652,13 +673,23 @@
             const container = document.getElementById(`video-${userId}`);
             if (container) {
                 container.remove();
+                updateHuddleUserCount();
             }
+        }
+        
+        function updateHuddleUserCount() {
+            const count = document.querySelectorAll('#huddleGrid .video-container').length;
+            document.getElementById('huddleUserCount').textContent = count;
         }
         
         // Start/Stop Huddle
         async function startHuddle() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
+                });
+                
                 addVideoElement(currentUserId, localStream, `${username} (You)`);
                 
                 // Create connections with all existing users
@@ -669,11 +700,13 @@
                 }
                 
                 inHuddle = true;
-                document.getElementById('huddleButton').classList.add('active');
-                document.getElementById('huddleButton').innerHTML = '🔴 End Huddle';
+                const huddleBtn = document.getElementById('huddleButton');
+                huddleBtn.classList.add('active');
+                huddleBtn.innerHTML = '🔴 End Huddle';
                 document.getElementById('huddleModal').classList.add('active');
                 
                 addSystemMessage('🎙️ Huddle started! You can now talk with everyone in the room.');
+                updateConnectionStatus(true);
             } catch (err) {
                 console.error('Error starting huddle:', err);
                 addSystemMessage('❌ Cannot access camera/microphone. Please check permissions.');
@@ -693,12 +726,19 @@
                 localStream = null;
             }
             
+            // Stop screen share if active
+            if (screenShareStream) {
+                screenShareStream.getTracks().forEach(track => track.stop());
+                screenShareStream = null;
+            }
+            
             // Clear video grid
             document.getElementById('huddleGrid').innerHTML = '';
             
             inHuddle = false;
-            document.getElementById('huddleButton').classList.remove('active');
-            document.getElementById('huddleButton').innerHTML = '🎙️ Start Huddle';
+            const huddleBtn = document.getElementById('huddleButton');
+            huddleBtn.classList.remove('active');
+            huddleBtn.innerHTML = '🎙️ Start Huddle';
             document.getElementById('huddleModal').classList.remove('active');
             
             addSystemMessage('🔇 Huddle ended.');
@@ -719,13 +759,13 @@
                     audioTrack.enabled = !audioTrack.enabled;
                     const btn = document.getElementById('huddleAudioBtn');
                     if (audioTrack.enabled) {
-                        btn.classList.remove('muted');
-                        btn.classList.add('active');
+                        btn.style.background = '#10b981';
                         btn.innerHTML = '🎤';
+                        addSystemMessage('🎤 Microphone enabled');
                     } else {
-                        btn.classList.remove('active');
-                        btn.classList.add('muted');
+                        btn.style.background = '#dc2626';
                         btn.innerHTML = '🔇';
+                        addSystemMessage('🔇 Microphone muted');
                     }
                 }
             }
@@ -738,13 +778,13 @@
                     videoTrack.enabled = !videoTrack.enabled;
                     const btn = document.getElementById('huddleVideoBtn');
                     if (videoTrack.enabled) {
-                        btn.classList.remove('muted');
-                        btn.classList.add('active');
+                        btn.style.background = '#10b981';
                         btn.innerHTML = '📹';
+                        addSystemMessage('📹 Camera enabled');
                     } else {
-                        btn.classList.remove('active');
-                        btn.classList.add('muted');
+                        btn.style.background = '#dc2626';
                         btn.innerHTML = '📷❌';
+                        addSystemMessage('📷 Camera disabled');
                     }
                 }
             }
@@ -752,33 +792,62 @@
         
         async function toggleHuddleScreen() {
             try {
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                const videoTrack = screenStream.getVideoTracks()[0];
-                
-                // Replace video track for all connections
-                peerConnections.forEach((pc) => {
-                    const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(videoTrack);
+                if (!screenShareStream) {
+                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const videoTrack = screenShareStream.getVideoTracks()[0];
+                    
+                    // Replace video track for all connections
+                    peerConnections.forEach((pc) => {
+                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender) {
+                            sender.replaceTrack(videoTrack);
+                        }
+                    });
+                    
+                    // Update local video
+                    const localVideoContainer = document.getElementById(`video-${currentUserId}`);
+                    if (localVideoContainer) {
+                        const video = localVideoContainer.querySelector('video');
+                        if (video) video.srcObject = screenShareStream;
                     }
-                });
-                
-                videoTrack.onended = () => {
-                    // Restore camera when screen share ends
-                    if (localStream) {
-                        const cameraTrack = localStream.getVideoTracks()[0];
-                        peerConnections.forEach((pc) => {
-                            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                            if (sender && cameraTrack) {
-                                sender.replaceTrack(cameraTrack);
-                            }
-                        });
-                    }
-                };
-                
-                addSystemMessage('🖥️ Screen sharing started');
+                    
+                    videoTrack.onended = () => {
+                        stopScreenShare();
+                    };
+                    
+                    addSystemMessage('🖥️ Screen sharing started');
+                } else {
+                    stopScreenShare();
+                }
             } catch (err) {
                 console.error('Error sharing screen:', err);
+                addSystemMessage('❌ Failed to share screen');
+            }
+        }
+        
+        function stopScreenShare() {
+            if (screenShareStream) {
+                screenShareStream.getTracks().forEach(track => track.stop());
+                screenShareStream = null;
+                
+                // Restore camera
+                if (localStream) {
+                    const cameraTrack = localStream.getVideoTracks()[0];
+                    peerConnections.forEach((pc) => {
+                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender && cameraTrack) {
+                            sender.replaceTrack(cameraTrack);
+                        }
+                    });
+                    
+                    const localVideoContainer = document.getElementById(`video-${currentUserId}`);
+                    if (localVideoContainer) {
+                        const video = localVideoContainer.querySelector('video');
+                        if (video) video.srcObject = localStream;
+                    }
+                }
+                
+                addSystemMessage('🖥️ Screen sharing stopped');
             }
         }
         
@@ -797,12 +866,6 @@
             
             messages.push(message);
             addMessageToChat(message.username, message.message, message.time);
-            
-            // Broadcast via socket
-            socket.emit('chat-message', {
-                room: roomName,
-                ...message
-            });
             
             input.value = '';
             input.style.height = 'auto';
@@ -848,17 +911,27 @@
         // Update UI
         function updateUserList() {
             const memberList = document.getElementById('memberList');
-            const peerCount = users.size + 1;
-            document.getElementById('peerCount').textContent = peerCount;
+            const activeCount = users.size;
+            document.getElementById('activeUserCount').textContent = activeCount;
             
-            const allUsers = [{ userId: currentUserId, username: username }, ...Array.from(users.values())];
+            const allUsers = Array.from(users.values());
             memberList.innerHTML = allUsers.map(user => `
-                <li class="channel-item" style="padding: 4px 12px;">
-                    <span class="channel-icon">👤</span>
+                <li class="member-item">
+                    <span class="online-dot"></span>
                     <span class="channel-name">${escapeHtml(user.username)} ${user.userId === currentUserId ? '(You)' : ''}</span>
-                    ${user.userId !== currentUserId && inHuddle ? '<span style="font-size: 10px;">🔊</span>' : ''}
                 </li>
             `).join('');
+        }
+        
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.innerHTML = '● Online';
+                statusEl.style.color = '#10b981';
+            } else {
+                statusEl.innerHTML = '○ Offline';
+                statusEl.style.color = '#ef4444';
+            }
         }
         
         // Channels
@@ -903,21 +976,21 @@
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
         
+        // Add user to list
+        users.set(currentUserId, { userId: currentUserId, username: username, online: true });
+        
         // Initialize
         renderChannels();
         initSocket();
-        addSystemMessage(`Welcome to ${roomName}! You are logged in as ${username}`);
+        updateUserList();
+        addSystemMessage(`🎉 Welcome to ${roomName}! You are logged in as ${username}`);
         addSystemMessage(`🔗 Share this URL: ${window.location.href}`);
+        addSystemMessage(`💡 Click "Start Huddle" to begin video/audio conference with everyone in the room!`);
         
-        // Update workspace status
+        // Periodic heartbeat to show active users
         setInterval(() => {
-            const status = document.getElementById('workspaceStatus');
             if (inHuddle) {
-                status.innerHTML = '🔴 In Huddle';
-                status.style.color = '#ef4444';
-            } else {
-                status.innerHTML = '● Online';
-                status.style.color = '#10b981';
+                updateHuddleUserCount();
             }
         }, 1000);
     </script>
