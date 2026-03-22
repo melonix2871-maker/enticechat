@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TeamHuddle - Slack-like Chat with Video Conference</title>
+    <title>TeamHuddle - Real-time Active Users & Video Conference</title>
     <style>
         * {
             margin: 0;
@@ -117,6 +117,13 @@
             border-radius: 50%;
             background: #10b981;
             display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .member-status {
+            font-size: 10px;
+            margin-left: auto;
+            color: #949ba4;
         }
 
         /* Main Chat Area */
@@ -395,7 +402,7 @@
                 <ul class="channel-list" id="channelList"></ul>
                 
                 <div class="section-header">
-                    <span>Active Users — <span id="activeUserCount">0</span></span>
+                    <span>👥 Active Users — <span id="activeUserCount">0</span></span>
                 </div>
                 <ul class="member-list" id="memberList"></ul>
             </div>
@@ -448,13 +455,10 @@
         let localStream = null;
         let peerConnections = new Map();
         let inHuddle = false;
-        let socket = null;
         let currentUserId = 'user_' + Math.random().toString(36).substring(2, 11);
         let screenShareStream = null;
-        
-        // Initialize
-        document.title = `${roomName} | Team Chat`;
-        document.getElementById('workspaceName').innerHTML = `${roomName} <span style="font-size: 12px;">🏢</span>`;
+        let heartbeatInterval = null;
+        let lastSeenMap = new Map();
         
         // WebRTC Configuration
         const configuration = {
@@ -477,101 +481,135 @@
             ]
         };
         
-        // Initialize WebSocket connection
-        function initSocket() {
-            // Using a public signaling server with WebSocket
-            const signalingServer = 'wss://webrtc-signaling-server.fly.dev';
-            
-            socket = new WebSocket('wss://echo.websocket.org');
-            
-            // For demo purposes, we'll use a simulated signaling
-            // In production, use a proper WebSocket server
-            console.log('Using WebRTC mesh network with direct signaling');
-            
-            // Simulate signaling via localStorage for demo (cross-tab communication)
-            window.addEventListener('storage', (e) => {
-                if (e.key === 'signaling_' + roomName) {
-                    const data = JSON.parse(e.newValue);
-                    if (data && data.to === currentUserId) {
-                        handleSignalingData(data);
-                    }
-                }
-            });
-            
-            // Announce presence
-            announcePresence();
-            
-            // Listen for user presence
-            setInterval(() => {
-                checkUserPresence();
-            }, 5000);
-            
-            addSystemMessage(`✅ Connected to room: ${roomName}`);
-            updateConnectionStatus(true);
+        // Initialize signaling using BroadcastChannel for cross-tab communication
+        const channel = new BroadcastChannel(`room_${roomName}`);
+        
+        // Send presence update
+        function sendPresence() {
+            const presenceData = {
+                type: 'presence',
+                userId: currentUserId,
+                username: username,
+                timestamp: Date.now(),
+                action: 'join'
+            };
+            channel.postMessage(presenceData);
         }
         
-        function sendSignaling(to, type, data) {
-            const signal = {
+        // Send leave signal
+        function sendLeave() {
+            const leaveData = {
+                type: 'presence',
+                userId: currentUserId,
+                username: username,
+                timestamp: Date.now(),
+                action: 'leave'
+            };
+            channel.postMessage(leaveData);
+        }
+        
+        // Send WebRTC signaling
+        function sendSignaling(targetUserId, signalType, data) {
+            const signalData = {
+                type: 'webrtc',
+                signalType: signalType,
                 from: currentUserId,
-                to: to,
-                type: type,
+                to: targetUserId,
                 data: data,
                 timestamp: Date.now()
             };
-            localStorage.setItem('signaling_' + roomName, JSON.stringify(signal));
+            channel.postMessage(signalData);
         }
         
-        function handleSignalingData(signal) {
-            switch(signal.type) {
+        // Handle incoming messages
+        channel.onmessage = (event) => {
+            const data = event.data;
+            
+            if (data.type === 'presence') {
+                handlePresence(data);
+            } else if (data.type === 'webrtc') {
+                handleWebRTCSignal(data);
+            } else if (data.type === 'chat') {
+                handleChatMessage(data);
+            }
+        };
+        
+        // Handle presence updates
+        function handlePresence(data) {
+            if (data.userId === currentUserId) return;
+            
+            if (data.action === 'join') {
+                if (!users.has(data.userId)) {
+                    users.set(data.userId, {
+                        userId: data.userId,
+                        username: data.username,
+                        online: true,
+                        lastSeen: data.timestamp
+                    });
+                    addSystemMessage(`👤 ${data.username} joined the room`);
+                    updateUserList();
+                    
+                    // If in huddle, initiate connection with new user
+                    if (inHuddle && localStream) {
+                        setTimeout(() => {
+                            createPeerConnection(data.userId, true);
+                        }, 1000);
+                    }
+                }
+            } else if (data.action === 'leave') {
+                if (users.has(data.userId)) {
+                    const user = users.get(data.userId);
+                    addSystemMessage(`👋 ${user.username} left the room`);
+                    users.delete(data.userId);
+                    updateUserList();
+                    
+                    // Remove video if in huddle
+                    if (inHuddle) {
+                        removeVideoElement(data.userId);
+                        if (peerConnections.has(data.userId)) {
+                            peerConnections.get(data.userId).close();
+                            peerConnections.delete(data.userId);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Handle WebRTC signaling
+        async function handleWebRTCSignal(data) {
+            if (data.to !== currentUserId) return;
+            
+            switch(data.signalType) {
                 case 'offer':
-                    handleOffer(signal.from, signal.data);
+                    await handleOffer(data.from, data.data);
                     break;
                 case 'answer':
-                    handleAnswer(signal.from, signal.data);
+                    await handleAnswer(data.from, data.data);
                     break;
                 case 'ice-candidate':
-                    handleIceCandidate(signal.from, signal.data);
-                    break;
-                case 'presence':
-                    handlePresence(signal.from, signal.data);
+                    await handleIceCandidate(data.from, data.data);
                     break;
             }
         }
         
-        function announcePresence() {
-            users.set(currentUserId, { userId: currentUserId, username: username, online: true });
-            updateUserList();
-            
-            // Broadcast presence to other tabs
-            const presenceSignal = {
-                from: currentUserId,
-                to: 'all',
-                type: 'presence',
-                data: { username: username, online: true }
+        // Handle chat messages
+        function handleChatMessage(data) {
+            if (data.room === roomName) {
+                addMessageToChat(data.username, data.message, data.time);
+            }
+        }
+        
+        // Send chat message
+        function sendChatMessage(message) {
+            const chatData = {
+                type: 'chat',
+                room: roomName,
+                username: username,
+                message: message,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                userId: currentUserId
             };
-            localStorage.setItem('signaling_' + roomName, JSON.stringify(presenceSignal));
-        }
-        
-        function handlePresence(from, data) {
-            if (!users.has(from)) {
-                users.set(from, { userId: from, username: data.username, online: true });
-                addSystemMessage(`👤 ${data.username} joined the room`);
-                updateUserList();
-                
-                if (inHuddle && localStream) {
-                    createPeerConnection(from, true);
-                }
-            }
-        }
-        
-        function checkUserPresence() {
-            // Remove stale users (not updated in 30 seconds)
-            const now = Date.now();
-            users.forEach((user, userId) => {
-                if (userId !== currentUserId && !user.lastSeen) {
-                    // For demo, we'll keep users
-                }
-            });
+            channel.postMessage(chatData);
         }
         
         // WebRTC Peer Connection
@@ -591,7 +629,8 @@
             // Handle incoming tracks
             pc.ontrack = (event) => {
                 const remoteStream = event.streams[0];
-                addVideoElement(peerId, remoteStream, users.get(peerId)?.username || 'Peer');
+                const user = users.get(peerId);
+                addVideoElement(peerId, remoteStream, user?.username || 'Peer');
             };
             
             // Handle ICE candidates
@@ -603,9 +642,11 @@
             
             // Handle connection state
             pc.onconnectionstatechange = () => {
-                console.log(`Connection state with ${peerId}: ${pc.connectionState}`);
                 if (pc.connectionState === 'connected') {
-                    addSystemMessage(`✅ Video connected with ${users.get(peerId)?.username}`);
+                    const user = users.get(peerId);
+                    if (user) {
+                        addSystemMessage(`✅ Video connected with ${user.username}`);
+                    }
                 } else if (pc.connectionState === 'disconnected') {
                     removeVideoElement(peerId);
                 }
@@ -706,7 +747,6 @@
                 document.getElementById('huddleModal').classList.add('active');
                 
                 addSystemMessage('🎙️ Huddle started! You can now talk with everyone in the room.');
-                updateConnectionStatus(true);
             } catch (err) {
                 console.error('Error starting huddle:', err);
                 addSystemMessage('❌ Cannot access camera/microphone. Please check permissions.');
@@ -857,15 +897,8 @@
             const text = input.value.trim();
             if (!text) return;
             
-            const message = {
-                username: username,
-                message: text,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                userId: currentUserId
-            };
-            
-            messages.push(message);
-            addMessageToChat(message.username, message.message, message.time);
+            addMessageToChat(username, text, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            sendChatMessage(text);
             
             input.value = '';
             input.style.height = 'auto';
@@ -914,23 +947,18 @@
             const activeCount = users.size;
             document.getElementById('activeUserCount').textContent = activeCount;
             
-            const allUsers = Array.from(users.values());
-            memberList.innerHTML = allUsers.map(user => `
-                <li class="member-item">
-                    <span class="online-dot"></span>
-                    <span class="channel-name">${escapeHtml(user.username)} ${user.userId === currentUserId ? '(You)' : ''}</span>
-                </li>
-            `).join('');
-        }
-        
-        function updateConnectionStatus(connected) {
-            const statusEl = document.getElementById('connectionStatus');
-            if (connected) {
-                statusEl.innerHTML = '● Online';
-                statusEl.style.color = '#10b981';
+            const allUsers = Array.from(users.values()).sort((a, b) => a.username.localeCompare(b.username));
+            
+            if (allUsers.length === 0) {
+                memberList.innerHTML = '<div style="padding: 12px; color: #949ba4; text-align: center;">No other users online</div>';
             } else {
-                statusEl.innerHTML = '○ Offline';
-                statusEl.style.color = '#ef4444';
+                memberList.innerHTML = allUsers.map(user => `
+                    <li class="member-item">
+                        <span class="online-dot"></span>
+                        <span class="channel-name">${escapeHtml(user.username)}</span>
+                        <span class="member-status">online</span>
+                    </li>
+                `).join('');
             }
         }
         
@@ -970,29 +998,57 @@
             return div.innerHTML;
         }
         
+        // Heartbeat to keep presence alive
+        function startHeartbeat() {
+            heartbeatInterval = setInterval(() => {
+                sendPresence();
+            }, 10000);
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            sendLeave();
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            channel.close();
+        });
+        
         // Auto-resize textarea
         document.getElementById('messageInput').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
         
-        // Add user to list
-        users.set(currentUserId, { userId: currentUserId, username: username, online: true });
-        
         // Initialize
         renderChannels();
-        initSocket();
+        startHeartbeat();
+        sendPresence();
+        
+        // Add self to users list (not shown in active users)
         updateUserList();
+        
         addSystemMessage(`🎉 Welcome to ${roomName}! You are logged in as ${username}`);
         addSystemMessage(`🔗 Share this URL: ${window.location.href}`);
         addSystemMessage(`💡 Click "Start Huddle" to begin video/audio conference with everyone in the room!`);
+        addSystemMessage(`👥 Active users will appear here when others join the same room.`);
         
-        // Periodic heartbeat to show active users
+        // Update workspace name
+        document.getElementById('workspaceName').innerHTML = `${roomName} <span style="font-size: 12px;">🏢</span>`;
+        
+        // Periodic update to clean stale users (optional)
         setInterval(() => {
-            if (inHuddle) {
-                updateHuddleUserCount();
+            const now = Date.now();
+            let hasChanges = false;
+            users.forEach((user, userId) => {
+                if (now - user.lastSeen > 30000) { // 30 seconds timeout
+                    users.delete(userId);
+                    hasChanges = true;
+                    addSystemMessage(`👋 ${user.username} disconnected (timeout)`);
+                }
+            });
+            if (hasChanges) {
+                updateUserList();
             }
-        }, 1000);
+        }, 15000);
     </script>
 </body>
 </html>
