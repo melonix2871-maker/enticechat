@@ -37,5 +37,27 @@
         // Optional: Log for debugging
         console.log('Chitchatter initialized with:', { room, username, colorMode, playSound });
     </script>
+
+       <script>
+        // Wait for the component to load and try to hide footer elements
+        const chatRoom = document.getElementById('chatroom');
+        
+        // Attempt to access shadow DOM and hide footer
+        chatRoom.addEventListener('load', () => {
+            try {
+                const shadowRoot = chatRoom.shadowRoot;
+                if (shadowRoot) {
+                    // Try to find and hide footer/powered by elements
+                    const footer = shadowRoot.querySelector('footer');
+                    const poweredBy = shadowRoot.querySelector('[class*="powered"]');
+                    
+                    if (footer) footer.style.display = 'none';
+                    if (poweredBy) poweredBy.style.display = 'none';
+                }
+            } catch(e) {
+                console.log('Cannot modify shadow DOM content due to cross-origin restrictions');
+            }
+        });
+    </script>
 </body>
 </html>
