@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Entice Dev Chat</title>
+    <script src="https://chitchatter.im/sdk.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <chat-room id="chatroom" style="width: 100%; height: 100%;"></chat-room>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Get values with fallback defaults
+        const room = urlParams.get('room') || 'default-room';
+        const username = urlParams.get('username') || `User-${Math.floor(Math.random() * 10000)}`;
+        const colorMode = urlParams.get('colorMode') || 'dark'; // 'light' or 'dark'
+        const playSound = urlParams.get('playSound') === 'true'; // defaults to false
+        
+        // Apply to chat-room component
+        const chatRoom = document.getElementById('chatroom');
+        chatRoom.setAttribute('room', room);
+        chatRoom.setAttribute('user-name', username);
+        chatRoom.setAttribute('color-mode', colorMode);
+        
+        if (playSound) {
+            chatRoom.setAttribute('play-message-sound', 'true');
+        }
+        
+        // Optional: Log for debugging
+        console.log('Chitchatter initialized with:', { room, username, colorMode, playSound });
+    </script>
+</body>
+</html>
