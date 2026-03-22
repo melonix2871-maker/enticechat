@@ -123,7 +123,7 @@
         .member-status {
             font-size: 10px;
             margin-left: auto;
-            color: #949ba4;
+            color: #10b981;
         }
 
         /* Main Chat Area */
@@ -380,6 +380,18 @@
             background: #2b2d31;
             border-radius: 4px;
         }
+
+        .test-users-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2b2d31;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 100;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -404,7 +416,9 @@
                 <div class="section-header">
                     <span>👥 Active Users — <span id="activeUserCount">0</span></span>
                 </div>
-                <ul class="member-list" id="memberList"></ul>
+                <ul class="member-list" id="memberList">
+                    <li style="padding: 12px; color: #949ba4; text-align: center;">Loading users...</li>
+                </ul>
             </div>
         </div>
 
@@ -455,10 +469,9 @@
         let localStream = null;
         let peerConnections = new Map();
         let inHuddle = false;
-        let currentUserId = 'user_' + Math.random().toString(36).substring(2, 11);
+        let currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
         let screenShareStream = null;
         let heartbeatInterval = null;
-        let lastSeenMap = new Map();
         
         // WebRTC Configuration
         const configuration = {
@@ -481,140 +494,188 @@
             ]
         };
         
-        // Initialize signaling using BroadcastChannel for cross-tab communication
-        const channel = new BroadcastChannel(`room_${roomName}`);
+        // Storage keys
+        const USERS_STORAGE_KEY = `room_${roomName}_users`;
+        const MESSAGES_STORAGE_KEY = `room_${roomName}_messages`;
         
-        // Send presence update
-        function sendPresence() {
-            const presenceData = {
-                type: 'presence',
-                userId: currentUserId,
-                username: username,
-                timestamp: Date.now(),
-                action: 'join'
-            };
-            channel.postMessage(presenceData);
-        }
-        
-        // Send leave signal
-        function sendLeave() {
-            const leaveData = {
-                type: 'presence',
-                userId: currentUserId,
-                username: username,
-                timestamp: Date.now(),
-                action: 'leave'
-            };
-            channel.postMessage(leaveData);
-        }
-        
-        // Send WebRTC signaling
-        function sendSignaling(targetUserId, signalType, data) {
-            const signalData = {
-                type: 'webrtc',
-                signalType: signalType,
-                from: currentUserId,
-                to: targetUserId,
-                data: data,
-                timestamp: Date.now()
-            };
-            channel.postMessage(signalData);
-        }
-        
-        // Handle incoming messages
-        channel.onmessage = (event) => {
-            const data = event.data;
+        // Initialize user presence system
+        function initPresenceSystem() {
+            // Load existing users from localStorage
+            loadUsers();
             
-            if (data.type === 'presence') {
-                handlePresence(data);
-            } else if (data.type === 'webrtc') {
-                handleWebRTCSignal(data);
-            } else if (data.type === 'chat') {
-                handleChatMessage(data);
-            }
-        };
-        
-        // Handle presence updates
-        function handlePresence(data) {
-            if (data.userId === currentUserId) return;
+            // Add current user
+            addUser(currentUserId, username);
             
-            if (data.action === 'join') {
-                if (!users.has(data.userId)) {
-                    users.set(data.userId, {
-                        userId: data.userId,
-                        username: data.username,
-                        online: true,
-                        lastSeen: data.timestamp
-                    });
-                    addSystemMessage(`👤 ${data.username} joined the room`);
-                    updateUserList();
-                    
-                    // If in huddle, initiate connection with new user
-                    if (inHuddle && localStream) {
-                        setTimeout(() => {
-                            createPeerConnection(data.userId, true);
-                        }, 1000);
+            // Start heartbeat to keep presence alive
+            startHeartbeat();
+            
+            // Listen for storage events (cross-tab communication)
+            window.addEventListener('storage', handleStorageChange);
+            
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                removeUser(currentUserId);
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+            });
+            
+            // Update UI every second
+            setInterval(() => {
+                updateUserList();
+            }, 1000);
+        }
+        
+        function loadUsers() {
+            const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+            if (storedUsers) {
+                const usersData = JSON.parse(storedUsers);
+                users.clear();
+                Object.entries(usersData).forEach(([userId, userData]) => {
+                    // Check if user is still active (last seen within 15 seconds)
+                    if (Date.now() - userData.lastSeen < 15000) {
+                        users.set(userId, userData);
                     }
-                }
-            } else if (data.action === 'leave') {
-                if (users.has(data.userId)) {
-                    const user = users.get(data.userId);
-                    addSystemMessage(`👋 ${user.username} left the room`);
-                    users.delete(data.userId);
-                    updateUserList();
-                    
-                    // Remove video if in huddle
-                    if (inHuddle) {
-                        removeVideoElement(data.userId);
-                        if (peerConnections.has(data.userId)) {
-                            peerConnections.get(data.userId).close();
-                            peerConnections.delete(data.userId);
-                        }
-                    }
-                }
+                });
             }
+            saveUsers();
         }
         
-        // Handle WebRTC signaling
-        async function handleWebRTCSignal(data) {
-            if (data.to !== currentUserId) return;
-            
-            switch(data.signalType) {
-                case 'offer':
-                    await handleOffer(data.from, data.data);
-                    break;
-                case 'answer':
-                    await handleAnswer(data.from, data.data);
-                    break;
-                case 'ice-candidate':
-                    await handleIceCandidate(data.from, data.data);
-                    break;
-            }
+        function saveUsers() {
+            const usersObj = {};
+            users.forEach((user, userId) => {
+                usersObj[userId] = user;
+            });
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(usersObj));
         }
         
-        // Handle chat messages
-        function handleChatMessage(data) {
-            if (data.room === roomName) {
-                addMessageToChat(data.username, data.message, data.time);
-            }
-        }
-        
-        // Send chat message
-        function sendChatMessage(message) {
-            const chatData = {
-                type: 'chat',
-                room: roomName,
-                username: username,
-                message: message,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                userId: currentUserId
+        function addUser(userId, userName) {
+            const userData = {
+                userId: userId,
+                username: userName,
+                lastSeen: Date.now(),
+                online: true
             };
-            channel.postMessage(chatData);
+            users.set(userId, userData);
+            saveUsers();
+            
+            // Notify other tabs
+            triggerStorageEvent();
+            
+            // Add system message for new user (except self)
+            if (userId !== currentUserId) {
+                addSystemMessage(`👤 ${userName} joined the room`);
+            }
+            
+            updateUserList();
+            
+            // If in huddle, connect to new user
+            if (inHuddle && localStream && userId !== currentUserId) {
+                setTimeout(() => {
+                    createPeerConnection(userId, true);
+                }, 1000);
+            }
+        }
+        
+        function removeUser(userId) {
+            const user = users.get(userId);
+            if (user && userId !== currentUserId) {
+                addSystemMessage(`👋 ${user.username} left the room`);
+            }
+            users.delete(userId);
+            saveUsers();
+            triggerStorageEvent();
+            updateUserList();
+            
+            // Remove video if in huddle
+            if (inHuddle) {
+                removeVideoElement(userId);
+                if (peerConnections.has(userId)) {
+                    peerConnections.get(userId).close();
+                    peerConnections.delete(userId);
+                }
+            }
+        }
+        
+        function updateUserPresence() {
+            const user = users.get(currentUserId);
+            if (user) {
+                user.lastSeen = Date.now();
+                saveUsers();
+                triggerStorageEvent();
+            }
+        }
+        
+        function startHeartbeat() {
+            // Update presence every 5 seconds
+            heartbeatInterval = setInterval(() => {
+                updateUserPresence();
+                cleanupStaleUsers();
+            }, 5000);
+        }
+        
+        function cleanupStaleUsers() {
+            const now = Date.now();
+            let hasChanges = false;
+            users.forEach((user, userId) => {
+                if (userId !== currentUserId && now - user.lastSeen > 15000) {
+                    users.delete(userId);
+                    hasChanges = true;
+                }
+            });
+            if (hasChanges) {
+                saveUsers();
+                triggerStorageEvent();
+                updateUserList();
+            }
+        }
+        
+        function triggerStorageEvent() {
+            // Trigger storage event for other tabs
+            localStorage.setItem('trigger_' + Date.now(), JSON.stringify({ type: 'update' }));
+        }
+        
+        function handleStorageChange(event) {
+            if (event.key === USERS_STORAGE_KEY) {
+                loadUsers();
+                updateUserList();
+            }
+        }
+        
+        function updateUserList() {
+            const memberList = document.getElementById('memberList');
+            const activeCount = users.size;
+            document.getElementById('activeUserCount').textContent = activeCount;
+            
+            if (activeCount === 0) {
+                memberList.innerHTML = '<li style="padding: 12px; color: #949ba4; text-align: center;">No other users online</li>';
+                return;
+            }
+            
+            const allUsers = Array.from(users.values())
+                .filter(u => u.userId !== currentUserId)
+                .sort((a, b) => a.username.localeCompare(b.username));
+            
+            if (allUsers.length === 0) {
+                memberList.innerHTML = '<li style="padding: 12px; color: #949ba4; text-align: center;">No other users online</li>';
+            } else {
+                memberList.innerHTML = allUsers.map(user => `
+                    <li class="member-item">
+                        <span class="online-dot"></span>
+                        <span class="channel-name">${escapeHtml(user.username)}</span>
+                        <span class="member-status">online</span>
+                    </li>
+                `).join('');
+            }
+            
+            // Update huddle participant count
+            if (inHuddle) {
+                updateHuddleUserCount();
+            }
         }
         
         // WebRTC Peer Connection
         async function createPeerConnection(peerId, isInitiator) {
             if (peerConnections.has(peerId)) return;
+            if (peerId === currentUserId) return;
             
             const pc = new RTCPeerConnection(configuration);
             peerConnections.set(peerId, pc);
@@ -645,7 +706,7 @@
                 if (pc.connectionState === 'connected') {
                     const user = users.get(peerId);
                     if (user) {
-                        addSystemMessage(`✅ Video connected with ${user.username}`);
+                        console.log(`Video connected with ${user.username}`);
                     }
                 } else if (pc.connectionState === 'disconnected') {
                     removeVideoElement(peerId);
@@ -661,12 +722,64 @@
             return pc;
         }
         
+        function sendSignaling(targetUserId, signalType, data) {
+            const signalKey = `signal_${roomName}_${targetUserId}`;
+            const signal = {
+                from: currentUserId,
+                to: targetUserId,
+                type: signalType,
+                data: data,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(signalKey, JSON.stringify(signal));
+            
+            // Clean up after 1 second
+            setTimeout(() => {
+                localStorage.removeItem(signalKey);
+            }, 1000);
+        }
+        
+        // Listen for signaling messages
+        function listenForSignaling() {
+            setInterval(() => {
+                users.forEach((user, userId) => {
+                    if (userId !== currentUserId) {
+                        const signalKey = `signal_${roomName}_${currentUserId}`;
+                        const signalData = localStorage.getItem(signalKey);
+                        if (signalData) {
+                            const signal = JSON.parse(signalData);
+                            if (signal.from === userId) {
+                                handleSignaling(signal);
+                                localStorage.removeItem(signalKey);
+                            }
+                        }
+                    }
+                });
+            }, 500);
+        }
+        
+        async function handleSignaling(signal) {
+            switch(signal.type) {
+                case 'offer':
+                    await handleOffer(signal.from, signal.data);
+                    break;
+                case 'answer':
+                    await handleAnswer(signal.from, signal.data);
+                    break;
+                case 'ice-candidate':
+                    await handleIceCandidate(signal.from, signal.data);
+                    break;
+            }
+        }
+        
         async function handleOffer(peerId, offer) {
             const pc = await createPeerConnection(peerId, false);
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            sendSignaling(peerId, 'answer', answer);
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                sendSignaling(peerId, 'answer', answer);
+            }
         }
         
         async function handleAnswer(peerId, answer) {
@@ -898,7 +1011,6 @@
             if (!text) return;
             
             addMessageToChat(username, text, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            sendChatMessage(text);
             
             input.value = '';
             input.style.height = 'auto';
@@ -941,27 +1053,6 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
-        // Update UI
-        function updateUserList() {
-            const memberList = document.getElementById('memberList');
-            const activeCount = users.size;
-            document.getElementById('activeUserCount').textContent = activeCount;
-            
-            const allUsers = Array.from(users.values()).sort((a, b) => a.username.localeCompare(b.username));
-            
-            if (allUsers.length === 0) {
-                memberList.innerHTML = '<div style="padding: 12px; color: #949ba4; text-align: center;">No other users online</div>';
-            } else {
-                memberList.innerHTML = allUsers.map(user => `
-                    <li class="member-item">
-                        <span class="online-dot"></span>
-                        <span class="channel-name">${escapeHtml(user.username)}</span>
-                        <span class="member-status">online</span>
-                    </li>
-                `).join('');
-            }
-        }
-        
         // Channels
         function renderChannels() {
             const channels = ['general', 'random', 'announcements', 'tech-talk'];
@@ -998,20 +1089,6 @@
             return div.innerHTML;
         }
         
-        // Heartbeat to keep presence alive
-        function startHeartbeat() {
-            heartbeatInterval = setInterval(() => {
-                sendPresence();
-            }, 10000);
-        }
-        
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            sendLeave();
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            channel.close();
-        });
-        
         // Auto-resize textarea
         document.getElementById('messageInput').addEventListener('input', function() {
             this.style.height = 'auto';
@@ -1020,35 +1097,28 @@
         
         // Initialize
         renderChannels();
-        startHeartbeat();
-        sendPresence();
-        
-        // Add self to users list (not shown in active users)
-        updateUserList();
+        initPresenceSystem();
+        listenForSignaling();
         
         addSystemMessage(`🎉 Welcome to ${roomName}! You are logged in as ${username}`);
         addSystemMessage(`🔗 Share this URL: ${window.location.href}`);
         addSystemMessage(`💡 Click "Start Huddle" to begin video/audio conference with everyone in the room!`);
         addSystemMessage(`👥 Active users will appear here when others join the same room.`);
+        addSystemMessage(`📝 To test, open this page in another browser tab with a different username!`);
         
         // Update workspace name
         document.getElementById('workspaceName').innerHTML = `${roomName} <span style="font-size: 12px;">🏢</span>`;
         
-        // Periodic update to clean stale users (optional)
-        setInterval(() => {
-            const now = Date.now();
-            let hasChanges = false;
-            users.forEach((user, userId) => {
-                if (now - user.lastSeen > 30000) { // 30 seconds timeout
-                    users.delete(userId);
-                    hasChanges = true;
-                    addSystemMessage(`👋 ${user.username} disconnected (timeout)`);
-                }
-            });
-            if (hasChanges) {
-                updateUserList();
-            }
-        }, 15000);
+        // Log instructions for testing
+        console.log('=== TeamHuddle Ready ===');
+        console.log(`Room: ${roomName}`);
+        console.log(`Your username: ${username}`);
+        console.log(`Your user ID: ${currentUserId}`);
+        console.log('To test active users:');
+        console.log('1. Copy this URL');
+        console.log('2. Open in another browser tab or window');
+        console.log('3. Change the username parameter (e.g., ?room=enticechat&username=testuser2)');
+        console.log('4. Both tabs will show each other as active users!');
     </script>
 </body>
 </html>
