@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Global P2P Chat - Works Anywhere!</title>
+    <title>PeerJS Chat - Global Video Conference</title>
     <style>
         * {
             margin: 0;
@@ -397,7 +397,7 @@
         <div class="sidebar">
             <div class="workspace-header">
                 <div class="workspace-name">
-                    <span id="workspaceName">Global Chat</span>
+                    <span id="workspaceName">PeerChat</span>
                 </div>
                 <div class="workspace-status">
                     <span class="status-indicator"></span>
@@ -412,7 +412,7 @@
                 <ul class="channel-list" id="channelList"></ul>
                 
                 <div class="section-header">
-                    <span>🌍 Active Users Worldwide — <span id="activeUserCount">0</span></span>
+                    <span>👥 Active Users — <span id="activeUserCount">0</span></span>
                 </div>
                 <ul class="member-list" id="memberList">
                     <li style="padding: 12px; color: #949ba4; text-align: center;">Waiting for users...</li>
@@ -424,7 +424,7 @@
             <div class="chat-header">
                 <div class="channel-info">
                     <h2 id="currentChannelName"># general</h2>
-                    <p id="currentChannelTopic">Global discussions</p>
+                    <p id="currentChannelTopic">General discussions</p>
                 </div>
                 <button class="huddle-button" id="huddleButton">
                     🎙️ Start Huddle
@@ -447,205 +447,183 @@
             <div class="huddle-controls">
                 <button class="control-btn" id="huddleAudioBtn" style="background: #10b981;">🎤</button>
                 <button class="control-btn" id="huddleVideoBtn" style="background: #10b981;">📹</button>
-                <button class="control-btn">🖥️</button>
-                <button class="leave-huddle">Leave Huddle</button>
+                <button class="control-btn" id="huddleScreenBtn">🖥️</button>
+                <button class="leave-huddle" id="leaveHuddleBtn">Leave Huddle</button>
             </div>
         </div>
         <div class="huddle-grid" id="huddleGrid"></div>
     </div>
 
-    <div class="connection-badge" id="connectionBadge">
+    <div class="connection-badge">
         <span>🔗</span>
         <span id="roomUrlDisplay"></span>
     </div>
 
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const roomName = urlParams.get('room') || 'global-chat-' + Math.random().toString(36).substring(7);
+        const roomName = urlParams.get('room') || 'default-room';
         const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
         
-        // Update URL without reload to show room
-        if (!urlParams.get('room')) {
-            const newUrl = `${window.location.pathname}?room=${roomName}&username=${username}`;
-            window.history.replaceState({}, '', newUrl);
-        }
+        // Update URL to show room and username
+        const newUrl = `${window.location.pathname}?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`;
+        window.history.replaceState({}, '', newUrl);
         
         // Global state
         let currentChannel = 'general';
         let messages = [];
-        let users = new Map();
+        let peers = new Map(); // Store peer connections
         let localStream = null;
-        let peerConnections = new Map();
+        let peer = null;
         let inHuddle = false;
-        let currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-        let socket = null;
-        let reconnectAttempts = 0;
+        let currentUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        let activeCalls = new Map();
         
-        // Public signaling server (using a free service)
-        // You can replace this with your own server
-        const SIGNALING_SERVER = 'https://broadcastchannel.onrender.com';
-        
-        // WebRTC Configuration
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                {
-                    urls: 'turn:openrelay.metered.ca:80',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                },
-                {
-                    urls: 'turn:openrelay.metered.ca:443',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                },
-                {
-                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                }
-            ]
+        // PeerJS configuration
+        const peerConfig = {
+            host: '0.peerjs.com',
+            port: 443,
+            path: '/',
+            secure: true,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' },
+                    {
+                        urls: 'turn:openrelay.metered.ca:80',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ]
+            }
         };
         
-        // Initialize WebSocket connection
-        function initWebSocket() {
-            // Using a free public WebSocket echo server for signaling
-            // In production, use a proper signaling server
-            socket = io('wss://webrtc-signaling-server-1.onrender.com', {
-                transports: ['websocket'],
-                reconnection: true,
-                reconnectionAttempts: 10,
-                reconnectionDelay: 1000
-            });
+        // Room storage using localStorage for cross-tab communication
+        const ROOM_STORAGE_KEY = `peerchat_room_${roomName}`;
+        
+        // Initialize PeerJS
+        function initPeerJS() {
+            // Create a unique ID for this peer
+            const peerId = `${roomName}_${currentUserId}`;
             
-            socket.on('connect', () => {
-                console.log('Connected to signaling server');
+            peer = new Peer(peerId, peerConfig);
+            
+            peer.on('open', (id) => {
+                console.log('Connected to PeerJS server with ID:', id);
                 updateConnectionStatus(true, 'Connected');
                 
-                // Join room
-                socket.emit('join-room', {
-                    room: roomName,
-                    userId: currentUserId,
-                    username: username
-                });
+                // Register this user in the room
+                registerUserInRoom();
                 
-                reconnectAttempts = 0;
+                // Start heartbeat to maintain presence
+                startHeartbeat();
+                
+                // Listen for room changes
+                listenForRoomChanges();
             });
             
-            socket.on('connect_error', (error) => {
-                console.error('Connection error:', error);
-                reconnectAttempts++;
-                if (reconnectAttempts > 5) {
-                    updateConnectionStatus(false, 'Using P2P fallback');
-                    // Fallback to direct WebRTC with STUN only
-                }
-            });
-            
-            socket.on('user-joined', (data) => {
-                if (data.userId !== currentUserId) {
-                    addUser(data.userId, data.username);
-                    addSystemMessage(`🌍 ${data.username} joined from ${data.location || 'somewhere'}`);
-                }
-            });
-            
-            socket.on('user-left', (data) => {
-                removeUser(data.userId);
-                addSystemMessage(`👋 ${data.username} left the room`);
-            });
-            
-            socket.on('active-users', (usersList) => {
-                // Update users list from server
-                users.clear();
-                usersList.forEach(user => {
-                    if (user.userId !== currentUserId) {
-                        users.set(user.userId, user);
-                    }
-                });
-                updateUserList();
-            });
-            
-            socket.on('offer', async (data) => {
-                await handleOffer(data.from, data.offer);
-            });
-            
-            socket.on('answer', async (data) => {
-                await handleAnswer(data.from, data.answer);
-            });
-            
-            socket.on('ice-candidate', async (data) => {
-                await handleIceCandidate(data.from, data.candidate);
-            });
-            
-            socket.on('chat-message', (data) => {
-                addMessageToChat(data.username, data.message, data.time);
-            });
-            
-            socket.on('user-count', (count) => {
-                document.getElementById('activeUserCount').textContent = count;
-            });
-        }
-        
-        function updateConnectionStatus(connected, message) {
-            const statusEl = document.getElementById('connectionStatus');
-            const indicator = document.querySelector('.status-indicator');
-            if (connected) {
-                statusEl.innerHTML = message || '● Online';
-                statusEl.style.color = '#10b981';
-                indicator.style.background = '#10b981';
-            } else {
-                statusEl.innerHTML = message || '○ Offline';
-                statusEl.style.color = '#ef4444';
-                indicator.style.background = '#ef4444';
-            }
-        }
-        
-        // User management
-        function addUser(userId, userName) {
-            if (userId === currentUserId) return;
-            
-            const userData = {
-                userId: userId,
-                username: userName,
-                online: true,
-                joinedAt: Date.now()
-            };
-            users.set(userId, userData);
-            updateUserList();
-            
-            // If in huddle, connect to new user
-            if (inHuddle && localStream) {
+            peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                updateConnectionStatus(false, 'Connection error');
+                addSystemMessage(`⚠️ Connection error: ${err.type}. Trying to reconnect...`);
+                
+                // Retry connection after 5 seconds
                 setTimeout(() => {
-                    createPeerConnection(userId, true);
-                }, 1000);
-            }
+                    if (!peer.open) {
+                        initPeerJS();
+                    }
+                }, 5000);
+            });
+            
+            peer.on('call', (call) => {
+                console.log('Incoming call from:', call.peer);
+                if (inHuddle && localStream) {
+                    answerCall(call);
+                } else {
+                    call.close();
+                }
+            });
+            
+            peer.on('connection', (conn) => {
+                console.log('Data connection from:', conn.peer);
+                setupDataConnection(conn);
+            });
         }
         
-        function removeUser(userId) {
-            const user = users.get(userId);
-            if (user) {
-                users.delete(userId);
-                updateUserList();
-                
-                // Remove video if in huddle
-                if (inHuddle) {
-                    removeVideoElement(userId);
-                    if (peerConnections.has(userId)) {
-                        peerConnections.get(userId).close();
-                        peerConnections.delete(userId);
-                    }
-                }
+        // Register user in room
+        function registerUserInRoom() {
+            const roomData = getRoomData();
+            const userData = {
+                id: currentUserId,
+                username: username,
+                peerId: `${roomName}_${currentUserId}`,
+                joinedAt: Date.now(),
+                lastSeen: Date.now()
+            };
+            
+            // Check if user already exists
+            const existingUser = roomData.users.find(u => u.id === currentUserId);
+            if (!existingUser) {
+                roomData.users.push(userData);
+                saveRoomData(roomData);
+                addSystemMessage(`🎉 You joined as ${username}`);
             }
+            
+            updateUserList();
+        }
+        
+        function getRoomData() {
+            const stored = localStorage.getItem(ROOM_STORAGE_KEY);
+            if (stored) {
+                const data = JSON.parse(stored);
+                // Clean up stale users (older than 30 seconds)
+                const now = Date.now();
+                data.users = data.users.filter(user => now - user.lastSeen < 30000);
+                return data;
+            }
+            return { room: roomName, users: [] };
+        }
+        
+        function saveRoomData(data) {
+            localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(data));
+            // Trigger storage event for other tabs
+            localStorage.setItem('peerchat_trigger', Date.now().toString());
+        }
+        
+        function startHeartbeat() {
+            setInterval(() => {
+                const roomData = getRoomData();
+                const user = roomData.users.find(u => u.id === currentUserId);
+                if (user) {
+                    user.lastSeen = Date.now();
+                    saveRoomData(roomData);
+                }
+                updateUserList();
+            }, 5000);
+        }
+        
+        function listenForRoomChanges() {
+            window.addEventListener('storage', (e) => {
+                if (e.key === ROOM_STORAGE_KEY || e.key === 'peerchat_trigger') {
+                    updateUserList();
+                }
+            });
         }
         
         function updateUserList() {
+            const roomData = getRoomData();
+            const activeUsers = roomData.users.filter(u => u.id !== currentUserId);
             const memberList = document.getElementById('memberList');
-            const activeCount = users.size;
+            const activeCount = activeUsers.length;
             document.getElementById('activeUserCount').textContent = activeCount;
             
             if (activeCount === 0) {
@@ -653,106 +631,101 @@
                 return;
             }
             
-            const allUsers = Array.from(users.values())
-                .sort((a, b) => a.username.localeCompare(b.username));
-            
-            memberList.innerHTML = allUsers.map(user => `
+            memberList.innerHTML = activeUsers.map(user => `
                 <li class="member-item">
                     <span class="online-dot"></span>
                     <span class="channel-name">${escapeHtml(user.username)}</span>
                     <span class="member-status">online</span>
                 </li>
             `).join('');
-        }
-        
-        // WebRTC Peer Connection
-        async function createPeerConnection(peerId, isInitiator) {
-            if (peerConnections.has(peerId)) return;
-            if (peerId === currentUserId) return;
             
-            const pc = new RTCPeerConnection(configuration);
-            peerConnections.set(peerId, pc);
-            
-            // Add local stream tracks
-            if (localStream) {
-                localStream.getTracks().forEach(track => {
-                    pc.addTrack(track, localStream);
-                });
-            }
-            
-            // Handle incoming tracks
-            pc.ontrack = (event) => {
-                const remoteStream = event.streams[0];
-                const user = users.get(peerId);
-                addVideoElement(peerId, remoteStream, user?.username || 'Peer');
-            };
-            
-            // Handle ICE candidates
-            pc.onicecandidate = (event) => {
-                if (event.candidate && socket) {
-                    socket.emit('ice-candidate', {
-                        to: peerId,
-                        from: currentUserId,
-                        candidate: event.candidate,
-                        room: roomName
-                    });
-                }
-            };
-            
-            // Handle connection state
-            pc.onconnectionstatechange = () => {
-                if (pc.connectionState === 'connected') {
-                    const user = users.get(peerId);
-                    if (user) {
-                        console.log(`Video connected with ${user.username}`);
+            // Connect to new peers if in huddle
+            if (inHuddle && localStream) {
+                activeUsers.forEach(user => {
+                    if (!peers.has(user.id)) {
+                        connectToPeer(user);
                     }
-                } else if (pc.connectionState === 'disconnected') {
-                    removeVideoElement(peerId);
-                }
-            };
-            
-            if (isInitiator && socket) {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                socket.emit('offer', {
-                    to: peerId,
-                    from: currentUserId,
-                    offer: offer,
-                    room: roomName
                 });
             }
+        }
+        
+        function connectToPeer(user) {
+            if (user.id === currentUserId) return;
+            if (peers.has(user.id)) return;
             
-            return pc;
+            console.log('Connecting to peer:', user.username);
+            
+            // Create data connection
+            const conn = peer.connect(user.peerId);
+            setupDataConnection(conn);
+            
+            // Call the peer for video
+            if (localStream) {
+                const call = peer.call(user.peerId, localStream);
+                setupCall(call, user);
+            }
         }
         
-        async function handleOffer(peerId, offer) {
-            const pc = await createPeerConnection(peerId, false);
-            if (pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                if (socket) {
-                    socket.emit('answer', {
-                        to: peerId,
-                        from: currentUserId,
-                        answer: answer,
-                        room: roomName
-                    });
+        function setupDataConnection(conn) {
+            conn.on('open', () => {
+                console.log('Data connection opened with:', conn.peer);
+                
+                // Send user info
+                conn.send({
+                    type: 'user-info',
+                    username: username,
+                    userId: currentUserId
+                });
+            });
+            
+            conn.on('data', (data) => {
+                handleDataMessage(data, conn);
+            });
+            
+            conn.on('close', () => {
+                console.log('Data connection closed');
+                // Find and remove peer
+                for (let [userId, peerConn] of peers) {
+                    if (peerConn === conn) {
+                        peers.delete(userId);
+                        break;
+                    }
                 }
+            });
+        }
+        
+        function setupCall(call, user) {
+            call.on('stream', (remoteStream) => {
+                console.log('Received stream from:', user.username);
+                addVideoElement(user.id, remoteStream, user.username);
+            });
+            
+            call.on('close', () => {
+                console.log('Call closed with:', user.username);
+                removeVideoElement(user.id);
+                peers.delete(user.id);
+            });
+            
+            call.on('error', (err) => {
+                console.error('Call error:', err);
+            });
+            
+            peers.set(user.id, call);
+        }
+        
+        function answerCall(call) {
+            if (localStream) {
+                call.answer(localStream);
+                setupCall(call, { id: call.peer.split('_')[1], username: 'Peer' });
             }
         }
         
-        async function handleAnswer(peerId, answer) {
-            const pc = peerConnections.get(peerId);
-            if (pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(answer));
-            }
-        }
-        
-        async function handleIceCandidate(peerId, candidate) {
-            const pc = peerConnections.get(peerId);
-            if (pc) {
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        function handleDataMessage(data, conn) {
+            if (data.type === 'chat') {
+                addMessageToChat(data.username, data.message, data.time);
+            } else if (data.type === 'user-info') {
+                // Store peer info
+                peers.set(data.userId, conn);
             }
         }
         
@@ -806,11 +779,12 @@
                 
                 addVideoElement(currentUserId, localStream, `${username} (You)`);
                 
-                // Create connections with all existing users
-                for (let [userId, user] of users) {
-                    if (userId !== currentUserId) {
-                        await createPeerConnection(userId, true);
-                    }
+                // Connect to all existing users
+                const roomData = getRoomData();
+                const activeUsers = roomData.users.filter(u => u.id !== currentUserId);
+                
+                for (let user of activeUsers) {
+                    connectToPeer(user);
                 }
                 
                 inHuddle = true;
@@ -819,9 +793,6 @@
                 huddleBtn.innerHTML = '🔴 End Huddle';
                 document.getElementById('huddleModal').classList.add('active');
                 
-                // Setup modal controls
-                setupModalControls();
-                
                 addSystemMessage('🎙️ Huddle started! You can now talk with everyone in the room.');
             } catch (err) {
                 console.error('Error starting huddle:', err);
@@ -829,24 +800,12 @@
             }
         }
         
-        function setupModalControls() {
-            const audioBtn = document.getElementById('huddleAudioBtn');
-            const videoBtn = document.getElementById('huddleVideoBtn');
-            const screenBtn = document.querySelector('#huddleModal .huddle-controls .control-btn:nth-child(3)');
-            const leaveBtn = document.querySelector('#huddleModal .leave-huddle');
-            
-            audioBtn.onclick = toggleHuddleAudio;
-            videoBtn.onclick = toggleHuddleVideo;
-            screenBtn.onclick = toggleHuddleScreen;
-            leaveBtn.onclick = stopHuddle;
-        }
-        
         function stopHuddle() {
-            // Close all peer connections
-            peerConnections.forEach((pc, userId) => {
-                pc.close();
+            // Close all calls
+            peers.forEach((call, userId) => {
+                if (call.close) call.close();
             });
-            peerConnections.clear();
+            peers.clear();
             
             // Stop local stream
             if (localStream) {
@@ -917,11 +876,14 @@
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const videoTrack = screenStream.getVideoTracks()[0];
                 
-                // Replace video track for all connections
-                peerConnections.forEach((pc) => {
-                    const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(videoTrack);
+                // Replace video track for all calls
+                peers.forEach((call) => {
+                    if (call.peerConnection) {
+                        const senders = call.peerConnection.getSenders();
+                        const videoSender = senders.find(s => s.track?.kind === 'video');
+                        if (videoSender) {
+                            videoSender.replaceTrack(videoTrack);
+                        }
                     }
                 });
                 
@@ -936,10 +898,13 @@
                     // Restore camera
                     if (localStream) {
                         const cameraTrack = localStream.getVideoTracks()[0];
-                        peerConnections.forEach((pc) => {
-                            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                            if (sender && cameraTrack) {
-                                sender.replaceTrack(cameraTrack);
+                        peers.forEach((call) => {
+                            if (call.peerConnection) {
+                                const senders = call.peerConnection.getSenders();
+                                const videoSender = senders.find(s => s.track?.kind === 'video');
+                                if (videoSender && cameraTrack) {
+                                    videoSender.replaceTrack(cameraTrack);
+                                }
                             }
                         });
                         
@@ -965,17 +930,24 @@
             if (!text) return;
             
             const messageData = {
+                type: 'chat',
                 username: username,
                 message: text,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                room: roomName
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
             
             addMessageToChat(username, text, messageData.time);
             
-            if (socket) {
-                socket.emit('chat-message', messageData);
-            }
+            // Send to all peers
+            peers.forEach((call, userId) => {
+                if (call.send) {
+                    call.send(messageData);
+                } else if (call.peerConnection?.dataChannel) {
+                    // For data connections
+                    const conn = peers.get(userId);
+                    if (conn && conn.send) conn.send(messageData);
+                }
+            });
             
             input.value = '';
             input.style.height = 'auto';
@@ -1018,6 +990,20 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
+        function updateConnectionStatus(connected, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            const indicator = document.querySelector('.status-indicator');
+            if (connected) {
+                statusEl.innerHTML = message || '● Online';
+                statusEl.style.color = '#10b981';
+                indicator.style.background = '#10b981';
+            } else {
+                statusEl.innerHTML = message || '○ Offline';
+                statusEl.style.color = '#ef4444';
+                indicator.style.background = '#ef4444';
+            }
+        }
+        
         // Channels
         function renderChannels() {
             const channels = ['general', 'random', 'announcements', 'tech-talk'];
@@ -1053,9 +1039,13 @@
             return div.innerHTML;
         }
         
-        // Display room URL
-        document.getElementById('roomUrlDisplay').innerHTML = `Room: ${roomName}`;
-        document.getElementById('workspaceName').innerHTML = `${roomName} 🌍`;
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            const roomData = getRoomData();
+            roomData.users = roomData.users.filter(u => u.id !== currentUserId);
+            saveRoomData(roomData);
+            if (peer) peer.destroy();
+        });
         
         // Auto-resize textarea
         document.getElementById('messageInput').addEventListener('input', function() {
@@ -1063,25 +1053,34 @@
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
         
+        // Display room URL
+        document.getElementById('roomUrlDisplay').innerHTML = `Room: ${roomName}`;
+        document.getElementById('workspaceName').innerHTML = `${roomName} 🎥`;
+        
         // Initialize
         renderChannels();
-        initWebSocket();
+        initPeerJS();
         
         addSystemMessage(`🎉 Welcome to ${roomName}! You are logged in as ${username}`);
-        addSystemMessage(`🌍 This chat works ANYWHERE on the internet!`);
+        addSystemMessage(`🌍 This chat works ANYWHERE using PeerJS!`);
         addSystemMessage(`🔗 Share this URL with friends: ${window.location.href}`);
         addSystemMessage(`💡 Click "Start Huddle" to begin video conference with everyone in the room!`);
-        addSystemMessage(`👥 Active users from around the world will appear here`);
+        addSystemMessage(`👥 Active users from around the world will appear here automatically`);
         
-        // Global function for huddle toggle
+        // Setup button handlers
+        document.getElementById('huddleButton').onclick = toggleHuddle;
+        document.getElementById('huddleAudioBtn').onclick = toggleHuddleAudio;
+        document.getElementById('huddleVideoBtn').onclick = toggleHuddleVideo;
+        document.getElementById('huddleScreenBtn').onclick = toggleHuddleScreen;
+        document.getElementById('leaveHuddleBtn').onclick = stopHuddle;
+        
+        // Make functions globally available
+        window.switchChannel = switchChannel;
         window.toggleHuddle = toggleHuddle;
         window.toggleHuddleAudio = toggleHuddleAudio;
         window.toggleHuddleVideo = toggleHuddleVideo;
         window.toggleHuddleScreen = toggleHuddleScreen;
         window.stopHuddle = stopHuddle;
-        window.switchChannel = switchChannel;
-        
-        document.getElementById('huddleButton').onclick = toggleHuddle;
     </script>
 </body>
 </html>
