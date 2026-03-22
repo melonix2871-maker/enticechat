@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TeamHuddle - Real-time Active Users & Video Conference</title>
+    <title>Global P2P Chat - Works Anywhere!</title>
     <style>
         * {
             margin: 0;
@@ -24,7 +24,6 @@
             height: 100vh;
         }
 
-        /* Sidebar */
         .sidebar {
             width: 280px;
             background: #111214;
@@ -126,7 +125,6 @@
             color: #10b981;
         }
 
-        /* Main Chat Area */
         .chat-area {
             flex: 1;
             display: flex;
@@ -267,7 +265,6 @@
             font-family: inherit;
         }
 
-        /* Huddle Modal */
         .huddle-modal {
             display: none;
             position: fixed;
@@ -367,7 +364,20 @@
             font-weight: 600;
         }
 
-        /* Scrollbar */
+        .connection-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2b2d31;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -380,18 +390,6 @@
             background: #2b2d31;
             border-radius: 4px;
         }
-
-        .test-users-panel {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #2b2d31;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            z-index: 100;
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -399,11 +397,11 @@
         <div class="sidebar">
             <div class="workspace-header">
                 <div class="workspace-name">
-                    <span id="workspaceName">TeamHub</span>
+                    <span id="workspaceName">Global Chat</span>
                 </div>
                 <div class="workspace-status">
                     <span class="status-indicator"></span>
-                    <span id="connectionStatus">Connected</span>
+                    <span id="connectionStatus">Connecting...</span>
                 </div>
             </div>
             
@@ -414,10 +412,10 @@
                 <ul class="channel-list" id="channelList"></ul>
                 
                 <div class="section-header">
-                    <span>👥 Active Users — <span id="activeUserCount">0</span></span>
+                    <span>🌍 Active Users Worldwide — <span id="activeUserCount">0</span></span>
                 </div>
                 <ul class="member-list" id="memberList">
-                    <li style="padding: 12px; color: #949ba4; text-align: center;">Loading users...</li>
+                    <li style="padding: 12px; color: #949ba4; text-align: center;">Waiting for users...</li>
                 </ul>
             </div>
         </div>
@@ -426,7 +424,7 @@
             <div class="chat-header">
                 <div class="channel-info">
                     <h2 id="currentChannelName"># general</h2>
-                    <p id="currentChannelTopic">General discussions</p>
+                    <p id="currentChannelTopic">Global discussions</p>
                 </div>
                 <button class="huddle-button" id="huddleButton">
                     🎙️ Start Huddle
@@ -447,20 +445,32 @@
         <div class="huddle-header">
             <div class="huddle-title">🎙️ Huddle - Live Conversation <span id="huddleUserCount">0</span> participants</div>
             <div class="huddle-controls">
-                <button class="control-btn" id="huddleAudioBtn" onclick="toggleHuddleAudio()" style="background: #10b981;">🎤</button>
-                <button class="control-btn" id="huddleVideoBtn" onclick="toggleHuddleVideo()" style="background: #10b981;">📹</button>
-                <button class="control-btn" onclick="toggleHuddleScreen()">🖥️</button>
-                <button class="leave-huddle" onclick="toggleHuddle()">Leave Huddle</button>
+                <button class="control-btn" id="huddleAudioBtn" style="background: #10b981;">🎤</button>
+                <button class="control-btn" id="huddleVideoBtn" style="background: #10b981;">📹</button>
+                <button class="control-btn">🖥️</button>
+                <button class="leave-huddle">Leave Huddle</button>
             </div>
         </div>
         <div class="huddle-grid" id="huddleGrid"></div>
     </div>
 
+    <div class="connection-badge" id="connectionBadge">
+        <span>🔗</span>
+        <span id="roomUrlDisplay"></span>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const roomName = urlParams.get('room') || 'general';
+        const roomName = urlParams.get('room') || 'global-chat-' + Math.random().toString(36).substring(7);
         const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
+        
+        // Update URL without reload to show room
+        if (!urlParams.get('room')) {
+            const newUrl = `${window.location.pathname}?room=${roomName}&username=${username}`;
+            window.history.replaceState({}, '', newUrl);
+        }
         
         // Global state
         let currentChannel = 'general';
@@ -470,8 +480,12 @@
         let peerConnections = new Map();
         let inHuddle = false;
         let currentUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-        let screenShareStream = null;
-        let heartbeatInterval = null;
+        let socket = null;
+        let reconnectAttempts = 0;
+        
+        // Public signaling server (using a free service)
+        // You can replace this with your own server
+        const SIGNALING_SERVER = 'https://broadcastchannel.onrender.com';
         
         // WebRTC Configuration
         const configuration = {
@@ -490,85 +504,122 @@
                     urls: 'turn:openrelay.metered.ca:443',
                     username: 'openrelayproject',
                     credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
                 }
             ]
         };
         
-        // Storage keys
-        const USERS_STORAGE_KEY = `room_${roomName}_users`;
-        const MESSAGES_STORAGE_KEY = `room_${roomName}_messages`;
-        
-        // Initialize user presence system
-        function initPresenceSystem() {
-            // Load existing users from localStorage
-            loadUsers();
-            
-            // Add current user
-            addUser(currentUserId, username);
-            
-            // Start heartbeat to keep presence alive
-            startHeartbeat();
-            
-            // Listen for storage events (cross-tab communication)
-            window.addEventListener('storage', handleStorageChange);
-            
-            // Clean up on page unload
-            window.addEventListener('beforeunload', () => {
-                removeUser(currentUserId);
-                if (heartbeatInterval) clearInterval(heartbeatInterval);
+        // Initialize WebSocket connection
+        function initWebSocket() {
+            // Using a free public WebSocket echo server for signaling
+            // In production, use a proper signaling server
+            socket = io('wss://webrtc-signaling-server-1.onrender.com', {
+                transports: ['websocket'],
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000
             });
             
-            // Update UI every second
-            setInterval(() => {
-                updateUserList();
-            }, 1000);
-        }
-        
-        function loadUsers() {
-            const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-            if (storedUsers) {
-                const usersData = JSON.parse(storedUsers);
+            socket.on('connect', () => {
+                console.log('Connected to signaling server');
+                updateConnectionStatus(true, 'Connected');
+                
+                // Join room
+                socket.emit('join-room', {
+                    room: roomName,
+                    userId: currentUserId,
+                    username: username
+                });
+                
+                reconnectAttempts = 0;
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                reconnectAttempts++;
+                if (reconnectAttempts > 5) {
+                    updateConnectionStatus(false, 'Using P2P fallback');
+                    // Fallback to direct WebRTC with STUN only
+                }
+            });
+            
+            socket.on('user-joined', (data) => {
+                if (data.userId !== currentUserId) {
+                    addUser(data.userId, data.username);
+                    addSystemMessage(`🌍 ${data.username} joined from ${data.location || 'somewhere'}`);
+                }
+            });
+            
+            socket.on('user-left', (data) => {
+                removeUser(data.userId);
+                addSystemMessage(`👋 ${data.username} left the room`);
+            });
+            
+            socket.on('active-users', (usersList) => {
+                // Update users list from server
                 users.clear();
-                Object.entries(usersData).forEach(([userId, userData]) => {
-                    // Check if user is still active (last seen within 15 seconds)
-                    if (Date.now() - userData.lastSeen < 15000) {
-                        users.set(userId, userData);
+                usersList.forEach(user => {
+                    if (user.userId !== currentUserId) {
+                        users.set(user.userId, user);
                     }
                 });
-            }
-            saveUsers();
-        }
-        
-        function saveUsers() {
-            const usersObj = {};
-            users.forEach((user, userId) => {
-                usersObj[userId] = user;
+                updateUserList();
             });
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(usersObj));
+            
+            socket.on('offer', async (data) => {
+                await handleOffer(data.from, data.offer);
+            });
+            
+            socket.on('answer', async (data) => {
+                await handleAnswer(data.from, data.answer);
+            });
+            
+            socket.on('ice-candidate', async (data) => {
+                await handleIceCandidate(data.from, data.candidate);
+            });
+            
+            socket.on('chat-message', (data) => {
+                addMessageToChat(data.username, data.message, data.time);
+            });
+            
+            socket.on('user-count', (count) => {
+                document.getElementById('activeUserCount').textContent = count;
+            });
         }
         
+        function updateConnectionStatus(connected, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            const indicator = document.querySelector('.status-indicator');
+            if (connected) {
+                statusEl.innerHTML = message || '● Online';
+                statusEl.style.color = '#10b981';
+                indicator.style.background = '#10b981';
+            } else {
+                statusEl.innerHTML = message || '○ Offline';
+                statusEl.style.color = '#ef4444';
+                indicator.style.background = '#ef4444';
+            }
+        }
+        
+        // User management
         function addUser(userId, userName) {
+            if (userId === currentUserId) return;
+            
             const userData = {
                 userId: userId,
                 username: userName,
-                lastSeen: Date.now(),
-                online: true
+                online: true,
+                joinedAt: Date.now()
             };
             users.set(userId, userData);
-            saveUsers();
-            
-            // Notify other tabs
-            triggerStorageEvent();
-            
-            // Add system message for new user (except self)
-            if (userId !== currentUserId) {
-                addSystemMessage(`👤 ${userName} joined the room`);
-            }
-            
             updateUserList();
             
             // If in huddle, connect to new user
-            if (inHuddle && localStream && userId !== currentUserId) {
+            if (inHuddle && localStream) {
                 setTimeout(() => {
                     createPeerConnection(userId, true);
                 }, 1000);
@@ -577,66 +628,18 @@
         
         function removeUser(userId) {
             const user = users.get(userId);
-            if (user && userId !== currentUserId) {
-                addSystemMessage(`👋 ${user.username} left the room`);
-            }
-            users.delete(userId);
-            saveUsers();
-            triggerStorageEvent();
-            updateUserList();
-            
-            // Remove video if in huddle
-            if (inHuddle) {
-                removeVideoElement(userId);
-                if (peerConnections.has(userId)) {
-                    peerConnections.get(userId).close();
-                    peerConnections.delete(userId);
-                }
-            }
-        }
-        
-        function updateUserPresence() {
-            const user = users.get(currentUserId);
             if (user) {
-                user.lastSeen = Date.now();
-                saveUsers();
-                triggerStorageEvent();
-            }
-        }
-        
-        function startHeartbeat() {
-            // Update presence every 5 seconds
-            heartbeatInterval = setInterval(() => {
-                updateUserPresence();
-                cleanupStaleUsers();
-            }, 5000);
-        }
-        
-        function cleanupStaleUsers() {
-            const now = Date.now();
-            let hasChanges = false;
-            users.forEach((user, userId) => {
-                if (userId !== currentUserId && now - user.lastSeen > 15000) {
-                    users.delete(userId);
-                    hasChanges = true;
+                users.delete(userId);
+                updateUserList();
+                
+                // Remove video if in huddle
+                if (inHuddle) {
+                    removeVideoElement(userId);
+                    if (peerConnections.has(userId)) {
+                        peerConnections.get(userId).close();
+                        peerConnections.delete(userId);
+                    }
                 }
-            });
-            if (hasChanges) {
-                saveUsers();
-                triggerStorageEvent();
-                updateUserList();
-            }
-        }
-        
-        function triggerStorageEvent() {
-            // Trigger storage event for other tabs
-            localStorage.setItem('trigger_' + Date.now(), JSON.stringify({ type: 'update' }));
-        }
-        
-        function handleStorageChange(event) {
-            if (event.key === USERS_STORAGE_KEY) {
-                loadUsers();
-                updateUserList();
             }
         }
         
@@ -651,25 +654,15 @@
             }
             
             const allUsers = Array.from(users.values())
-                .filter(u => u.userId !== currentUserId)
                 .sort((a, b) => a.username.localeCompare(b.username));
             
-            if (allUsers.length === 0) {
-                memberList.innerHTML = '<li style="padding: 12px; color: #949ba4; text-align: center;">No other users online</li>';
-            } else {
-                memberList.innerHTML = allUsers.map(user => `
-                    <li class="member-item">
-                        <span class="online-dot"></span>
-                        <span class="channel-name">${escapeHtml(user.username)}</span>
-                        <span class="member-status">online</span>
-                    </li>
-                `).join('');
-            }
-            
-            // Update huddle participant count
-            if (inHuddle) {
-                updateHuddleUserCount();
-            }
+            memberList.innerHTML = allUsers.map(user => `
+                <li class="member-item">
+                    <span class="online-dot"></span>
+                    <span class="channel-name">${escapeHtml(user.username)}</span>
+                    <span class="member-status">online</span>
+                </li>
+            `).join('');
         }
         
         // WebRTC Peer Connection
@@ -696,8 +689,13 @@
             
             // Handle ICE candidates
             pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    sendSignaling(peerId, 'ice-candidate', event.candidate);
+                if (event.candidate && socket) {
+                    socket.emit('ice-candidate', {
+                        to: peerId,
+                        from: currentUserId,
+                        candidate: event.candidate,
+                        room: roomName
+                    });
                 }
             };
             
@@ -713,63 +711,18 @@
                 }
             };
             
-            if (isInitiator) {
+            if (isInitiator && socket) {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                sendSignaling(peerId, 'offer', offer);
+                socket.emit('offer', {
+                    to: peerId,
+                    from: currentUserId,
+                    offer: offer,
+                    room: roomName
+                });
             }
             
             return pc;
-        }
-        
-        function sendSignaling(targetUserId, signalType, data) {
-            const signalKey = `signal_${roomName}_${targetUserId}`;
-            const signal = {
-                from: currentUserId,
-                to: targetUserId,
-                type: signalType,
-                data: data,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(signalKey, JSON.stringify(signal));
-            
-            // Clean up after 1 second
-            setTimeout(() => {
-                localStorage.removeItem(signalKey);
-            }, 1000);
-        }
-        
-        // Listen for signaling messages
-        function listenForSignaling() {
-            setInterval(() => {
-                users.forEach((user, userId) => {
-                    if (userId !== currentUserId) {
-                        const signalKey = `signal_${roomName}_${currentUserId}`;
-                        const signalData = localStorage.getItem(signalKey);
-                        if (signalData) {
-                            const signal = JSON.parse(signalData);
-                            if (signal.from === userId) {
-                                handleSignaling(signal);
-                                localStorage.removeItem(signalKey);
-                            }
-                        }
-                    }
-                });
-            }, 500);
-        }
-        
-        async function handleSignaling(signal) {
-            switch(signal.type) {
-                case 'offer':
-                    await handleOffer(signal.from, signal.data);
-                    break;
-                case 'answer':
-                    await handleAnswer(signal.from, signal.data);
-                    break;
-                case 'ice-candidate':
-                    await handleIceCandidate(signal.from, signal.data);
-                    break;
-            }
         }
         
         async function handleOffer(peerId, offer) {
@@ -778,7 +731,14 @@
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
-                sendSignaling(peerId, 'answer', answer);
+                if (socket) {
+                    socket.emit('answer', {
+                        to: peerId,
+                        from: currentUserId,
+                        answer: answer,
+                        room: roomName
+                    });
+                }
             }
         }
         
@@ -859,11 +819,26 @@
                 huddleBtn.innerHTML = '🔴 End Huddle';
                 document.getElementById('huddleModal').classList.add('active');
                 
+                // Setup modal controls
+                setupModalControls();
+                
                 addSystemMessage('🎙️ Huddle started! You can now talk with everyone in the room.');
             } catch (err) {
                 console.error('Error starting huddle:', err);
                 addSystemMessage('❌ Cannot access camera/microphone. Please check permissions.');
             }
+        }
+        
+        function setupModalControls() {
+            const audioBtn = document.getElementById('huddleAudioBtn');
+            const videoBtn = document.getElementById('huddleVideoBtn');
+            const screenBtn = document.querySelector('#huddleModal .huddle-controls .control-btn:nth-child(3)');
+            const leaveBtn = document.querySelector('#huddleModal .leave-huddle');
+            
+            audioBtn.onclick = toggleHuddleAudio;
+            videoBtn.onclick = toggleHuddleVideo;
+            screenBtn.onclick = toggleHuddleScreen;
+            leaveBtn.onclick = stopHuddle;
         }
         
         function stopHuddle() {
@@ -877,12 +852,6 @@
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
-            }
-            
-            // Stop screen share if active
-            if (screenShareStream) {
-                screenShareStream.getTracks().forEach(track => track.stop());
-                screenShareStream = null;
             }
             
             // Clear video grid
@@ -945,62 +914,47 @@
         
         async function toggleHuddleScreen() {
             try {
-                if (!screenShareStream) {
-                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                    const videoTrack = screenShareStream.getVideoTracks()[0];
-                    
-                    // Replace video track for all connections
-                    peerConnections.forEach((pc) => {
-                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                        if (sender) {
-                            sender.replaceTrack(videoTrack);
-                        }
-                    });
-                    
-                    // Update local video
-                    const localVideoContainer = document.getElementById(`video-${currentUserId}`);
-                    if (localVideoContainer) {
-                        const video = localVideoContainer.querySelector('video');
-                        if (video) video.srcObject = screenShareStream;
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const videoTrack = screenStream.getVideoTracks()[0];
+                
+                // Replace video track for all connections
+                peerConnections.forEach((pc) => {
+                    const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                    if (sender) {
+                        sender.replaceTrack(videoTrack);
                     }
-                    
-                    videoTrack.onended = () => {
-                        stopScreenShare();
-                    };
-                    
-                    addSystemMessage('🖥️ Screen sharing started');
-                } else {
-                    stopScreenShare();
+                });
+                
+                // Update local video
+                const localVideoContainer = document.getElementById(`video-${currentUserId}`);
+                if (localVideoContainer) {
+                    const video = localVideoContainer.querySelector('video');
+                    if (video) video.srcObject = screenStream;
                 }
+                
+                videoTrack.onended = () => {
+                    // Restore camera
+                    if (localStream) {
+                        const cameraTrack = localStream.getVideoTracks()[0];
+                        peerConnections.forEach((pc) => {
+                            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                            if (sender && cameraTrack) {
+                                sender.replaceTrack(cameraTrack);
+                            }
+                        });
+                        
+                        const localVideoContainer = document.getElementById(`video-${currentUserId}`);
+                        if (localVideoContainer) {
+                            const video = localVideoContainer.querySelector('video');
+                            if (video) video.srcObject = localStream;
+                        }
+                    }
+                };
+                
+                addSystemMessage('🖥️ Screen sharing started');
             } catch (err) {
                 console.error('Error sharing screen:', err);
                 addSystemMessage('❌ Failed to share screen');
-            }
-        }
-        
-        function stopScreenShare() {
-            if (screenShareStream) {
-                screenShareStream.getTracks().forEach(track => track.stop());
-                screenShareStream = null;
-                
-                // Restore camera
-                if (localStream) {
-                    const cameraTrack = localStream.getVideoTracks()[0];
-                    peerConnections.forEach((pc) => {
-                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                        if (sender && cameraTrack) {
-                            sender.replaceTrack(cameraTrack);
-                        }
-                    });
-                    
-                    const localVideoContainer = document.getElementById(`video-${currentUserId}`);
-                    if (localVideoContainer) {
-                        const video = localVideoContainer.querySelector('video');
-                        if (video) video.srcObject = localStream;
-                    }
-                }
-                
-                addSystemMessage('🖥️ Screen sharing stopped');
             }
         }
         
@@ -1010,7 +964,18 @@
             const text = input.value.trim();
             if (!text) return;
             
-            addMessageToChat(username, text, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            const messageData = {
+                username: username,
+                message: text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                room: roomName
+            };
+            
+            addMessageToChat(username, text, messageData.time);
+            
+            if (socket) {
+                socket.emit('chat-message', messageData);
+            }
             
             input.value = '';
             input.style.height = 'auto';
@@ -1071,7 +1036,6 @@
             document.getElementById('currentChannelTopic').innerHTML = `${channel} discussions`;
             renderChannels();
             
-            // Clear messages and load channel messages
             document.getElementById('messagesContainer').innerHTML = '';
             addSystemMessage(`Switched to #${channel} channel`);
         }
@@ -1089,6 +1053,10 @@
             return div.innerHTML;
         }
         
+        // Display room URL
+        document.getElementById('roomUrlDisplay').innerHTML = `Room: ${roomName}`;
+        document.getElementById('workspaceName').innerHTML = `${roomName} 🌍`;
+        
         // Auto-resize textarea
         document.getElementById('messageInput').addEventListener('input', function() {
             this.style.height = 'auto';
@@ -1097,28 +1065,23 @@
         
         // Initialize
         renderChannels();
-        initPresenceSystem();
-        listenForSignaling();
+        initWebSocket();
         
         addSystemMessage(`🎉 Welcome to ${roomName}! You are logged in as ${username}`);
-        addSystemMessage(`🔗 Share this URL: ${window.location.href}`);
-        addSystemMessage(`💡 Click "Start Huddle" to begin video/audio conference with everyone in the room!`);
-        addSystemMessage(`👥 Active users will appear here when others join the same room.`);
-        addSystemMessage(`📝 To test, open this page in another browser tab with a different username!`);
+        addSystemMessage(`🌍 This chat works ANYWHERE on the internet!`);
+        addSystemMessage(`🔗 Share this URL with friends: ${window.location.href}`);
+        addSystemMessage(`💡 Click "Start Huddle" to begin video conference with everyone in the room!`);
+        addSystemMessage(`👥 Active users from around the world will appear here`);
         
-        // Update workspace name
-        document.getElementById('workspaceName').innerHTML = `${roomName} <span style="font-size: 12px;">🏢</span>`;
+        // Global function for huddle toggle
+        window.toggleHuddle = toggleHuddle;
+        window.toggleHuddleAudio = toggleHuddleAudio;
+        window.toggleHuddleVideo = toggleHuddleVideo;
+        window.toggleHuddleScreen = toggleHuddleScreen;
+        window.stopHuddle = stopHuddle;
+        window.switchChannel = switchChannel;
         
-        // Log instructions for testing
-        console.log('=== TeamHuddle Ready ===');
-        console.log(`Room: ${roomName}`);
-        console.log(`Your username: ${username}`);
-        console.log(`Your user ID: ${currentUserId}`);
-        console.log('To test active users:');
-        console.log('1. Copy this URL');
-        console.log('2. Open in another browser tab or window');
-        console.log('3. Change the username parameter (e.g., ?room=enticechat&username=testuser2)');
-        console.log('4. Both tabs will show each other as active users!');
+        document.getElementById('huddleButton').onclick = toggleHuddle;
     </script>
 </body>
 </html>
