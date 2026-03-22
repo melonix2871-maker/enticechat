@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PeerJS Chat - Global Video Conference</title>
+    <title>Global P2P Chat - GitHub Gists Backend</title>
     <style>
         * {
             margin: 0;
@@ -390,6 +390,22 @@
             background: #2b2d31;
             border-radius: 4px;
         }
+
+        .setup-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2b2d31;
+            padding: 16px;
+            border-radius: 12px;
+            z-index: 1000;
+            max-width: 300px;
+            display: none;
+        }
+
+        .setup-panel.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -397,7 +413,7 @@
         <div class="sidebar">
             <div class="workspace-header">
                 <div class="workspace-name">
-                    <span id="workspaceName">PeerChat</span>
+                    <span id="workspaceName">Global Chat</span>
                 </div>
                 <div class="workspace-status">
                     <span class="status-indicator"></span>
@@ -412,7 +428,7 @@
                 <ul class="channel-list" id="channelList"></ul>
                 
                 <div class="section-header">
-                    <span>👥 Active Users — <span id="activeUserCount">0</span></span>
+                    <span>🌍 Active Users Worldwide — <span id="activeUserCount">0</span></span>
                 </div>
                 <ul class="member-list" id="memberList">
                     <li style="padding: 12px; color: #949ba4; text-align: center;">Waiting for users...</li>
@@ -459,6 +475,16 @@
         <span id="roomUrlDisplay"></span>
     </div>
 
+    <div id="setupPanel" class="setup-panel">
+        <h3>GitHub Gists Setup Required</h3>
+        <p>To enable global users, please enter your GitHub Gist ID:</p>
+        <input type="text" id="gistId" placeholder="Gist ID" style="width: 100%; margin: 10px 0; padding: 8px;">
+        <button onclick="saveGistId()" class="control-btn" style="width: 100%; border-radius: 8px;">Save</button>
+        <p style="font-size: 11px; margin-top: 10px;">
+            <a href="https://gist.github.com/" target="_blank">Create a new gist</a> with file "users.json" containing: {"users":[]}
+        </p>
+    </div>
+
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script>
         // Get URL parameters
@@ -466,162 +492,142 @@
         const roomName = urlParams.get('room') || 'default-room';
         const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
         
-        // Update URL to show room and username
+        // Update URL
         const newUrl = `${window.location.pathname}?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`;
         window.history.replaceState({}, '', newUrl);
         
         // Global state
         let currentChannel = 'general';
-        let messages = [];
-        let peers = new Map(); // Store peer connections
+        let peers = new Map();
         let localStream = null;
         let peer = null;
         let inHuddle = false;
         let currentUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-        let activeCalls = new Map();
+        let heartbeatInterval = null;
+        let gistId = localStorage.getItem(`gist_${roomName}`) || null;
         
-        // PeerJS configuration
-        const peerConfig = {
-            host: '0.peerjs.com',
-            port: 443,
-            path: '/',
-            secure: true,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' },
-                    {
-                        urls: 'turn:openrelay.metered.ca:80',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
+        // GitHub Gist API endpoints
+        const GIST_API = 'https://api.github.com/gists';
+        
+        // Show setup panel if no gist ID
+        if (!gistId) {
+            document.getElementById('setupPanel').classList.add('active');
+        }
+        
+        function saveGistId() {
+            const newGistId = document.getElementById('gistId').value.trim();
+            if (newGistId) {
+                gistId = newGistId;
+                localStorage.setItem(`gist_${roomName}`, gistId);
+                document.getElementById('setupPanel').classList.remove('active');
+                initPeerJS();
+                startUserSync();
+            }
+        }
+        
+        // Read users from GitHub Gist
+        async function readUsersFromGist() {
+            if (!gistId) return [];
+            
+            try {
+                const response = await fetch(`https://api.github.com/gists/${gistId}`);
+                const gist = await response.json();
+                const content = gist.files['users.json']?.content || '{"users":[]}';
+                const data = JSON.parse(content);
+                return data.users || [];
+            } catch (error) {
+                console.error('Error reading gist:', error);
+                return [];
+            }
+        }
+        
+        // Write users to GitHub Gist
+        async function writeUsersToGist(users) {
+            if (!gistId) return false;
+            
+            try {
+                // First get current gist to get its hash
+                const getResponse = await fetch(`https://api.github.com/gists/${gistId}`);
+                const gist = await getResponse.json();
+                
+                // Update the gist
+                const updateResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
                     },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ]
-            }
-        };
-        
-        // Room storage using localStorage for cross-tab communication
-        const ROOM_STORAGE_KEY = `peerchat_room_${roomName}`;
-        
-        // Initialize PeerJS
-        function initPeerJS() {
-            // Create a unique ID for this peer
-            const peerId = `${roomName}_${currentUserId}`;
-            
-            peer = new Peer(peerId, peerConfig);
-            
-            peer.on('open', (id) => {
-                console.log('Connected to PeerJS server with ID:', id);
-                updateConnectionStatus(true, 'Connected');
+                    body: JSON.stringify({
+                        files: {
+                            'users.json': {
+                                content: JSON.stringify({ users: users, updatedAt: Date.now() }, null, 2)
+                            }
+                        }
+                    })
+                });
                 
-                // Register this user in the room
-                registerUserInRoom();
-                
-                // Start heartbeat to maintain presence
-                startHeartbeat();
-                
-                // Listen for room changes
-                listenForRoomChanges();
-            });
-            
-            peer.on('error', (err) => {
-                console.error('PeerJS error:', err);
-                updateConnectionStatus(false, 'Connection error');
-                addSystemMessage(`⚠️ Connection error: ${err.type}. Trying to reconnect...`);
-                
-                // Retry connection after 5 seconds
-                setTimeout(() => {
-                    if (!peer.open) {
-                        initPeerJS();
-                    }
-                }, 5000);
-            });
-            
-            peer.on('call', (call) => {
-                console.log('Incoming call from:', call.peer);
-                if (inHuddle && localStream) {
-                    answerCall(call);
+                if (updateResponse.ok) {
+                    console.log('Users updated successfully');
+                    return true;
                 } else {
-                    call.close();
+                    console.error('Failed to update gist:', await updateResponse.text());
+                    return false;
                 }
-            });
-            
-            peer.on('connection', (conn) => {
-                console.log('Data connection from:', conn.peer);
-                setupDataConnection(conn);
-            });
-        }
-        
-        // Register user in room
-        function registerUserInRoom() {
-            const roomData = getRoomData();
-            const userData = {
-                id: currentUserId,
-                username: username,
-                peerId: `${roomName}_${currentUserId}`,
-                joinedAt: Date.now(),
-                lastSeen: Date.now()
-            };
-            
-            // Check if user already exists
-            const existingUser = roomData.users.find(u => u.id === currentUserId);
-            if (!existingUser) {
-                roomData.users.push(userData);
-                saveRoomData(roomData);
-                addSystemMessage(`🎉 You joined as ${username}`);
+            } catch (error) {
+                console.error('Error writing to gist:', error);
+                return false;
             }
-            
-            updateUserList();
         }
         
-        function getRoomData() {
-            const stored = localStorage.getItem(ROOM_STORAGE_KEY);
-            if (stored) {
-                const data = JSON.parse(stored);
+        // Sync local users with global gist
+        async function syncUsers() {
+            if (!gistId) return;
+            
+            try {
+                // Read current users from gist
+                let globalUsers = await readUsersFromGist();
+                
                 // Clean up stale users (older than 30 seconds)
                 const now = Date.now();
-                data.users = data.users.filter(user => now - user.lastSeen < 30000);
-                return data;
+                globalUsers = globalUsers.filter(user => now - user.lastSeen < 30000);
+                
+                // Find current user in global list
+                const currentUserIndex = globalUsers.findIndex(u => u.id === currentUserId);
+                const currentUser = {
+                    id: currentUserId,
+                    username: username,
+                    peerId: `${roomName}_${currentUserId}`,
+                    lastSeen: now,
+                    joinedAt: currentUserIndex !== -1 ? globalUsers[currentUserIndex].joinedAt : now
+                };
+                
+                if (currentUserIndex !== -1) {
+                    globalUsers[currentUserIndex] = currentUser;
+                } else {
+                    globalUsers.push(currentUser);
+                    addSystemMessage(`🎉 ${username} joined the room`);
+                }
+                
+                // Write back to gist
+                await writeUsersToGist(globalUsers);
+                
+                // Update UI
+                updateUserList(globalUsers.filter(u => u.id !== currentUserId));
+                
+                // Connect to new peers if in huddle
+                if (inHuddle && localStream) {
+                    const otherUsers = globalUsers.filter(u => u.id !== currentUserId);
+                    for (let user of otherUsers) {
+                        if (!peers.has(user.id)) {
+                            connectToPeer(user);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error syncing users:', error);
             }
-            return { room: roomName, users: [] };
         }
         
-        function saveRoomData(data) {
-            localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(data));
-            // Trigger storage event for other tabs
-            localStorage.setItem('peerchat_trigger', Date.now().toString());
-        }
-        
-        function startHeartbeat() {
-            setInterval(() => {
-                const roomData = getRoomData();
-                const user = roomData.users.find(u => u.id === currentUserId);
-                if (user) {
-                    user.lastSeen = Date.now();
-                    saveRoomData(roomData);
-                }
-                updateUserList();
-            }, 5000);
-        }
-        
-        function listenForRoomChanges() {
-            window.addEventListener('storage', (e) => {
-                if (e.key === ROOM_STORAGE_KEY || e.key === 'peerchat_trigger') {
-                    updateUserList();
-                }
-            });
-        }
-        
-        function updateUserList() {
-            const roomData = getRoomData();
-            const activeUsers = roomData.users.filter(u => u.id !== currentUserId);
+        function updateUserList(activeUsers) {
             const memberList = document.getElementById('memberList');
             const activeCount = activeUsers.length;
             document.getElementById('activeUserCount').textContent = activeCount;
@@ -638,28 +644,91 @@
                     <span class="member-status">online</span>
                 </li>
             `).join('');
+        }
+        
+        function startUserSync() {
+            // Initial sync
+            syncUsers();
             
-            // Connect to new peers if in huddle
-            if (inHuddle && localStream) {
-                activeUsers.forEach(user => {
-                    if (!peers.has(user.id)) {
-                        connectToPeer(user);
-                    }
-                });
-            }
+            // Sync every 5 seconds
+            heartbeatInterval = setInterval(() => {
+                syncUsers();
+            }, 5000);
+            
+            // Clean up on page unload
+            window.addEventListener('beforeunload', async () => {
+                if (gistId) {
+                    const users = await readUsersFromGist();
+                    const filteredUsers = users.filter(u => u.id !== currentUserId);
+                    await writeUsersToGist(filteredUsers);
+                }
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                if (peer) peer.destroy();
+            });
+        }
+        
+        // Initialize PeerJS
+        function initPeerJS() {
+            const peerId = `${roomName}_${currentUserId}`;
+            
+            peer = new Peer(peerId, {
+                host: '0.peerjs.com',
+                port: 443,
+                path: '/',
+                secure: true,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' },
+                        {
+                            urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        }
+                    ]
+                }
+            });
+            
+            peer.on('open', (id) => {
+                console.log('Connected to PeerJS with ID:', id);
+                updateConnectionStatus(true, 'Connected');
+            });
+            
+            peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                updateConnectionStatus(false, 'Reconnecting...');
+            });
+            
+            peer.on('call', (call) => {
+                if (inHuddle && localStream) {
+                    answerCall(call);
+                }
+            });
+            
+            peer.on('connection', (conn) => {
+                setupDataConnection(conn);
+            });
         }
         
         function connectToPeer(user) {
             if (user.id === currentUserId) return;
             if (peers.has(user.id)) return;
             
-            console.log('Connecting to peer:', user.username);
+            console.log('Connecting to:', user.username);
             
             // Create data connection
             const conn = peer.connect(user.peerId);
             setupDataConnection(conn);
             
-            // Call the peer for video
+            // Call for video if in huddle
             if (localStream) {
                 const call = peer.call(user.peerId, localStream);
                 setupCall(call, user);
@@ -668,9 +737,6 @@
         
         function setupDataConnection(conn) {
             conn.on('open', () => {
-                console.log('Data connection opened with:', conn.peer);
-                
-                // Send user info
                 conn.send({
                     type: 'user-info',
                     username: username,
@@ -679,12 +745,12 @@
             });
             
             conn.on('data', (data) => {
-                handleDataMessage(data, conn);
+                if (data.type === 'chat') {
+                    addMessageToChat(data.username, data.message, data.time);
+                }
             });
             
             conn.on('close', () => {
-                console.log('Data connection closed');
-                // Find and remove peer
                 for (let [userId, peerConn] of peers) {
                     if (peerConn === conn) {
                         peers.delete(userId);
@@ -696,18 +762,12 @@
         
         function setupCall(call, user) {
             call.on('stream', (remoteStream) => {
-                console.log('Received stream from:', user.username);
                 addVideoElement(user.id, remoteStream, user.username);
             });
             
             call.on('close', () => {
-                console.log('Call closed with:', user.username);
                 removeVideoElement(user.id);
                 peers.delete(user.id);
-            });
-            
-            call.on('error', (err) => {
-                console.error('Call error:', err);
             });
             
             peers.set(user.id, call);
@@ -716,20 +776,12 @@
         function answerCall(call) {
             if (localStream) {
                 call.answer(localStream);
-                setupCall(call, { id: call.peer.split('_')[1], username: 'Peer' });
+                const peerId = call.peer.split('_')[1];
+                setupCall(call, { id: peerId, username: 'Peer' });
             }
         }
         
-        function handleDataMessage(data, conn) {
-            if (data.type === 'chat') {
-                addMessageToChat(data.username, data.message, data.time);
-            } else if (data.type === 'user-info') {
-                // Store peer info
-                peers.set(data.userId, conn);
-            }
-        }
-        
-        // Video grid management
+        // Video management
         function addVideoElement(userId, stream, username) {
             const grid = document.getElementById('huddleGrid');
             let container = document.getElementById(`video-${userId}`);
@@ -751,7 +803,6 @@
                 container.appendChild(video);
                 container.appendChild(label);
                 grid.appendChild(container);
-                
                 updateHuddleUserCount();
             }
         }
@@ -769,7 +820,7 @@
             document.getElementById('huddleUserCount').textContent = count;
         }
         
-        // Start/Stop Huddle
+        // Huddle controls
         async function startHuddle() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -779,18 +830,17 @@
                 
                 addVideoElement(currentUserId, localStream, `${username} (You)`);
                 
-                // Connect to all existing users
-                const roomData = getRoomData();
-                const activeUsers = roomData.users.filter(u => u.id !== currentUserId);
+                // Get current users and connect
+                const users = await readUsersFromGist();
+                const otherUsers = users.filter(u => u.id !== currentUserId);
                 
-                for (let user of activeUsers) {
+                for (let user of otherUsers) {
                     connectToPeer(user);
                 }
                 
                 inHuddle = true;
-                const huddleBtn = document.getElementById('huddleButton');
-                huddleBtn.classList.add('active');
-                huddleBtn.innerHTML = '🔴 End Huddle';
+                document.getElementById('huddleButton').classList.add('active');
+                document.getElementById('huddleButton').innerHTML = '🔴 End Huddle';
                 document.getElementById('huddleModal').classList.add('active');
                 
                 addSystemMessage('🎙️ Huddle started! You can now talk with everyone in the room.');
@@ -801,25 +851,20 @@
         }
         
         function stopHuddle() {
-            // Close all calls
-            peers.forEach((call, userId) => {
+            peers.forEach((call) => {
                 if (call.close) call.close();
             });
             peers.clear();
             
-            // Stop local stream
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
             
-            // Clear video grid
             document.getElementById('huddleGrid').innerHTML = '';
-            
             inHuddle = false;
-            const huddleBtn = document.getElementById('huddleButton');
-            huddleBtn.classList.remove('active');
-            huddleBtn.innerHTML = '🎙️ Start Huddle';
+            document.getElementById('huddleButton').classList.remove('active');
+            document.getElementById('huddleButton').innerHTML = '🎙️ Start Huddle';
             document.getElementById('huddleModal').classList.remove('active');
             
             addSystemMessage('🔇 Huddle ended.');
@@ -839,15 +884,8 @@
                 if (audioTrack) {
                     audioTrack.enabled = !audioTrack.enabled;
                     const btn = document.getElementById('huddleAudioBtn');
-                    if (audioTrack.enabled) {
-                        btn.style.background = '#10b981';
-                        btn.innerHTML = '🎤';
-                        addSystemMessage('🎤 Microphone enabled');
-                    } else {
-                        btn.style.background = '#dc2626';
-                        btn.innerHTML = '🔇';
-                        addSystemMessage('🔇 Microphone muted');
-                    }
+                    btn.style.background = audioTrack.enabled ? '#10b981' : '#dc2626';
+                    btn.innerHTML = audioTrack.enabled ? '🎤' : '🔇';
                 }
             }
         }
@@ -858,15 +896,8 @@
                 if (videoTrack) {
                     videoTrack.enabled = !videoTrack.enabled;
                     const btn = document.getElementById('huddleVideoBtn');
-                    if (videoTrack.enabled) {
-                        btn.style.background = '#10b981';
-                        btn.innerHTML = '📹';
-                        addSystemMessage('📹 Camera enabled');
-                    } else {
-                        btn.style.background = '#dc2626';
-                        btn.innerHTML = '📷❌';
-                        addSystemMessage('📷 Camera disabled');
-                    }
+                    btn.style.background = videoTrack.enabled ? '#10b981' : '#dc2626';
+                    btn.innerHTML = videoTrack.enabled ? '📹' : '📷❌';
                 }
             }
         }
@@ -876,18 +907,14 @@
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const videoTrack = screenStream.getVideoTracks()[0];
                 
-                // Replace video track for all calls
                 peers.forEach((call) => {
                     if (call.peerConnection) {
                         const senders = call.peerConnection.getSenders();
                         const videoSender = senders.find(s => s.track?.kind === 'video');
-                        if (videoSender) {
-                            videoSender.replaceTrack(videoTrack);
-                        }
+                        if (videoSender) videoSender.replaceTrack(videoTrack);
                     }
                 });
                 
-                // Update local video
                 const localVideoContainer = document.getElementById(`video-${currentUserId}`);
                 if (localVideoContainer) {
                     const video = localVideoContainer.querySelector('video');
@@ -895,19 +922,15 @@
                 }
                 
                 videoTrack.onended = () => {
-                    // Restore camera
                     if (localStream) {
                         const cameraTrack = localStream.getVideoTracks()[0];
                         peers.forEach((call) => {
                             if (call.peerConnection) {
                                 const senders = call.peerConnection.getSenders();
                                 const videoSender = senders.find(s => s.track?.kind === 'video');
-                                if (videoSender && cameraTrack) {
-                                    videoSender.replaceTrack(cameraTrack);
-                                }
+                                if (videoSender && cameraTrack) videoSender.replaceTrack(cameraTrack);
                             }
                         });
-                        
                         const localVideoContainer = document.getElementById(`video-${currentUserId}`);
                         if (localVideoContainer) {
                             const video = localVideoContainer.querySelector('video');
@@ -918,7 +941,6 @@
                 
                 addSystemMessage('🖥️ Screen sharing started');
             } catch (err) {
-                console.error('Error sharing screen:', err);
                 addSystemMessage('❌ Failed to share screen');
             }
         }
@@ -938,15 +960,8 @@
             
             addMessageToChat(username, text, messageData.time);
             
-            // Send to all peers
-            peers.forEach((call, userId) => {
-                if (call.send) {
-                    call.send(messageData);
-                } else if (call.peerConnection?.dataChannel) {
-                    // For data connections
-                    const conn = peers.get(userId);
-                    if (conn && conn.send) conn.send(messageData);
-                }
+            peers.forEach((call) => {
+                if (call.send) call.send(messageData);
             });
             
             input.value = '';
@@ -957,7 +972,6 @@
             const messagesDiv = document.getElementById('messagesContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
-            
             messageDiv.innerHTML = `
                 <div class="message-avatar">${author.substring(0, 2).toUpperCase()}</div>
                 <div class="message-content">
@@ -968,7 +982,6 @@
                     <div class="message-text">${escapeHtml(message)}</div>
                 </div>
             `;
-            
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
@@ -978,14 +991,12 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
             messageDiv.style.opacity = '0.7';
-            
             messageDiv.innerHTML = `
                 <div class="message-avatar">🤖</div>
                 <div class="message-content">
                     <div class="message-text">${escapeHtml(message)}</div>
                 </div>
             `;
-            
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
@@ -993,18 +1004,16 @@
         function updateConnectionStatus(connected, message) {
             const statusEl = document.getElementById('connectionStatus');
             const indicator = document.querySelector('.status-indicator');
+            statusEl.innerHTML = message;
             if (connected) {
-                statusEl.innerHTML = message || '● Online';
                 statusEl.style.color = '#10b981';
                 indicator.style.background = '#10b981';
             } else {
-                statusEl.innerHTML = message || '○ Offline';
                 statusEl.style.color = '#ef4444';
                 indicator.style.background = '#ef4444';
             }
         }
         
-        // Channels
         function renderChannels() {
             const channels = ['general', 'random', 'announcements', 'tech-talk'];
             const channelList = document.getElementById('channelList');
@@ -1021,7 +1030,6 @@
             document.getElementById('currentChannelName').innerHTML = `# ${channel}`;
             document.getElementById('currentChannelTopic').innerHTML = `${channel} discussions`;
             renderChannels();
-            
             document.getElementById('messagesContainer').innerHTML = '';
             addSystemMessage(`Switched to #${channel} channel`);
         }
@@ -1039,33 +1047,30 @@
             return div.innerHTML;
         }
         
-        // Clean up on page unload
-        window.addEventListener('beforeunload', () => {
-            const roomData = getRoomData();
-            roomData.users = roomData.users.filter(u => u.id !== currentUserId);
-            saveRoomData(roomData);
-            if (peer) peer.destroy();
-        });
-        
         // Auto-resize textarea
         document.getElementById('messageInput').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
         
-        // Display room URL
+        // Display room info
         document.getElementById('roomUrlDisplay').innerHTML = `Room: ${roomName}`;
         document.getElementById('workspaceName').innerHTML = `${roomName} 🎥`;
         
         // Initialize
         renderChannels();
-        initPeerJS();
+        
+        if (gistId) {
+            initPeerJS();
+            startUserSync();
+        }
         
         addSystemMessage(`🎉 Welcome to ${roomName}! You are logged in as ${username}`);
-        addSystemMessage(`🌍 This chat works ANYWHERE using PeerJS!`);
-        addSystemMessage(`🔗 Share this URL with friends: ${window.location.href}`);
-        addSystemMessage(`💡 Click "Start Huddle" to begin video conference with everyone in the room!`);
-        addSystemMessage(`👥 Active users from around the world will appear here automatically`);
+        addSystemMessage(`📌 To enable global users, create a GitHub Gist first!`);
+        addSystemMessage(`📝 1. Go to https://gist.github.com/`);
+        addSystemMessage(`📝 2. Create a new gist with file "users.json" containing: {"users":[]}`);
+        addSystemMessage(`📝 3. Copy the Gist ID from URL and paste in the setup panel`);
+        addSystemMessage(`🌍 After setup, users will sync globally across all devices!`);
         
         // Setup button handlers
         document.getElementById('huddleButton').onclick = toggleHuddle;
@@ -1074,13 +1079,8 @@
         document.getElementById('huddleScreenBtn').onclick = toggleHuddleScreen;
         document.getElementById('leaveHuddleBtn').onclick = stopHuddle;
         
-        // Make functions globally available
         window.switchChannel = switchChannel;
-        window.toggleHuddle = toggleHuddle;
-        window.toggleHuddleAudio = toggleHuddleAudio;
-        window.toggleHuddleVideo = toggleHuddleVideo;
-        window.toggleHuddleScreen = toggleHuddleScreen;
-        window.stopHuddle = stopHuddle;
+        window.saveGistId = saveGistId;
     </script>
 </body>
 </html>
