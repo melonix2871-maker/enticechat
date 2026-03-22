@@ -1,63 +1,811 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Entice Dev Chat</title>
-    <script src="https://chitchatter.im/sdk.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>P2P TorrentChat - Decentralized Audio/Video Chat</title>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
+            overflow: hidden;
+        }
+
+        .app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .room-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 14px;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        button {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Video Section */
+        .video-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .local-video {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .local-video video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            transform: scaleX(-1);
+        }
+
+        .remote-videos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .remote-video {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .remote-video video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            transform: scaleX(-1);
+        }
+
+        .video-label {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: white;
+        }
+
+        /* Chat Section */
+        .chat-section {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .message-header {
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }
+
+        .message-author {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .message-text {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            word-wrap: break-word;
+        }
+
+        .chat-input-area {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            resize: none;
+            font-family: inherit;
+        }
+
+        /* Controls */
+        .media-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .control-btn.active {
+            background: #10b981;
+            color: white;
+        }
+
+        .control-btn.muted {
+            background: #dc2626;
+            color: white;
+        }
+
+        /* Peer List */
+        .peer-list {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 150px;
+            z-index: 1000;
+        }
+
+        .peer-list h4 {
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .peer-list-item {
+            font-size: 12px;
+            padding: 4px;
+            color: white;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .video-section {
+                max-height: 50vh;
+            }
+            
+            .remote-videos {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <chat-room id="chatroom" style="width: 100%; height: 100%;"></chat-room>
+    <div class="app">
+        <div class="header">
+            <div class="title">🎥 TorrentChat - P2P Audio/Video Chat</div>
+            <div class="room-controls">
+                <input type="text" id="roomName" placeholder="Room name" value="p2p-chat-room">
+                <input type="text" id="userName" placeholder="Your name" value="User_" style="width: 120px;">
+                <button class="btn-primary" onclick="joinRoom()">Join Room</button>
+                <button class="btn-danger" onclick="leaveRoom()">Leave</button>
+            </div>
+        </div>
 
+        <div class="main-content">
+            <div class="video-section">
+                <div class="local-video">
+                    <video id="localVideo" autoplay muted playsinline></video>
+                    <div class="video-label">You</div>
+                </div>
+                <div class="remote-videos" id="remoteVideos"></div>
+            </div>
+
+            <div class="chat-section">
+                <div class="chat-header">
+                    💬 Room Chat
+                </div>
+                <div class="messages" id="messages"></div>
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <textarea class="chat-input" id="chatInput" rows="2" placeholder="Type a message..." onkeydown="handleChatKeydown(event)"></textarea>
+                        <button class="btn-primary" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="media-controls">
+            <button class="control-btn" id="toggleAudio" onclick="toggleAudio()" style="background: #10b981;">🎤</button>
+            <button class="control-btn" id="toggleVideo" onclick="toggleVideo()" style="background: #10b981;">📹</button>
+            <button class="control-btn" onclick="shareScreen()">🖥️</button>
+        </div>
+    </div>
+
+    <div class="peer-list" id="peerList">
+        <h4>Connected Peers: <span id="peerCount">0</span></h4>
+        <div id="peerListItems"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
     <script>
-        // Parse URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
+        // Global variables
+        let localStream = null;
+        let peers = new Map(); // Store peer connections
+        let peerConnections = new Map(); // Store RTCPeerConnection
+        let currentRoom = null;
+        let userName = localStorage.getItem('userName') || 'User_' + Math.floor(Math.random() * 1000);
+        let clientId = localStorage.getItem('clientId') || Math.random().toString(36).substring(7);
         
-        // Get values with fallback defaults
-        const room = urlParams.get('room') || 'default-room';
-        const username = urlParams.get('username') || `User-${Math.floor(Math.random() * 10000)}`;
-        const colorMode = urlParams.get('colorMode') || 'dark'; // 'light' or 'dark'
-        const playSound = urlParams.get('playSound') === 'true'; // defaults to false
+        // WebTorrent client
+        let client = null;
+        let torrent = null;
         
-        // Apply to chat-room component
-        const chatRoom = document.getElementById('chatroom');
-        chatRoom.setAttribute('room', room);
-        chatRoom.setAttribute('user-name', username);
-        chatRoom.setAttribute('color-mode', colorMode);
+        // Signaling via WebTorrent
+        let signalingChannel = null;
         
-        if (playSound) {
-            chatRoom.setAttribute('play-message-sound', 'true');
+        // Initialize
+        document.getElementById('userName').value = userName;
+        
+        async function init() {
+            try {
+                // Request media permissions
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                
+                // Initialize WebTorrent client
+                client = new WebTorrent();
+                
+                // Auto-join room if hash exists
+                const hash = window.location.hash.substring(1);
+                if (hash) {
+                    document.getElementById('roomName').value = hash;
+                    setTimeout(() => joinRoom(), 500);
+                }
+            } catch (err) {
+                console.error('Error accessing media devices:', err);
+                addSystemMessage('⚠️ Cannot access camera/microphone. Please check permissions.');
+            }
         }
         
-        // Optional: Log for debugging
-        console.log('Chitchatter initialized with:', { room, username, colorMode, playSound });
-    </script>
-
-       <script>
-        // Wait for the component to load and try to hide footer elements
-        const chatRoom = document.getElementById('chatroom');
-        
-        // Attempt to access shadow DOM and hide footer
-        chatRoom.addEventListener('load', () => {
+        async function joinRoom() {
+            const roomName = document.getElementById('roomName').value.trim();
+            if (!roomName) return;
+            
+            currentRoom = roomName;
+            window.location.hash = roomName;
+            
+            addSystemMessage(`🔗 Joining room: ${roomName}...`);
+            
+            // Create or join torrent for signaling
+            const torrentId = `magnet:?xt=urn:btih:${btoa(roomName).replace(/=/g, '')}&dn=${encodeURIComponent(roomName)}`;
+            
             try {
-                const shadowRoot = chatRoom.shadowRoot;
-                if (shadowRoot) {
-                    // Try to find and hide footer/powered by elements
-                    const footer = shadowRoot.querySelector('footer');
-                    const poweredBy = shadowRoot.querySelector('[class*="powered"]');
-                    
-                    if (footer) footer.style.display = 'none';
-                    if (poweredBy) poweredBy.style.display = 'none';
-                }
-            } catch(e) {
-                console.log('Cannot modify shadow DOM content due to cross-origin restrictions');
+                // Add torrent to share our presence
+                torrent = client.add(torrentId, { announce: [
+                    'wss://tracker.btorrent.xyz',
+                    'wss://tracker.openwebtorrent.com',
+                    'wss://tracker.webtorrent.dev'
+                ] });
+                
+                torrent.on('ready', () => {
+                    addSystemMessage(`✅ Connected to room: ${roomName}`);
+                    announcePresence();
+                });
+                
+                torrent.on('wire', (wire, addr) => {
+                    addSystemMessage(`👤 Peer connected: ${addr || 'unknown'}`);
+                    setupPeerConnection(wire);
+                });
+                
+                torrent.on('done', () => {
+                    console.log('Torrent download complete');
+                });
+                
+            } catch (err) {
+                console.error('Error joining room:', err);
+                addSystemMessage(`❌ Failed to join room: ${err.message}`);
             }
+        }
+        
+        function announcePresence() {
+            if (!torrent) return;
+            
+            const presence = {
+                type: 'presence',
+                clientId: clientId,
+                userName: userName,
+                timestamp: Date.now()
+            };
+            
+            // Share presence data via torrent files
+            const presenceBlob = new Blob([JSON.stringify(presence)], { type: 'application/json' });
+            torrent.files.forEach(file => {
+                if (file.name === 'presence.json') {
+                    file.append(presenceBlob);
+                }
+            });
+        }
+        
+        async function setupPeerConnection(wire) {
+            const peerId = wire.peerId;
+            if (peers.has(peerId)) return;
+            
+            peers.set(peerId, { wire, userName: `Peer_${peerId.substring(0, 6)}` });
+            updatePeerList();
+            
+            // Create RTCPeerConnection for this peer
+            const pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            });
+            
+            peerConnections.set(peerId, pc);
+            
+            // Add local stream
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    pc.addTrack(track, localStream);
+                });
+            }
+            
+            // Handle incoming tracks
+            pc.ontrack = (event) => {
+                const remoteVideo = createRemoteVideoElement(peerId);
+                remoteVideo.srcObject = event.streams[0];
+            };
+            
+            // Handle ICE candidates
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    sendSignaling(peerId, {
+                        type: 'ice-candidate',
+                        candidate: event.candidate
+                    });
+                }
+            };
+            
+            // Handle connection state
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'connected') {
+                    addSystemMessage(`✅ Video connected with ${peers.get(peerId)?.userName || 'peer'}`);
+                } else if (pc.connectionState === 'disconnected') {
+                    removePeer(peerId);
+                }
+            };
+            
+            // Create offer if we're the initiator
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            sendSignaling(peerId, {
+                type: 'offer',
+                sdp: offer
+            });
+        }
+        
+        function sendSignaling(peerId, data) {
+            if (!torrent) return;
+            
+            const signalingData = {
+                ...data,
+                from: clientId,
+                to: peerId,
+                timestamp: Date.now()
+            };
+            
+            // Share signaling data via torrent
+            const signalBlob = new Blob([JSON.stringify(signalingData)], { type: 'application/json' });
+            const fileName = `signal_${Date.now()}_${Math.random()}.json`;
+            
+            torrent.files.forEach(file => {
+                if (file.name === 'signaling.json') {
+                    file.append(signalBlob);
+                }
+            });
+        }
+        
+        function createRemoteVideoElement(peerId) {
+            const remoteVideosDiv = document.getElementById('remoteVideos');
+            const videoDiv = document.createElement('div');
+            videoDiv.className = 'remote-video';
+            videoDiv.id = `remote_${peerId}`;
+            
+            const video = document.createElement('video');
+            video.autoplay = true;
+            video.playsInline = true;
+            
+            const label = document.createElement('div');
+            label.className = 'video-label';
+            label.textContent = peers.get(peerId)?.userName || 'Peer';
+            
+            videoDiv.appendChild(video);
+            videoDiv.appendChild(label);
+            remoteVideosDiv.appendChild(videoDiv);
+            
+            return video;
+        }
+        
+        function removePeer(peerId) {
+            // Remove video element
+            const videoDiv = document.getElementById(`remote_${peerId}`);
+            if (videoDiv) videoDiv.remove();
+            
+            // Close peer connection
+            const pc = peerConnections.get(peerId);
+            if (pc) {
+                pc.close();
+                peerConnections.delete(peerId);
+            }
+            
+            peers.delete(peerId);
+            updatePeerList();
+            addSystemMessage(`👋 Peer disconnected`);
+        }
+        
+        function updatePeerList() {
+            const peerCount = peers.size;
+            document.getElementById('peerCount').textContent = peerCount;
+            
+            const peerListItems = document.getElementById('peerListItems');
+            peerListItems.innerHTML = Array.from(peers.values()).map(peer => 
+                `<div class="peer-list-item">👤 ${peer.userName || 'Peer'}</div>`
+            ).join('');
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            const chatMessage = {
+                type: 'chat',
+                userName: userName,
+                message: message,
+                timestamp: Date.now(),
+                clientId: clientId
+            };
+            
+            // Broadcast via WebTorrent
+            if (torrent) {
+                const messageBlob = new Blob([JSON.stringify(chatMessage)], { type: 'application/json' });
+                torrent.files.forEach(file => {
+                    if (file.name === 'messages.json') {
+                        file.append(messageBlob);
+                    }
+                });
+            }
+            
+            addMessageToChat(chatMessage.userName, message, true);
+            input.value = '';
+            input.style.height = 'auto';
+        }
+        
+        function addMessageToChat(userName, message, isOwn = false) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${userName.substring(0, 2).toUpperCase()}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${escapeHtml(userName)} ${isOwn ? '(You)' : ''}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(message)}</div>
+                </div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addSystemMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.style.opacity = '0.7';
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="message-text">${escapeHtml(message)}</div>
+                </div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function toggleAudio() {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    const btn = document.getElementById('toggleAudio');
+                    if (audioTrack.enabled) {
+                        btn.style.background = '#10b981';
+                        btn.textContent = '🎤';
+                    } else {
+                        btn.style.background = '#dc2626';
+                        btn.textContent = '🔇';
+                    }
+                }
+            }
+        }
+        
+        function toggleVideo() {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    const btn = document.getElementById('toggleVideo');
+                    if (videoTrack.enabled) {
+                        btn.style.background = '#10b981';
+                        btn.textContent = '📹';
+                    } else {
+                        btn.style.background = '#dc2626';
+                        btn.textContent = '📷❌';
+                    }
+                }
+            }
+        }
+        
+        async function shareScreen() {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                
+                // Replace video track with screen share
+                const videoTrack = screenStream.getVideoTracks()[0];
+                const sender = peerConnections.values().next().value?.getSenders().find(s => s.track?.kind === 'video');
+                if (sender) {
+                    sender.replaceTrack(videoTrack);
+                }
+                
+                videoTrack.onended = () => {
+                    // Restore camera when screen share ends
+                    if (localStream) {
+                        const cameraTrack = localStream.getVideoTracks()[0];
+                        if (sender) sender.replaceTrack(cameraTrack);
+                    }
+                };
+                
+                addSystemMessage('🖥️ Screen sharing started');
+            } catch (err) {
+                console.error('Error sharing screen:', err);
+                addSystemMessage('❌ Failed to share screen');
+            }
+        }
+        
+        function leaveRoom() {
+            // Close all peer connections
+            peerConnections.forEach((pc, peerId) => {
+                pc.close();
+            });
+            peerConnections.clear();
+            peers.clear();
+            
+            // Destroy torrent
+            if (torrent) {
+                torrent.destroy();
+                torrent = null;
+            }
+            
+            currentRoom = null;
+            window.location.hash = '';
+            updatePeerList();
+            
+            // Clear remote videos
+            document.getElementById('remoteVideos').innerHTML = '';
+            addSystemMessage('👋 Left the room');
+        }
+        
+        function handleChatKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Update userName when changed
+        document.getElementById('userName').addEventListener('change', (e) => {
+            userName = e.target.value;
+            localStorage.setItem('userName', userName);
         });
+        
+        // Auto-resize textarea
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+        
+        // Initialize app
+        init();
     </script>
 </body>
 </html>
