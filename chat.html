@@ -657,7 +657,7 @@
             <div class="upload-area">
                 <input type="file" id="fileInput" style="display: none;" multiple>
                 <button class="upload-btn" id="uploadFileBtn">📤 Select File to Share</button>
-                <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Files are sent P2P via WebRTC - No server storage</span>
+                <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Files are sent in chunks via P2P - Watch the progress!</span>
             </div>
             <div class="file-list" id="fileListContainer">
                 <div class="empty-files">⚔️ No files shared yet. Select a file to share with connected peers.</div>
@@ -669,16 +669,16 @@
         // ==================== CONFIG ====================
         const MAX_USERS = 35;
         const MAX_VIDEO_STREAMS = 12;
-        const CHUNK_SIZE = 16384; // 16KB chunks - Katana style
+        const CHUNK_SIZE = 16384; // 16KB chunks
         
         const urlParams = new URLSearchParams(window.location.search);
         const roomName = urlParams.get('room') || 'lobby';
         const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
         window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
 
-        // ==================== FILE TRANSFER STATE (Katana Style) ====================
-        let sharedFiles = new Map(); // fileId -> { name, size, type, data, uploader, timestamp, chunks, receivedChunks }
-        let activeTransfers = new Map(); // fileId -> { progress, chunksReceived }
+        // ==================== FILE TRANSFER STATE ====================
+        let sharedFiles = new Map();
+        let activeTransfers = new Map();
         
         // ==================== PEER STATE ====================
         let peer = null;
@@ -759,9 +759,9 @@
                                  file.type && file.type.startsWith('audio/') ? '🎵' : '📄';
                 const timeAgo = getTimeAgo(file.timestamp);
                 
-                // Check if file is complete (has data)
                 const isComplete = file.data !== null && file.data !== undefined;
-                const progress = activeTransfers.get(file.id)?.progress || 100;
+                const transfer = activeTransfers.get(file.id);
+                const progress = transfer ? transfer.progress : (isComplete ? 100 : 0);
                 
                 html += `
                     <div class="file-item" data-file-id="${escapeHtml(file.id)}">
@@ -774,7 +774,9 @@
                                     <div class="file-progress">
                                         <div class="file-progress-bar" style="width: ${progress}%"></div>
                                     </div>
+                                    <div class="file-meta" style="color: var(--info);">Receiving: ${Math.round(progress)}%</div>
                                 ` : ''}
+                                ${isComplete ? `<div class="file-meta" style="color: var(--success);">✓ Ready to download</div>` : ''}
                             </div>
                         </div>
                         <div class="file-actions">
@@ -802,7 +804,7 @@
             return `${days}d ago`;
         }
         
-        // Katana-style chunked file sending
+        // Send file in chunks
         function uploadFile(file) {
             const fileId = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -816,28 +818,26 @@
                 data: null,
                 uploader: username,
                 timestamp: Date.now(),
-                totalChunks: totalChunks,
-                receivedChunks: 0
+                totalChunks: totalChunks
             };
             
             sharedFiles.set(fileId, fileObj);
-            activeTransfers.set(fileId, { progress: 0, chunksReceived: 0 });
+            activeTransfers.set(fileId, { progress: 0, chunksSent: 0 });
             renderFileList();
-            addSystemMessage(`⚔️ Sending: ${file.name} (${(file.size / 1024).toFixed(1)} KB) in ${totalChunks} chunks...`);
+            addSystemMessage(`⚔️ Sharing: ${file.name} (${(file.size / 1024).toFixed(1)} KB) - ${totalChunks} chunks...`);
             
             // Read and send file in chunks
-            const reader = new FileReader();
             let offset = 0;
             let chunkIndex = 0;
             
             const sendNextChunk = () => {
                 if (offset >= file.size) {
                     // File complete
-                    fileObj.data = fileDataComplete;
+                    fileObj.data = fullFileData;
                     sharedFiles.set(fileId, fileObj);
                     activeTransfers.delete(fileId);
                     renderFileList();
-                    addSystemMessage(`✅ Upload complete: ${file.name} - Shared with ${connections.size} peer(s)`);
+                    addSystemMessage(`✅ File shared: ${file.name} - ${connections.size} peer(s) received it`);
                     return;
                 }
                 
@@ -847,6 +847,7 @@
                     const chunkData = e.target.result;
                     
                     // Broadcast chunk to all connected peers
+                    let sentCount = 0;
                     for (let [peerId, data] of connections) {
                         if (data.connection && data.connection.open) {
                             data.connection.send({
@@ -861,13 +862,16 @@
                                 uploader: username,
                                 timestamp: Date.now()
                             });
+                            sentCount++;
                         }
                     }
                     
-                    const progress = ((offset + chunk.size) / file.size) * 100;
-                    const transfer = activeTransfers.get(fileId);
-                    if (transfer) transfer.progress = progress;
-                    renderFileList();
+                    if (sentCount > 0 && chunkIndex % 10 === 0) {
+                        const progress = ((offset + chunk.size) / file.size) * 100;
+                        const transfer = activeTransfers.get(fileId);
+                        if (transfer) transfer.progress = progress;
+                        renderFileList();
+                    }
                     
                     offset += chunk.size;
                     chunkIndex++;
@@ -876,16 +880,16 @@
                 chunkReader.readAsDataURL(chunk);
             };
             
-            let fileDataComplete = '';
+            let fullFileData = '';
             const dataCollector = new FileReader();
             dataCollector.onload = (e) => {
-                fileDataComplete = e.target.result;
+                fullFileData = e.target.result;
                 sendNextChunk();
             };
             dataCollector.readAsDataURL(file);
         }
         
-        // Receive file chunks (Katana style)
+        // Receive file chunks
         function receiveFileChunk(data) {
             const fileId = data.fileId;
             
@@ -912,15 +916,18 @@
             const file = sharedFiles.get(fileId);
             const transfer = activeTransfers.get(fileId);
             
-            // Store chunk
-            if (!file.chunks) file.chunks = new Array(data.totalChunks);
+            // Store chunk if not already stored
             if (!file.chunks[data.chunkIndex]) {
                 file.chunks[data.chunkIndex] = data.chunk;
-                file.receivedChunks = (file.receivedChunks || 0) + 1;
-                if (transfer) transfer.chunksReceived = file.receivedChunks;
+                file.receivedChunks++;
                 
                 const progress = (file.receivedChunks / data.totalChunks) * 100;
                 if (transfer) transfer.progress = progress;
+                
+                // Update UI every 5 chunks or when complete
+                if (file.receivedChunks % 5 === 0 || file.receivedChunks === data.totalChunks) {
+                    renderFileList();
+                }
                 
                 // Check if complete
                 if (file.receivedChunks === data.totalChunks) {
@@ -932,10 +939,9 @@
                     file.data = completeData;
                     delete file.chunks;
                     activeTransfers.delete(fileId);
+                    renderFileList();
                     addSystemMessage(`✅ Download complete: ${data.name} from ${data.uploader} - Ready to download!`);
                 }
-                
-                renderFileList();
             }
         }
         
@@ -973,15 +979,12 @@
         window.downloadFile = downloadFile;
         window.deleteFile = deleteFile;
         
-        // ==================== REST OF FUNCTIONS (Video, Chat, etc.) ====================
+        // ==================== VIDEO & CHAT FUNCTIONS (condensed for space) ====================
         function showNotification(emote, action, senderName) {
             if (activeNotification) activeNotification.remove();
             const notification = document.createElement('div');
             notification.className = 'notification-banner';
-            notification.innerHTML = `
-                <div><span>${emote}</span><span><strong>${escapeHtml(senderName)}</strong> ${action}!</span></div>
-                <button onclick="this.parentElement.remove(); activeNotification = null;">✕</button>
-            `;
+            notification.innerHTML = `<div><span>${emote}</span><span><strong>${escapeHtml(senderName)}</strong> ${action}!</span></div><button onclick="this.parentElement.remove(); activeNotification = null;">✕</button>`;
             videoLayout.appendChild(notification);
             activeNotification = notification;
             setTimeout(() => { if (notification && notification.parentElement) notification.remove(); if (activeNotification === notification) activeNotification = null; }, 5000);
@@ -1132,7 +1135,7 @@
             updateUnreadCounters(); renderChatTabs();
         }
         
-        // ==================== PEER CONNECTION SETUP ====================
+        // ==================== PEER CONNECTION ====================
         function setupCall(call, peerId) {
             call.on('stream', (remoteStream) => { const data = connections.get(peerId); if (data) { data.stream = remoteStream; connections.set(peerId, data); renderThumbnails(); if (currentMainVideo.type === 'local' && !currentMainVideo.stream) setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId); } });
             call.on('close', () => { const data = connections.get(peerId); if (data) { data.stream = null; connections.set(peerId, data); renderThumbnails(); if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId && localStream && isCameraActive) setMainVideo('local', localStream, 'Your Camera'); } });
@@ -1219,7 +1222,12 @@
         closeCabinetBtn.onclick = () => fileCabinetModal.classList.remove('active');
         fileCabinetModal.onclick = (e) => { if (e.target === fileCabinetModal) fileCabinetModal.classList.remove('active'); };
         uploadFileBtn.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => { Array.from(e.target.files).forEach(file => uploadFile(file)); fileInput.value = ''; };
+        fileInput.onchange = (e) => { 
+            if (e.target.files.length > 0) {
+                uploadFile(e.target.files[0]);
+            }
+            fileInput.value = '';
+        };
         
         document.querySelectorAll('.emote-btn').forEach(btn => { btn.addEventListener('click', () => sendEmoteReaction(btn.getAttribute('data-emote'), btn.getAttribute('data-action'))); });
         
@@ -1227,7 +1235,7 @@
             addSystemMessage(`⚔️ Welcome to KatanaShare, ${escapeHtml(username)}!`);
             addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed in this room`);
             addSystemMessage(`📹 Click "Enable Camera" to start video calls`);
-            addSystemMessage(`📁 Click "File Storage" to share files - Files are sent in chunks like Katana!`);
+            addSystemMessage(`📁 Click "File Storage" to share files - Watch for chunked transfer progress!`);
             
             peer = new Peer({ debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
             peer.on('open', (id) => { connectionStatusSpan.textContent = 'Connected'; myPeerIdSpan.textContent = id; addSystemMessage(`✅ PeerJS ready! Your ID: ${id}`); });
