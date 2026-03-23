@@ -16,7 +16,6 @@
             --danger: #ef4444;
             --success: #10b981;
             --warning: #f59e0b;
-            --info: #3b82f6;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -30,7 +29,6 @@
         }
         .app-container { display: flex; flex-direction: column; height: 100vh; width: 100%; }
 
-        /* Header Styles */
         .main-header {
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border);
@@ -41,11 +39,7 @@
             flex-shrink: 0;
             z-index: 50;
         }
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .logo-area { display: flex; align-items: center; gap: 10px; }
         .logo-icon { font-size: 28px; }
         .logo-text {
             font-size: 20px;
@@ -55,11 +49,7 @@
             background-clip: text;
             color: transparent;
         }
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .header-right { display: flex; align-items: center; gap: 12px; }
         .file-storage-btn {
             background: var(--accent);
             border: none;
@@ -74,10 +64,6 @@
             gap: 8px;
             transition: all 0.2s;
         }
-        .file-storage-btn:hover {
-            background: var(--accent-hover);
-            transform: scale(1.02);
-        }
         .room-badge {
             background: #2b2d31;
             padding: 6px 14px;
@@ -88,7 +74,6 @@
             gap: 6px;
         }
 
-        /* File Cabinet Modal */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -114,7 +99,6 @@
             flex-direction: column;
             overflow: hidden;
             border: 1px solid var(--border);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
         .cabinet-header {
             padding: 20px 24px;
@@ -124,12 +108,7 @@
             justify-content: space-between;
             flex-shrink: 0;
         }
-        .cabinet-header h2 {
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .cabinet-header h2 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
         .close-cabinet {
             background: #2b2d31;
             border: none;
@@ -139,9 +118,7 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 20px;
-            transition: all 0.2s;
         }
-        .close-cabinet:hover { background: var(--danger); }
         .upload-area {
             padding: 16px 24px;
             border-bottom: 1px solid var(--border);
@@ -161,7 +138,6 @@
             gap: 8px;
             font-size: 14px;
         }
-        .upload-btn:hover { background: var(--accent-hover); }
         .file-list {
             flex: 1;
             overflow-y: auto;
@@ -177,78 +153,15 @@
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 12px;
-            transition: all 0.2s;
             animation: fadeIn 0.3s ease;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .file-item:hover { background: #3a3c44; transform: translateX(4px); }
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-            min-width: 150px;
-        }
+        .file-item:hover { background: #3a3c44; }
+        .file-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 150px; }
         .file-icon { font-size: 28px; }
         .file-details { flex: 1; }
-        .file-name {
-            font-weight: 600;
-            font-size: 14px;
-            word-break: break-all;
-        }
-        .file-meta {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-        .file-status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
-        }
-        .status-badge {
-            font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .status-badge.loading {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--info);
-        }
-        .status-badge.ready {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
-        .status-badge.error {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-        .progress-bar {
-            width: 100%;
-            height: 3px;
-            background: var(--border);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 6px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--accent);
-            width: 0%;
-            transition: width 0.3s ease;
-            border-radius: 3px;
-        }
-        .file-actions {
-            display: flex;
-            gap: 8px;
-        }
+        .file-name { font-weight: 600; font-size: 14px; word-break: break-all; }
+        .file-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .file-actions { display: flex; gap: 8px; }
         .download-btn, .delete-btn {
             background: #1e1f22;
             border: none;
@@ -260,29 +173,16 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            transition: all 0.2s;
         }
         .download-btn:hover { background: var(--success); }
         .delete-btn:hover { background: var(--danger); }
-        .download-btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .empty-files {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-muted);
-        }
+        .empty-files { text-align: center; padding: 40px; color: var(--text-muted); }
         @media (max-width: 768px) {
             .file-cabinet { width: 95%; height: 85%; }
             .file-item { flex-direction: column; align-items: flex-start; }
             .file-actions { width: 100%; justify-content: flex-end; }
-            .logo-text { font-size: 16px; }
-            .file-storage-btn span { display: none; }
-            .room-badge span { display: none; }
         }
 
-        /* Rest of the styles - keeping compact */
         .content-area { display: flex; flex: 1; overflow: hidden; }
         .sidebar {
             width: 280px;
@@ -301,14 +201,10 @@
             background: #ef4444;
             border: none;
             color: white;
-            font-size: 18px;
-            font-weight: bold;
             width: 36px;
             height: 36px;
             border-radius: 50%;
             cursor: pointer;
-            align-items: center;
-            justify-content: center;
             z-index: 20;
         }
         @media (max-width: 768px) {
@@ -350,9 +246,6 @@
             width: 40px;
             height: 40px;
             border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         .room-title-mobile { flex: 1; text-align: center; font-weight: 700; font-size: 16px; }
         .mobile-spacer { display: none; height: 60px; }
@@ -494,15 +387,10 @@
             background: #2b2d31;
             border: none;
             border-radius: 40px;
-            padding: 8px 12px;
+            padding: 8px 8px;
             cursor: pointer;
             font-size: 20px;
-            transition: all 0.2s;
             flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
         }
         .thumbnail-item {
             background: #1a1c20;
@@ -742,26 +630,24 @@
         </div>
     </div>
 
-    <!-- File Cabinet Modal -->
     <div class="modal-overlay" id="fileCabinetModal">
         <div class="file-cabinet">
             <div class="cabinet-header">
-                <h2>📁 File Cabinet</h2>
+                <h2>📁 File Cabinet - Room: <span id="cabinetRoomName">lobby</span></h2>
                 <button class="close-cabinet" id="closeCabinetBtn">✕</button>
             </div>
             <div class="upload-area">
                 <input type="file" id="fileInput" style="display: none;" multiple>
                 <button class="upload-btn" id="uploadFileBtn">📤 Upload File</button>
-                <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Files shared with all connected peers</span>
+                <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Files shared with all peers in this room</span>
             </div>
             <div class="file-list" id="fileListContainer">
-                <div class="empty-files">📂 No files shared yet. Upload a file to share with peers.</div>
+                <div class="empty-files">📂 No files shared yet. Upload a file to share with peers in this room.</div>
             </div>
         </div>
     </div>
 
     <script>
-        // ==================== CONFIG ====================
         const MAX_USERS = 35;
         const MAX_VIDEO_STREAMS = 12;
         
@@ -770,13 +656,11 @@
         const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
         window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
 
-        // ==================== FILE SHARING STATE ====================
-        let sharedFiles = new Map(); // fileId -> { name, size, type, data, uploader, timestamp, status, progress }
-
-        // ==================== STATE ====================
+        // Shared files storage - tied to this room
+        let sharedFiles = new Map();
         let peer = null;
         let localStream = null;
-        let connections = new Map();
+        let connections = new Map(); // peerId -> { connection, username, call, stream }
         let isCameraActive = false;
         let isAudioEnabled = true;
         let isVideoEnabled = true;
@@ -790,7 +674,7 @@
         let currentMainVideo = { type: 'local', stream: null, label: 'Your Camera', peerId: null };
         let activeNotification = null;
         
-        // ==================== DOM Elements ====================
+        // DOM Elements
         const mainVideo = document.getElementById('mainVideo');
         const mainVideoLabel = document.getElementById('mainVideoLabel');
         const videoPlaceholder = document.getElementById('videoPlaceholder');
@@ -807,6 +691,7 @@
         const maxUserDisplaySpan = document.getElementById('maxUserDisplay');
         const limitWarningDiv = document.getElementById('limitWarning');
         const headerRoomName = document.getElementById('headerRoomName');
+        const cabinetRoomName = document.getElementById('cabinetRoomName');
         const workspaceNameSpan = document.getElementById('workspaceName');
         const mobileRoomNameSpan = document.getElementById('mobileRoomName');
         const sidebar = document.getElementById('sidebar');
@@ -830,13 +715,13 @@
         maxConnectionsSpan.textContent = MAX_USERS;
         maxUserDisplaySpan.textContent = MAX_USERS;
         headerRoomName.textContent = roomName;
+        if (cabinetRoomName) cabinetRoomName.textContent = roomName;
         workspaceNameSpan.textContent = 'AralShare';
         if (mobileRoomNameSpan) mobileRoomNameSpan.textContent = roomName;
         
-        // ==================== FILE SHARING FUNCTIONS ====================
         function renderFileList() {
             if (sharedFiles.size === 0) {
-                fileListContainer.innerHTML = '<div class="empty-files">📂 No files shared yet. Upload a file to share with peers.</div>';
+                fileListContainer.innerHTML = '<div class="empty-files">📂 No files shared in this room yet. Upload a file to share with peers.</div>';
                 return;
             }
             
@@ -852,23 +737,6 @@
                                  file.type && file.type.startsWith('audio/') ? '🎵' : '📄';
                 const timeAgo = getTimeAgo(file.timestamp);
                 
-                // Status badge based on file status
-                let statusHtml = '';
-                if (file.status === 'loading') {
-                    statusHtml = `
-                        <div class="file-status">
-                            <span class="status-badge loading">⏳ Loading...</span>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${file.progress || 0}%"></div>
-                            </div>
-                        </div>
-                    `;
-                } else if (file.status === 'ready') {
-                    statusHtml = `<div class="file-status"><span class="status-badge ready">✅ Ready to download</span></div>`;
-                } else if (file.status === 'error') {
-                    statusHtml = `<div class="file-status"><span class="status-badge error">❌ Failed to load</span></div>`;
-                }
-                
                 html += `
                     <div class="file-item" data-file-id="${escapeHtml(file.id)}">
                         <div class="file-info">
@@ -876,31 +744,16 @@
                             <div class="file-details">
                                 <div class="file-name">${escapeHtml(file.name)}</div>
                                 <div class="file-meta">${sizeDisplay} • ${escapeHtml(file.uploader)} • ${timeAgo}</div>
-                                ${statusHtml}
                             </div>
                         </div>
                         <div class="file-actions">
-                            <button class="download-btn ${file.status !== 'ready' ? 'disabled' : ''}" 
-                                    onclick="${file.status === 'ready' ? `window.downloadFile('${escapeHtml(file.id)}')` : ''}"
-                                    ${file.status !== 'ready' ? 'disabled' : ''}>
-                                ⬇️ Download
-                            </button>
+                            <button class="download-btn" onclick="window.downloadFile('${escapeHtml(file.id)}')">⬇️ Download</button>
                             ${file.uploader === username ? `<button class="delete-btn" onclick="window.deleteFile('${escapeHtml(file.id)}')">🗑️ Delete</button>` : ''}
                         </div>
                     </div>
                 `;
             }
             fileListContainer.innerHTML = html;
-        }
-        
-        function updateFileStatus(fileId, status, progress = null) {
-            const file = sharedFiles.get(fileId);
-            if (file) {
-                file.status = status;
-                if (progress !== null) file.progress = progress;
-                sharedFiles.set(fileId, file);
-                renderFileList();
-            }
         }
         
         function getTimeAgo(timestamp) {
@@ -918,24 +771,9 @@
             const reader = new FileReader();
             const fileId = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             
-            // Add file with loading status
-            sharedFiles.set(fileId, {
-                id: fileId,
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                data: null,
-                uploader: username,
-                timestamp: Date.now(),
-                status: 'loading',
-                progress: 0
-            });
-            renderFileList();
             addSystemMessage(`📤 Uploading: ${file.name}...`);
             
             reader.onload = (e) => {
-                updateFileStatus(fileId, 'loading', 100);
-                
                 const fileData = e.target.result;
                 const fileObj = {
                     id: fileId,
@@ -944,16 +782,14 @@
                     type: file.type,
                     data: fileData,
                     uploader: username,
-                    timestamp: Date.now(),
-                    status: 'ready',
-                    progress: 100
+                    timestamp: Date.now()
                 };
                 
                 sharedFiles.set(fileId, fileObj);
                 renderFileList();
-                addSystemMessage(`✅ Upload complete: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+                addSystemMessage(`✅ Upload complete: ${file.name} (${(file.size / 1024).toFixed(1)} KB) - Shared with ${connections.size} peer(s)`);
                 
-                // Broadcast to all connected peers
+                // Broadcast to all connected peers in the same room
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open) {
                         data.connection.send({
@@ -964,102 +800,48 @@
                             type: file.type,
                             data: fileData,
                             uploader: username,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            room: roomName
                         });
                     }
                 }
-            };
-            
-            reader.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    updateFileStatus(fileId, 'loading', percent);
-                }
-            };
-            
-            reader.onerror = () => {
-                updateFileStatus(fileId, 'error');
-                addSystemMessage(`❌ Upload failed: ${file.name}`);
             };
             
             reader.readAsDataURL(file);
         }
         
         function receiveFile(fileData) {
-            const fileId = fileData.fileId;
-            
-            // Check if file already exists
-            if (sharedFiles.has(fileId)) {
-                console.log('File already exists:', fileData.name);
+            // Only accept files from the same room
+            if (fileData.room && fileData.room !== roomName) {
+                console.log('File from different room, ignoring:', fileData.room);
                 return;
             }
             
-            // Add with loading status
-            sharedFiles.set(fileId, {
+            const fileId = fileData.fileId;
+            
+            if (sharedFiles.has(fileId)) {
+                return;
+            }
+            
+            addSystemMessage(`📥 New file received: ${fileData.name} from ${fileData.uploader} (${(fileData.size / 1024).toFixed(1)} KB)`);
+            
+            const fileObj = {
                 id: fileId,
                 name: fileData.name,
                 size: fileData.size,
                 type: fileData.type,
-                data: null,
+                data: fileData.data,
                 uploader: fileData.uploader,
-                timestamp: fileData.timestamp || Date.now(),
-                status: 'loading',
-                progress: 0
-            });
+                timestamp: fileData.timestamp || Date.now()
+            };
+            
+            sharedFiles.set(fileId, fileObj);
             renderFileList();
-            addSystemMessage(`📥 Receiving: ${fileData.name} from ${fileData.uploader}...`);
-            
-            // Simulate download progress
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 10;
-                if (progress <= 100) {
-                    updateFileStatus(fileId, 'loading', progress);
-                }
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    // Complete the file reception
-                    const fileObj = {
-                        id: fileId,
-                        name: fileData.name,
-                        size: fileData.size,
-                        type: fileData.type,
-                        data: fileData.data,
-                        uploader: fileData.uploader,
-                        timestamp: fileData.timestamp || Date.now(),
-                        status: 'ready',
-                        progress: 100
-                    };
-                    sharedFiles.set(fileId, fileObj);
-                    renderFileList();
-                    addSystemMessage(`✅ Download complete: ${fileData.name} from ${fileData.uploader} (${(fileData.size / 1024).toFixed(1)} KB) - Ready to download!`);
-                }
-            }, 50);
-            
-            // Store data when done
-            setTimeout(() => {
-                clearInterval(interval);
-                if (sharedFiles.get(fileId)?.status !== 'ready') {
-                    const fileObj = {
-                        id: fileId,
-                        name: fileData.name,
-                        size: fileData.size,
-                        type: fileData.type,
-                        data: fileData.data,
-                        uploader: fileData.uploader,
-                        timestamp: fileData.timestamp || Date.now(),
-                        status: 'ready',
-                        progress: 100
-                    };
-                    sharedFiles.set(fileId, fileObj);
-                    renderFileList();
-                }
-            }, 500);
         }
         
         function downloadFile(fileId) {
             const file = sharedFiles.get(fileId);
-            if (file && file.data && file.status === 'ready') {
+            if (file && file.data) {
                 const link = document.createElement('a');
                 link.href = file.data;
                 link.download = file.name;
@@ -1067,8 +849,8 @@
                 link.click();
                 document.body.removeChild(link);
                 addSystemMessage(`⬇️ Downloading: ${file.name}`);
-            } else if (file && file.status === 'loading') {
-                addSystemMessage(`⏳ Please wait, ${file.name} is still loading...`);
+            } else {
+                addSystemMessage(`❌ File not ready: ${file?.name || fileId}`);
             }
         }
         
@@ -1081,7 +863,7 @@
                 
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open) {
-                        data.connection.send({ type: 'file-delete', fileId: fileId });
+                        data.connection.send({ type: 'file-delete', fileId: fileId, room: roomName });
                     }
                 }
             }
@@ -1090,14 +872,13 @@
         window.downloadFile = downloadFile;
         window.deleteFile = deleteFile;
         
-        // ==================== NOTIFICATION FUNCTIONS ====================
         function showNotification(emote, action, senderName) {
             if (activeNotification) activeNotification.remove();
             const notification = document.createElement('div');
             notification.className = 'notification-banner';
             notification.innerHTML = `
-                <div class="notification-content"><span class="notification-emoji">${emote}</span><span class="notification-text"><strong>${escapeHtml(senderName)}</strong> ${action}!</span></div>
-                <button class="notification-close" onclick="this.parentElement.remove(); activeNotification = null;">✕</button>
+                <div><span>${emote}</span><span><strong>${escapeHtml(senderName)}</strong> ${action}!</span></div>
+                <button onclick="this.parentElement.remove(); activeNotification = null;">✕</button>
             `;
             videoLayout.appendChild(notification);
             activeNotification = notification;
@@ -1106,17 +887,15 @@
         
         function sendEmoteReaction(emote, action) {
             for (let [peerId, data] of connections) {
-                if (data.connection && data.connection.open) data.connection.send({ type: 'emote', emote: emote, action: action, sender: username });
+                if (data.connection && data.connection.open) data.connection.send({ type: 'emote', emote: emote, action: action, sender: username, room: roomName });
             }
             showNotification(emote, action, username);
             addSystemMessage(`✨ You ${action}!`);
         }
         
-        // ==================== SIDEBAR FUNCTIONS ====================
         function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
         function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('active'); document.body.style.overflow = ''; }
         
-        // ==================== VIDEO LAYOUT FUNCTIONS ====================
         function setMainVideo(type, stream, label, peerId = null) {
             currentMainVideo = { type, stream, label, peerId };
             if (stream) {
@@ -1161,7 +940,6 @@
             renderThumbnails();
         };
         
-        // ==================== HELPERS ====================
         function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
         function getTime() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
         
@@ -1169,9 +947,9 @@
             const count = connections.size;
             currentConnectionsSpan.textContent = count;
             activeUserCountSpan.textContent = count;
-            if (count >= MAX_USERS) { limitWarningDiv.classList.add('warning-full'); limitWarningDiv.innerHTML = `⚠️ ROOM FULL - ${count}/${MAX_USERS}`; }
-            else if (count >= MAX_USERS - 5) { limitWarningDiv.classList.add('warning-full'); limitWarningDiv.innerHTML = `⚠️ ${count}/${MAX_USERS} - ${MAX_USERS - count} spots left`; }
-            else { limitWarningDiv.classList.remove('warning-full'); limitWarningDiv.innerHTML = `📊 ${count}/${MAX_USERS} users`; }
+            if (count >= MAX_USERS) limitWarningDiv.innerHTML = `⚠️ ROOM FULL - ${count}/${MAX_USERS}`;
+            else if (count >= MAX_USERS - 5) limitWarningDiv.innerHTML = `⚠️ ${count}/${MAX_USERS} - ${MAX_USERS - count} spots left`;
+            else limitWarningDiv.innerHTML = `📊 ${count}/${MAX_USERS} users in room`;
         }
         
         function addSystemMessage(msg) {
@@ -1188,7 +966,6 @@
             messagesContainer.appendChild(div); messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // ==================== CHAT FUNCTIONS ====================
         function updateUnreadCounters() {
             const tabs = document.querySelectorAll('.chat-tab');
             tabs.forEach(tab => {
@@ -1206,11 +983,11 @@
             messagesContainer.innerHTML = ''; markChatRead(activeChat);
             if (activeChat === 'global') globalMessages.forEach(msg => addMessageToUI(msg.author, msg.text, msg.time));
             else { const msgs = dmMessages.get(activeChat) || []; const peerUsername = connections.get(activeChat)?.username || activeChat.substring(0, 8); msgs.forEach(msg => addMessageToUI(msg.author, msg.text, msg.time, true, peerUsername)); }
-            messageInput.placeholder = activeChat === 'global' ? 'Message everyone...' : `Message @${connections.get(activeChat)?.username || activeChat.substring(0, 8)} (DM)...`;
+            messageInput.placeholder = activeChat === 'global' ? 'Message everyone in room...' : `Message @${connections.get(activeChat)?.username || activeChat.substring(0, 8)} (DM)...`;
         }
         
         function renderChatTabs() {
-            let html = `<div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global">🌍 General Chat</div>`;
+            let html = `<div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global">🌍 Room Chat</div>`;
             for (let [peerId, data] of dmTabs) {
                 const displayName = data.username.length > 12 ? data.username.substring(0, 10) + '..' : data.username;
                 const unreadBadge = data.unreadCount > 0 ? `<span class="unread-badge">${data.unreadCount > 99 ? '99+' : data.unreadCount}</span>` : '';
@@ -1231,17 +1008,18 @@
             const text = messageInput.value.trim(); if (!text) return; const time = getTime();
             if (activeChat === 'global') {
                 globalMessages.push({ author: username, text, time }); addMessageToUI(username, text, time);
-                for (let [peerId, data] of connections) if (data.connection && data.connection.open) data.connection.send({ type: 'global-chat', text: text, author: username, time: time });
+                for (let [peerId, data] of connections) if (data.connection && data.connection.open) data.connection.send({ type: 'global-chat', text: text, author: username, time: time, room: roomName });
             } else {
                 const peerId = activeChat; const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
                 if (!dmMessages.has(peerId)) dmMessages.set(peerId, []); dmMessages.get(peerId).push({ author: username, text, time, isDM: true });
                 addMessageToUI(username, text, time, true, peerUsername);
-                const connection = connections.get(peerId)?.connection; if (connection && connection.open) connection.send({ type: 'dm', text: text, author: username, time: time });
+                const connection = connections.get(peerId)?.connection; if (connection && connection.open) connection.send({ type: 'dm', text: text, author: username, time: time, room: roomName });
             }
             messageInput.value = '';
         }
         
         function receiveMessage(peerId, type, data) {
+            if (data.room && data.room !== roomName) return;
             if (type === 'global-chat') { globalMessages.push({ author: data.author, text: data.text, time: data.time }); if (activeChat === 'global') addMessageToUI(data.author, data.text, data.time); else globalUnreadCount++; }
             else if (type === 'dm') {
                 const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
@@ -1253,7 +1031,6 @@
             updateUnreadCounters(); renderChatTabs();
         }
         
-        // ==================== PEERJS ====================
         function setupCall(call, peerId) {
             call.on('stream', (remoteStream) => { const data = connections.get(peerId); if (data) { data.stream = remoteStream; connections.set(peerId, data); renderThumbnails(); if (currentMainVideo.type === 'local' && !currentMainVideo.stream) setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId); } });
             call.on('close', () => { const data = connections.get(peerId); if (data) { data.stream = null; connections.set(peerId, data); renderThumbnails(); if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId && localStream && isCameraActive) setMainVideo('local', localStream, 'Your Camera'); } });
@@ -1267,11 +1044,16 @@
             const conn = peer.connect(peerId);
             conn.on('open', () => {
                 addSystemMessage(`✅ Connected to ${peerId}`);
-                conn.send({ type: 'username', username: username });
+                conn.send({ type: 'username', username: username, room: roomName });
                 connections.set(peerId, { connection: conn, username: peerId.substring(0, 8), call: null, stream: null });
                 updateConnectionCounter();
                 if (localStream && isCameraActive && connections.size <= MAX_VIDEO_STREAMS) { const call = peer.call(peerId, localStream); setupCall(call, peerId); connections.get(peerId).call = call; }
-                for (let [fileId, file] of sharedFiles) { if (file.status === 'ready' && file.data) { conn.send({ type: 'file-share', fileId: fileId, name: file.name, size: file.size, type: file.type, data: file.data, uploader: file.uploader, timestamp: file.timestamp }); } }
+                // Share all existing files in this room with new peer
+                for (let [fileId, file] of sharedFiles) {
+                    if (file.data) {
+                        conn.send({ type: 'file-share', fileId: fileId, name: file.name, size: file.size, type: file.type, data: file.data, uploader: file.uploader, timestamp: file.timestamp, room: roomName });
+                    }
+                }
                 renderUserList(); renderThumbnails();
             });
             conn.on('data', (data) => {
@@ -1291,8 +1073,13 @@
                 addSystemMessage(`✅ Connected to ${peerId}`);
                 connections.set(peerId, { connection: conn, username: peerId.substring(0, 8), call: null, stream: null });
                 updateConnectionCounter();
-                conn.send({ type: 'username', username: username });
-                for (let [fileId, file] of sharedFiles) { if (file.status === 'ready' && file.data) { conn.send({ type: 'file-share', fileId: fileId, name: file.name, size: file.size, type: file.type, data: file.data, uploader: file.uploader, timestamp: file.timestamp }); } }
+                conn.send({ type: 'username', username: username, room: roomName });
+                // Share all existing files in this room with new peer
+                for (let [fileId, file] of sharedFiles) {
+                    if (file.data) {
+                        conn.send({ type: 'file-share', fileId: fileId, name: file.name, size: file.size, type: file.type, data: file.data, uploader: file.uploader, timestamp: file.timestamp, room: roomName });
+                    }
+                }
                 renderUserList(); renderThumbnails();
             });
             conn.on('data', (data) => {
@@ -1311,7 +1098,6 @@
             else call.close();
         }
         
-        // ==================== CAMERA ====================
         async function enableCamera() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 360 }, aspectRatio: 16/9 }, audio: true });
@@ -1326,39 +1112,35 @@
         function toggleAudio() { if (!localStream) return; const track = localStream.getAudioTracks()[0]; if (track) { isAudioEnabled = !isAudioEnabled; track.enabled = isAudioEnabled; const btn = document.getElementById('toggleAudioBtn'); btn.textContent = isAudioEnabled ? '🎤' : '🔇'; btn.classList.toggle('active', isAudioEnabled); } }
         function toggleVideo() { if (!localStream) return; const track = localStream.getVideoTracks()[0]; if (track) { isVideoEnabled = !isVideoEnabled; track.enabled = isVideoEnabled; const btn = document.getElementById('toggleVideoBtn'); btn.textContent = isVideoEnabled ? '📹' : '🚫'; btn.classList.toggle('active', isVideoEnabled); renderThumbnails(); } }
         
-        // ==================== UI ====================
         function renderUserList() {
             if (currentUserListEl) currentUserListEl.innerHTML = `<li class="user-item" style="background:#2b2d31;"><span class="online-dot"></span><span>${escapeHtml(username)}</span><span class="you-badge">You</span></li>`;
             const peerList = Array.from(connections.values());
             if (activeUserListEl) {
-                if (peerList.length === 0) activeUserListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No connected peers</li>';
+                if (peerList.length === 0) activeUserListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No connected peers in this room</li>';
                 else activeUserListEl.innerHTML = peerList.map((data, idx) => { const peerId = Array.from(connections.keys())[idx]; const unreadCount = dmTabs.get(peerId)?.unreadCount || 0; const unreadBadge = unreadCount > 0 ? `<span class="unread-counter">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ''; return `<li class="user-item" data-peer-id="${escapeHtml(peerId)}"><span class="online-dot"></span><span>${escapeHtml(data.username)}</span><span class="dm-badge" onclick="window.openDMFromSidebar('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadBadge}</span></li>`; }).join('');
             }
         }
         
         window.openDMFromSidebar = (peerId, username) => openDM(peerId, username);
         function copyPeerId() { if (peer && peer.id) { navigator.clipboard.writeText(peer.id); addSystemMessage('📋 Peer ID copied'); } }
-        function leaveRoom() { if (localStream) localStream.getTracks().forEach(t => t.stop()); if (peer) peer.destroy(); addSystemMessage('👋 Left. Reload to rejoin.'); setTimeout(() => window.location.reload(), 1500); }
+        function leaveRoom() { if (localStream) localStream.getTracks().forEach(t => t.stop()); if (peer) peer.destroy(); addSystemMessage('👋 Left room. Reload to rejoin.'); setTimeout(() => window.location.reload(), 1500); }
         
-        // ==================== FILE CABINET MODAL ====================
         fileStorageBtn.onclick = () => fileCabinetModal.classList.add('active');
         closeCabinetBtn.onclick = () => fileCabinetModal.classList.remove('active');
         fileCabinetModal.onclick = (e) => { if (e.target === fileCabinetModal) fileCabinetModal.classList.remove('active'); };
         uploadFileBtn.onclick = () => fileInput.click();
         fileInput.onchange = (e) => { Array.from(e.target.files).forEach(file => uploadFile(file)); fileInput.value = ''; };
         
-        // ==================== EMOTE BUTTONS ====================
         document.querySelectorAll('.emote-btn').forEach(btn => { btn.addEventListener('click', () => sendEmoteReaction(btn.getAttribute('data-emote'), btn.getAttribute('data-action'))); });
         
-        // ==================== INIT ====================
         function init() {
-            addSystemMessage(`🎉 Welcome to AralShare, ${escapeHtml(username)}!`);
-            addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed`);
-            addSystemMessage(`📹 Click "Enable Camera" for video calls`);
-            addSystemMessage(`📁 Click "File Storage" to share files - Files show loading status then ready to download!`);
+            addSystemMessage(`🎉 Welcome to room "${roomName}", ${escapeHtml(username)}!`);
+            addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed in this room`);
+            addSystemMessage(`📹 Click "Enable Camera" to start video calls with peers in this room`);
+            addSystemMessage(`📁 Click "File Storage" to share files - Files are shared ONLY with peers in this room!`);
             
             peer = new Peer({ debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
-            peer.on('open', (id) => { connectionStatusSpan.textContent = 'Connected'; myPeerIdSpan.textContent = id; addSystemMessage(`✅ PeerJS ready! ID: ${id}`); });
+            peer.on('open', (id) => { connectionStatusSpan.textContent = 'Connected'; myPeerIdSpan.textContent = id; addSystemMessage(`✅ PeerJS ready! Your ID: ${id}`); addSystemMessage(`📍 You are in room: ${roomName}`); });
             peer.on('connection', handleIncomingConnection);
             peer.on('call', handleIncomingCall);
             peer.on('error', (err) => { if (err.type !== 'unavailable-id') addSystemMessage(`❌ Peer error: ${err.type}`); });
