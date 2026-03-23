@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KatanaShare - P2P Video Chat & File Sharing (VDO.Ninja SDK)</title>
+    <title>KatanaShare - Serverless n-Party Video Chat</title>
     <style>
         :root {
             --bg: #1e1f22;
@@ -57,29 +57,19 @@
             border-radius: 30px;
             color: white;
             font-weight: 600;
-            font-size: 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        .room-badge {
+        .room-badge, .peer-count {
             background: #2b2d31;
             padding: 6px 14px;
             border-radius: 30px;
             font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .peer-count {
-            background: #2b2d31;
-            padding: 6px 12px;
-            border-radius: 30px;
-            font-size: 12px;
         }
 
-        /* Main Content Layout */
+        /* Content Area */
         .content-area { display: flex; flex: 1; overflow: hidden; }
         
         /* Sidebar */
@@ -111,6 +101,21 @@
         .user-item:hover { background: #2b2d31; }
         .online-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); }
         .you-badge { background: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: auto; }
+        .dm-badge {
+            background: #4b5563;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        .video-badge {
+            background: var(--success);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 9px;
+            margin-left: 6px;
+        }
         
         .connect-section {
             padding: 16px;
@@ -118,7 +123,7 @@
             background: var(--sidebar-bg);
             flex-shrink: 0;
         }
-        .room-input {
+        .peer-id-input {
             width: 100%;
             background: #2b2d31;
             border: none;
@@ -138,8 +143,17 @@
             cursor: pointer;
             font-weight: 600;
         }
+        .limit-warning {
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 3px solid var(--warning);
+            padding: 8px;
+            font-size: 10px;
+            margin-top: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
 
-        /* Video Grid - 16:9 responsive */
+        /* Video Grid */
         .video-grid {
             flex: 1;
             background: #0a0a0a;
@@ -239,8 +253,19 @@
             cursor: pointer;
             font-size: 12px;
             white-space: nowrap;
+            position: relative;
         }
         .chat-tab.active { background: var(--accent); }
+        .chat-tab .unread-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--danger);
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 10px;
+        }
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -250,6 +275,12 @@
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
+        }
+        .message.dm {
+            background: rgba(88,101,242,0.1);
+            border-left: 3px solid var(--accent);
+            padding-left: 8px;
+            border-radius: 6px;
         }
         .message-avatar {
             width: 32px;
@@ -355,7 +386,6 @@
                 transform: translateX(-100%);
                 transition: transform 0.2s;
                 z-index: 300;
-                width: 280px;
             }
             .sidebar.open { transform: translateX(0); }
             .top-bar { display: flex !important; }
@@ -396,7 +426,7 @@
         .sidebar-overlay.active { display: block; }
         @media (min-width: 769px) { .sidebar-overlay { display: none !important; } }
     </style>
-    <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -407,7 +437,7 @@
             </div>
             <div class="header-right">
                 <div class="room-badge">🏠 <span id="roomDisplay">lobby</span></div>
-                <div class="peer-count" id="peerCount">👥 0 peers</div>
+                <div class="peer-count" id="peerCount">👥 0/30</div>
                 <button class="file-storage-btn" id="fileStorageBtn">📁 File Storage</button>
             </div>
         </div>
@@ -427,21 +457,30 @@
                     <div class="workspace-name">KatanaShare</div>
                     <div class="workspace-status">
                         <span class="status-indicator"></span>
-                        <span id="connectionStatus">Disconnected</span>
+                        <span id="connectionStatus">Initializing...</span>
                     </div>
-                    <div style="font-size: 11px; margin-top: 8px; word-break: break-all;" id="myStreamId">Stream ID: -</div>
+                    <div class="limit-warning" id="limitWarning">
+                        📊 <span id="currentConnections">0</span>/30 users connected
+                    </div>
+                    <div style="font-size: 11px; margin-top: 8px; word-break: break-all; background:#2b2d31; padding:6px; border-radius:6px;">
+                        <strong>Your ID:</strong> <span id="myPeerId">connecting...</span>
+                        <button id="copyPeerIdBtn" style="background:var(--accent); border:none; border-radius:4px; padding:2px 6px; margin-left:6px; cursor:pointer;">Copy</button>
+                    </div>
                 </div>
                 <div class="users-section">
                     <div class="user-section-title">👤 YOU</div>
                     <ul id="currentUserList" style="list-style:none;">
                         <li class="user-item"><span class="online-dot"></span><span id="currentUsername">You</span><span class="you-badge">You</span></li>
                     </ul>
-                    <div class="user-section-title" style="margin-top:16px;">🟢 PEERS IN ROOM (<span id="peerCountSidebar">0</span>)</div>
+                    <div class="user-section-title" style="margin-top:16px;">🟢 CONNECTED (<span id="peerCountSidebar">0</span>/30)</div>
                     <ul id="peerList" style="list-style:none;"></ul>
                 </div>
                 <div class="connect-section">
-                    <input type="text" id="roomInput" class="room-input" placeholder="Room name" value="lobby">
-                    <button id="connectRoomBtn" class="connect-btn">🔗 Join Room</button>
+                    <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Enter Peer ID to connect">
+                    <button id="connectBtn" class="connect-btn">🔗 Connect to Peer</button>
+                    <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 8px;">
+                        SnoW Architecture: Mesh Network | Max 30 Participants
+                    </div>
                 </div>
             </div>
 
@@ -450,7 +489,7 @@
                     <div class="video-placeholder" id="videoPlaceholder">
                         <div style="font-size: 48px;">🎥</div>
                         <button id="enableCameraBtn">Enable Camera</button>
-                        <p style="margin-top:8px;">Share your video with the room</p>
+                        <p style="margin-top:8px;">Share your video with connected peers</p>
                     </div>
                     <div class="videos-container" id="videosContainer" style="display:none;"></div>
                     <div class="video-controls" id="videoControls" style="display:none;">
@@ -461,7 +500,7 @@
 
                 <div class="chat-section">
                     <div class="chat-tabs" id="chatTabs">
-                        <div class="chat-tab active" data-target="global">🌍 Room Chat</div>
+                        <div class="chat-tab active" data-chat-type="global">🌍 General Chat</div>
                     </div>
                     <div class="messages-container" id="messagesContainer"></div>
                     <div class="input-area">
@@ -484,31 +523,39 @@
             </div>
             <div class="upload-area" style="padding:16px 24px; border-bottom:1px solid var(--border);">
                 <input type="file" id="fileInput" style="display: none;" multiple>
-                <button id="uploadFileBtn" class="upload-btn" style="background:var(--accent); border:none; padding:8px 20px; border-radius:30px; color:white; cursor:pointer;">📤 Upload File</button>
-                <span style="margin-left:12px; font-size:12px;">Files shared P2P with everyone in the room</span>
+                <button id="uploadFileBtn" style="background:var(--accent); border:none; padding:8px 20px; border-radius:30px; color:white; cursor:pointer;">📤 Upload File</button>
+                <span style="margin-left:12px; font-size:12px;">Files shared P2P with connected peers</span>
             </div>
             <div class="file-list" id="fileListContainer">
-                <div class="empty-files" style="text-align:center; padding:40px;">No files shared yet</div>
+                <div style="text-align:center; padding:40px;">No files shared yet</div>
             </div>
         </div>
     </div>
 
     <script>
         // ==================== CONFIG ====================
-        let vdo = null;
+        const MAX_USERS = 30;
+        const MAX_ACTIVE_VIDEOS = 12;  // Limit video streams for performance (SnoW recommendation)
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomName = urlParams.get('room') || 'lobby';
+        const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
+        window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
+
+        // ==================== STATE ====================
+        let peer = null;
         let localStream = null;
+        let connections = new Map(); // peerId -> { connection, username, call, stream, videoActive }
         let isCameraActive = false;
         let isAudioEnabled = true;
         let isVideoEnabled = true;
-        let currentRoom = 'lobby';
-        let myStreamId = null;
-        let remoteStreams = new Map(); // streamId -> { stream, username }
-        let peers = new Map(); // streamId -> username
         
         // Chat state
+        let activeChat = 'global';
         let globalMessages = [];
         let dmMessages = new Map();
-        let activeChat = 'global';
+        let dmTabs = new Map();
+        let globalUnreadCount = 0;
         
         // File sharing
         let sharedFiles = new Map();
@@ -522,17 +569,18 @@
         const peerListEl = document.getElementById('peerList');
         const peerCountSpan = document.getElementById('peerCount');
         const peerCountSidebar = document.getElementById('peerCountSidebar');
+        const currentConnectionsSpan = document.getElementById('currentConnections');
         const roomDisplay = document.getElementById('roomDisplay');
         const mobileRoomName = document.getElementById('mobileRoomName');
-        const myStreamIdSpan = document.getElementById('myStreamId');
+        const myPeerIdSpan = document.getElementById('myPeerId');
         const connectionStatusSpan = document.getElementById('connectionStatus');
         const currentUsernameSpan = document.getElementById('currentUsername');
         const fileListContainer = document.getElementById('fileListContainer');
+        const limitWarningDiv = document.getElementById('limitWarning');
         
-        // Set username from URL or random
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
         currentUsernameSpan.textContent = username;
+        roomDisplay.textContent = roomName;
+        if (mobileRoomName) mobileRoomName.textContent = roomName;
         
         // ==================== Helper Functions ====================
         function escapeHtml(str) {
@@ -553,13 +601,14 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        function addChatMessage(author, text, time) {
+        function addChatMessage(author, text, time, isDM = false, recipient = null) {
             const div = document.createElement('div');
-            div.className = 'message';
+            div.className = `message ${isDM ? 'dm' : ''}`;
+            const dmLabel = isDM && recipient ? ` → ${escapeHtml(recipient)}` : '';
             div.innerHTML = `
                 <div class="message-avatar">${escapeHtml(author.substring(0,2).toUpperCase())}</div>
                 <div class="message-content">
-                    <div style="display:flex; gap:8px;"><strong>${escapeHtml(author)}</strong><span style="font-size:11px;color:#9ca3af;">${time}</span></div>
+                    <div style="display:flex; gap:8px;"><strong>${escapeHtml(author)}${dmLabel}</strong><span style="font-size:11px;color:#9ca3af;">${time}</span></div>
                     <div>${escapeHtml(text)}</div>
                 </div>
             `;
@@ -567,29 +616,31 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // ==================== Peer List Rendering ====================
-        function updatePeerList() {
-            const peerArray = Array.from(peers.entries());
-            peerCountSpan.textContent = `👥 ${peerArray.length} peers`;
-            peerCountSidebar.textContent = peerArray.length;
+        function updateConnectionCounter() {
+            const count = connections.size;
+            currentConnectionsSpan.textContent = count;
+            peerCountSpan.textContent = `👥 ${count}/${MAX_USERS}`;
+            peerCountSidebar.textContent = `${count}/${MAX_USERS}`;
             
-            if (peerArray.length === 0) {
-                peerListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No other peers in room</li>';
+            if (count >= MAX_USERS) {
+                limitWarningDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                limitWarningDiv.style.borderLeftColor = '#ef4444';
+                limitWarningDiv.innerHTML = `⚠️ ROOM FULL - ${count}/${MAX_USERS} users connected`;
+            } else if (count >= MAX_USERS - 5) {
+                limitWarningDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                limitWarningDiv.style.borderLeftColor = '#f59e0b';
+                limitWarningDiv.innerHTML = `⚠️ ${count}/${MAX_USERS} - Only ${MAX_USERS - count} spots left!`;
             } else {
-                peerListEl.innerHTML = peerArray.map(([streamId, peerUsername]) => `
-                    <li class="user-item" data-stream-id="${escapeHtml(streamId)}">
-                        <span class="online-dot"></span>
-                        <span>${escapeHtml(peerUsername)}</span>
-                        <span class="dm-badge" style="background:#4b5563; padding:2px 8px; border-radius:10px; font-size:10px; margin-left:auto; cursor:pointer;" onclick="openDM('${escapeHtml(streamId)}', '${escapeHtml(peerUsername)}')">💬 DM</span>
-                    </li>
-                `).join('');
+                limitWarningDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                limitWarningDiv.style.borderLeftColor = '#f59e0b';
+                limitWarningDiv.innerHTML = `📊 ${count}/${MAX_USERS} users connected (SnoW Mesh)`;
             }
         }
         
         // ==================== Video Rendering ====================
         function renderVideos() {
             const hasLocal = isCameraActive;
-            const hasRemote = remoteStreams.size > 0;
+            const hasRemote = Array.from(connections.values()).some(c => c.stream);
             
             if (!hasLocal && !hasRemote) {
                 videosContainer.style.display = 'none';
@@ -618,20 +669,36 @@
                 }, 100);
             }
             
-            // Remote videos
-            for (let [streamId, data] of remoteStreams) {
-                if (data.stream) {
-                    html += `
-                        <div class="video-wrapper remote">
-                            <video id="remote_${streamId.replace(/[^a-zA-Z0-9]/g, '_')}" class="video-element" autoplay playsinline></video>
-                            <div class="video-label">👤 ${escapeHtml(data.username || streamId.substring(0,8))}</div>
+            // Remote videos - limit to MAX_ACTIVE_VIDEOS (SnoW recommendation)
+            const videoPeers = Array.from(connections.entries())
+                .filter(([_, data]) => data.stream)
+                .slice(0, MAX_ACTIVE_VIDEOS);
+            
+            for (let [peerId, data] of videoPeers) {
+                html += `
+                    <div class="video-wrapper remote">
+                        <video id="remote_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}" class="video-element" autoplay playsinline></video>
+                        <div class="video-label">👤 ${escapeHtml(data.username || peerId.substring(0, 8))}</div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    const vid = document.getElementById(`remote_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                    if (vid && data.stream) vid.srcObject = data.stream;
+                }, 100);
+            }
+            
+            // Show extra count if more peers without video
+            const videoCount = videoPeers.length;
+            const totalPeers = connections.size;
+            if (totalPeers > videoCount && videoCount > 0) {
+                html += `
+                    <div class="video-wrapper" style="background: #1a1a1a; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px;">👥</div>
+                            <div style="font-size: 11px;">+${totalPeers - videoCount} more (audio/data only)</div>
                         </div>
-                    `;
-                    setTimeout(() => {
-                        const vid = document.getElementById(`remote_${streamId.replace(/[^a-zA-Z0-9]/g, '_')}`);
-                        if (vid && data.stream) vid.srcObject = data.stream;
-                    }, 100);
-                }
+                    </div>
+                `;
             }
             
             videosContainer.innerHTML = html;
@@ -645,17 +712,30 @@
                     audio: true
                 });
                 isCameraActive = true;
-                
-                // Publish stream to VDO.Ninja
-                if (vdo && vdo.publish) {
-                    await vdo.publish(localStream);
-                    addSystemMessage('🎥 Camera enabled - Stream published to room');
-                }
-                
                 renderVideos();
+                addSystemMessage('🎥 Camera enabled - Sharing with connected peers');
                 
                 document.getElementById('toggleAudioBtn').classList.add('active');
                 document.getElementById('toggleVideoBtn').classList.add('active');
+                
+                // Call all existing peers
+                let callCount = 0;
+                for (let [peerId, data] of connections) {
+                    if (callCount >= MAX_ACTIVE_VIDEOS) {
+                        addSystemMessage(`⚠️ Max video streams (${MAX_ACTIVE_VIDEOS}) reached. ${data.username} connected for audio/data only.`);
+                        continue;
+                    }
+                    if (data.connection && data.connection.open && !data.call) {
+                        const call = peer.call(peerId, localStream);
+                        setupCall(call, peerId);
+                        data.call = call;
+                        data.videoActive = true;
+                        connections.set(peerId, data);
+                        callCount++;
+                    }
+                }
+                
+                renderUserList();
             } catch(err) {
                 addSystemMessage('❌ Camera access denied');
             }
@@ -685,10 +765,10 @@
             }
         }
         
-        // ==================== File Sharing via Data Channels ====================
+        // ==================== File Sharing ====================
         function renderFileList() {
             if (sharedFiles.size === 0) {
-                fileListContainer.innerHTML = '<div class="empty-files" style="text-align:center; padding:40px;">📂 No files shared yet. Upload a file to share with peers.</div>';
+                fileListContainer.innerHTML = '<div style="text-align:center; padding:40px;">📂 No files shared yet. Upload a file to share with peers.</div>';
                 return;
             }
             
@@ -702,8 +782,8 @@
                             <small>${sizeKB} KB • ${escapeHtml(file.uploader)}</small>
                         </div>
                         <div>
-                            <button class="download-btn" onclick="downloadFile('${escapeHtml(fileId)}')">⬇️ Download</button>
-                            ${file.uploader === username ? `<button class="delete-btn" onclick="deleteFile('${escapeHtml(fileId)}')">🗑️ Delete</button>` : ''}
+                            <button class="download-btn" onclick="window.downloadFile('${escapeHtml(fileId)}')">⬇️ Download</button>
+                            ${file.uploader === username ? `<button class="delete-btn" onclick="window.deleteFile('${escapeHtml(fileId)}')">🗑️ Delete</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -711,9 +791,9 @@
             fileListContainer.innerHTML = html;
         }
         
-        function uploadAndShareFile(file) {
+        function uploadFile(file) {
             const reader = new FileReader();
-            const fileId = Date.now() + '_' + file.name;
+            const fileId = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             
             reader.onload = (e) => {
                 const fileData = e.target.result;
@@ -731,17 +811,19 @@
                 renderFileList();
                 addSystemMessage(`📤 Shared: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
                 
-                // Broadcast to all peers via data channel
-                if (vdo && vdo.sendDataToAll) {
-                    vdo.sendDataToAll({
-                        type: 'file-share',
-                        fileId: fileId,
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        data: fileData,
-                        uploader: username
-                    });
+                // Broadcast to all connected peers
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({
+                            type: 'file-share',
+                            fileId: fileId,
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            data: fileData,
+                            uploader: username
+                        });
+                    }
                 }
             };
             
@@ -782,8 +864,10 @@
                 renderFileList();
                 addSystemMessage(`🗑️ Deleted: ${file.name}`);
                 
-                if (vdo && vdo.sendDataToAll) {
-                    vdo.sendDataToAll({ type: 'file-delete', fileId: fileId });
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({ type: 'file-delete', fileId: fileId });
+                    }
                 }
             }
         }
@@ -792,6 +876,111 @@
         window.deleteFile = deleteFile;
         
         // ==================== Chat Functions ====================
+        function updateUnreadCounters() {
+            const tabs = document.querySelectorAll('.chat-tab');
+            tabs.forEach(tab => {
+                const chatType = tab.getAttribute('data-chat-type');
+                let unread = 0;
+                if (chatType === 'global') {
+                    unread = globalUnreadCount;
+                } else {
+                    const peerId = tab.getAttribute('data-peer-id');
+                    unread = dmTabs.get(peerId)?.unreadCount || 0;
+                }
+                
+                const existingBadge = tab.querySelector('.unread-badge');
+                if (unread > 0) {
+                    if (existingBadge) {
+                        existingBadge.textContent = unread > 99 ? '99+' : unread;
+                    } else {
+                        const badge = document.createElement('span');
+                        badge.className = 'unread-badge';
+                        badge.textContent = unread > 99 ? '99+' : unread;
+                        tab.appendChild(badge);
+                    }
+                } else if (existingBadge) {
+                    existingBadge.remove();
+                }
+            });
+        }
+        
+        function markChatRead(chatId) {
+            if (chatId === 'global') {
+                globalUnreadCount = 0;
+            } else {
+                const tab = dmTabs.get(chatId);
+                if (tab) tab.unreadCount = 0;
+            }
+            updateUnreadCounters();
+        }
+        
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            markChatRead(activeChat);
+            
+            if (activeChat === 'global') {
+                globalMessages.forEach(msg => addChatMessage(msg.author, msg.text, msg.time));
+                messageInput.placeholder = 'Message everyone...';
+            } else {
+                const msgs = dmMessages.get(activeChat) || [];
+                const peerUsername = connections.get(activeChat)?.username || activeChat.substring(0, 8);
+                msgs.forEach(msg => addChatMessage(msg.author, msg.text, msg.time, true, peerUsername));
+                messageInput.placeholder = `Message @${peerUsername} (DM)...`;
+            }
+        }
+        
+        function renderChatTabs() {
+            let html = `<div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global">🌍 General Chat</div>`;
+            
+            for (let [peerId, data] of dmTabs) {
+                const displayName = data.username.length > 12 ? data.username.substring(0, 10) + '..' : data.username;
+                const unreadBadge = data.unreadCount > 0 ? `<span class="unread-badge">${data.unreadCount > 99 ? '99+' : data.unreadCount}</span>` : '';
+                html += `
+                    <div class="chat-tab ${activeChat === peerId ? 'active' : ''}" data-chat-type="dm" data-peer-id="${escapeHtml(peerId)}">
+                        💬 ${escapeHtml(displayName)}${unreadBadge}
+                        <span class="close-tab" data-peer-id="${escapeHtml(peerId)}">✕</span>
+                    </div>
+                `;
+            }
+            
+            chatTabs.innerHTML = html;
+            
+            document.querySelectorAll('.chat-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('close-tab')) {
+                        e.stopPropagation();
+                        const peerId = e.target.getAttribute('data-peer-id');
+                        dmTabs.delete(peerId);
+                        if (activeChat === peerId) {
+                            activeChat = 'global';
+                            renderMessages();
+                        }
+                        renderChatTabs();
+                    } else {
+                        const chatType = tab.getAttribute('data-chat-type');
+                        if (chatType === 'global') {
+                            activeChat = 'global';
+                        } else {
+                            const peerId = tab.getAttribute('data-peer-id');
+                            activeChat = peerId;
+                        }
+                        renderMessages();
+                        renderChatTabs();
+                    }
+                });
+            });
+        }
+        
+        function openDM(peerId, username) {
+            if (!dmTabs.has(peerId)) {
+                dmTabs.set(peerId, { username, unreadCount: 0 });
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+            }
+            activeChat = peerId;
+            renderMessages();
+            renderChatTabs();
+        }
+        
         function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
@@ -801,198 +990,397 @@
                 globalMessages.push({ author: username, text, time });
                 addChatMessage(username, text, time);
                 
-                if (vdo && vdo.sendDataToAll) {
-                    vdo.sendDataToAll({ type: 'chat', text: text, author: username, time: time });
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({ type: 'global-chat', text: text, author: username, time: time });
+                    }
+                }
+            } else {
+                const peerId = activeChat;
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: username, text, time, isDM: true });
+                addChatMessage(username, text, time, true, peerUsername);
+                
+                const connection = connections.get(peerId)?.connection;
+                if (connection && connection.open) {
+                    connection.send({ type: 'dm', text: text, author: username, time: time });
                 }
             }
             
             messageInput.value = '';
         }
         
-        function openDM(streamId, peerUsername) {
-            activeChat = streamId;
-            if (!dmMessages.has(streamId)) dmMessages.set(streamId, []);
-            // For now, just show system message - DM implementation can be expanded
-            addSystemMessage(`💬 DM with ${peerUsername} - Send messages will go to them only`);
-        }
-        
-        window.openDM = openDM;
-        
-        // ==================== VDO.Ninja SDK Setup ====================
-        async function connectToRoom() {
-            const room = document.getElementById('roomInput').value.trim() || 'lobby';
-            currentRoom = room;
-            roomDisplay.textContent = room;
-            if (mobileRoomName) mobileRoomName.textContent = room;
-            
-            addSystemMessage(`🔗 Connecting to room: ${room}...`);
-            connectionStatusSpan.textContent = 'Connecting...';
-            
-            // Initialize SDK
-            vdo = new VDONinjaSDK();
-            
-            // Handle incoming tracks (video/audio)
-            vdo.addEventListener('track', (event) => {
-                const { track, stream, streamID, uuid } = event.detail;
-                console.log('Track received:', streamID, track.kind);
+        function receiveMessage(peerId, type, data) {
+            if (type === 'global-chat') {
+                globalMessages.push({ author: data.author, text: data.text, time: data.time });
+                if (activeChat === 'global') {
+                    addChatMessage(data.author, data.text, data.time);
+                } else {
+                    globalUnreadCount++;
+                }
+            } else if (type === 'dm') {
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: data.author, text: data.text, time: data.time, isDM: true });
                 
-                if (!remoteStreams.has(streamID)) {
-                    remoteStreams.set(streamID, { stream: null, username: streamID.substring(0,8) });
+                if (!dmTabs.has(peerId)) {
+                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
+                    renderChatTabs();
+                } else {
+                    const tab = dmTabs.get(peerId);
+                    if (activeChat !== peerId) {
+                        tab.unreadCount = (tab.unreadCount || 0) + 1;
+                        dmTabs.set(peerId, tab);
+                    }
                 }
                 
-                const data = remoteStreams.get(streamID);
-                if (track.kind === 'video' && !data.stream) {
-                    // Create new MediaStream for this peer
-                    const newStream = new MediaStream();
-                    newStream.addTrack(track);
-                    data.stream = newStream;
-                    remoteStreams.set(streamID, data);
+                if (activeChat === peerId) {
+                    addChatMessage(data.author, data.text, data.time, true, peerUsername);
+                    markChatRead(peerId);
+                }
+            }
+            
+            updateUnreadCounters();
+            renderChatTabs();
+        }
+        
+        // ==================== PeerJS Setup ====================
+        function setupCall(call, peerId) {
+            call.on('stream', (remoteStream) => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = remoteStream;
+                    connections.set(peerId, data);
                     renderVideos();
-                    addSystemMessage(`📹 New video from ${data.username}`);
-                } else if (data.stream) {
-                    data.stream.addTrack(track);
-                    remoteStreams.set(streamID, data);
-                    renderVideos();
+                    addSystemMessage(`📹 Video received from ${data.username || peerId.substring(0, 8)}`);
                 }
             });
             
-            // Handle data channel messages
-            vdo.addEventListener('data', (event) => {
-                const { data, uuid, streamID } = event.detail;
-                console.log('Data received:', data);
+            call.on('close', () => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = null;
+                    data.videoActive = false;
+                    connections.set(peerId, data);
+                    renderVideos();
+                }
+            });
+        }
+        
+        function connectToPeer(targetPeerId) {
+            if (connections.has(targetPeerId)) {
+                addSystemMessage(`Already connected to ${targetPeerId}`);
+                return;
+            }
+            if (targetPeerId === peer.id) {
+                addSystemMessage(`Cannot connect to yourself`);
+                return;
+            }
+            if (connections.size >= MAX_USERS) {
+                addSystemMessage(`⚠️ Max users (${MAX_USERS}) reached. Cannot connect to ${targetPeerId}`);
+                return;
+            }
+            
+            addSystemMessage(`Connecting to ${targetPeerId}...`);
+            const conn = peer.connect(targetPeerId);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${targetPeerId}`);
+                conn.send({ type: 'username', username: username });
                 
-                if (data.type === 'chat') {
-                    addChatMessage(data.author, data.text, data.time);
+                connections.set(targetPeerId, {
+                    connection: conn,
+                    username: targetPeerId.substring(0, 8),
+                    call: null,
+                    stream: null,
+                    videoActive: false
+                });
+                updateConnectionCounter();
+                
+                // SnoW-inspired: Limit active video streams to preserve bandwidth
+                const activeVideoCount = Array.from(connections.values()).filter(c => c.videoActive).length;
+                if (localStream && isCameraActive && activeVideoCount < MAX_ACTIVE_VIDEOS) {
+                    const call = peer.call(targetPeerId, localStream);
+                    setupCall(call, targetPeerId);
+                    const data = connections.get(targetPeerId);
+                    data.call = call;
+                    data.videoActive = true;
+                    connections.set(targetPeerId, data);
+                } else if (localStream && isCameraActive) {
+                    addSystemMessage(`⚠️ Max video streams (${MAX_ACTIVE_VIDEOS}) reached. ${targetPeerId.substring(0,8)} connected for audio/data only.`);
+                }
+                
+                renderUserList();
+                renderVideos();
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(targetPeerId);
+                    if (connData) {
+                        connData.username = data.username;
+                        connections.set(targetPeerId, connData);
+                        renderUserList();
+                        renderChatTabs();
+                    }
                 } else if (data.type === 'file-share') {
                     receiveFile(data);
                 } else if (data.type === 'file-delete') {
                     if (sharedFiles.has(data.fileId)) {
                         sharedFiles.delete(data.fileId);
                         renderFileList();
+                        addSystemMessage(`🗑️ File deleted by peer`);
                     }
-                } else if (data.type === 'username') {
-                    // Update peer username
-                    const existing = peers.get(streamID);
-                    if (existing) {
-                        peers.set(streamID, data.username);
-                        const streamData = remoteStreams.get(streamID);
-                        if (streamData) streamData.username = data.username;
-                        updatePeerList();
-                        renderVideos();
-                    }
+                } else if (data.type === 'global-chat' || data.type === 'dm') {
+                    receiveMessage(targetPeerId, data.type, data);
                 }
             });
             
-            // Handle connection events
-            vdo.addEventListener('connected', () => {
-                connectionStatusSpan.textContent = 'Connected';
-                addSystemMessage(`✅ Connected to room: ${room}`);
-            });
-            
-            vdo.addEventListener('streamAdded', (event) => {
-                const { streamID } = event.detail;
-                console.log('Stream added:', streamID);
-                if (streamID !== myStreamId) {
-                    peers.set(streamID, streamID.substring(0,8));
-                    remoteStreams.set(streamID, { stream: null, username: streamID.substring(0,8) });
-                    updatePeerList();
-                    
-                    // Send username to new peer
-                    if (vdo && vdo.sendDataTo) {
-                        vdo.sendDataTo(streamID, { type: 'username', username: username });
-                    }
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${targetPeerId}`);
+                connections.delete(targetPeerId);
+                updateConnectionCounter();
+                renderVideos();
+                renderUserList();
+                if (dmTabs.has(targetPeerId)) {
+                    dmTabs.delete(targetPeerId);
+                    renderChatTabs();
                 }
             });
+        }
+        
+        function handleIncomingConnection(conn) {
+            const peerId = conn.peer;
             
-            vdo.addEventListener('streamRemoved', (event) => {
-                const { streamID } = event.detail;
-                console.log('Stream removed:', streamID);
-                peers.delete(streamID);
-                remoteStreams.delete(streamID);
-                updatePeerList();
+            if (connections.size >= MAX_USERS) {
+                addSystemMessage(`⚠️ Max users (${MAX_USERS}) reached. Cannot accept connection from ${peerId}`);
+                conn.close();
+                return;
+            }
+            
+            addSystemMessage(`📞 Incoming connection from ${peerId}`);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${peerId}`);
+                conn.send({ type: 'username', username: username });
+                
+                connections.set(peerId, {
+                    connection: conn,
+                    username: peerId.substring(0, 8),
+                    call: null,
+                    stream: null,
+                    videoActive: false
+                });
+                updateConnectionCounter();
+                renderUserList();
                 renderVideos();
             });
             
-            // Connect and join room
-            try {
-                await vdo.connect();
-                await vdo.joinRoom({ room: room, password: null });
-                
-                // Announce ourselves
-                const streamId = await vdo.announce({ streamID: username });
-                myStreamId = streamId;
-                myStreamIdSpan.textContent = `ID: ${streamId.substring(0,12)}...`;
-                addSystemMessage(`🎉 Joined as ${username}`);
-                
-                // Share username with room
-                if (vdo && vdo.sendDataToAll) {
-                    setTimeout(() => {
-                        vdo.sendDataToAll({ type: 'username', username: username });
-                    }, 1000);
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(peerId);
+                    if (connData) {
+                        connData.username = data.username;
+                        connections.set(peerId, connData);
+                        renderUserList();
+                        renderChatTabs();
+                    }
+                } else if (data.type === 'file-share') {
+                    receiveFile(data);
+                } else if (data.type === 'file-delete') {
+                    if (sharedFiles.has(data.fileId)) {
+                        sharedFiles.delete(data.fileId);
+                        renderFileList();
+                        addSystemMessage(`🗑️ File deleted by peer`);
+                    }
+                } else if (data.type === 'global-chat' || data.type === 'dm') {
+                    receiveMessage(peerId, data.type, data);
                 }
-            } catch (err) {
-                console.error('Connection error:', err);
-                addSystemMessage(`❌ Connection failed: ${err.message}`);
-                connectionStatusSpan.textContent = 'Error';
+            });
+            
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${peerId}`);
+                connections.delete(peerId);
+                updateConnectionCounter();
+                renderVideos();
+                renderUserList();
+                if (dmTabs.has(peerId)) {
+                    dmTabs.delete(peerId);
+                    renderChatTabs();
+                }
+            });
+        }
+        
+        function handleIncomingCall(call) {
+            const peerId = call.peer;
+            
+            const activeVideoCount = Array.from(connections.values()).filter(c => c.videoActive).length;
+            if (activeVideoCount >= MAX_ACTIVE_VIDEOS) {
+                addSystemMessage(`⚠️ Max video streams (${MAX_ACTIVE_VIDEOS}) reached. Cannot accept video from ${peerId}`);
+                call.close();
+                return;
+            }
+            
+            if (localStream && isCameraActive) {
+                call.answer(localStream);
+                setupCall(call, peerId);
+                const connData = connections.get(peerId);
+                if (connData) {
+                    connData.call = call;
+                    connData.videoActive = true;
+                    connections.set(peerId, connData);
+                }
+            } else {
+                call.close();
             }
         }
         
-        // ==================== Leave Room ====================
+        // ==================== UI ====================
+        function renderUserList() {
+            const currentUserListEl = document.getElementById('currentUserList');
+            if (currentUserListEl) {
+                currentUserListEl.innerHTML = `<li class="user-item"><span class="online-dot"></span><span>${escapeHtml(username)}</span><span class="you-badge">You</span></li>`;
+            }
+            
+            const peerList = Array.from(connections.values());
+            
+            if (peerListEl) {
+                if (peerList.length === 0) {
+                    peerListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No connected peers</li>';
+                } else {
+                    peerListEl.innerHTML = peerList.map((data, idx) => {
+                        const peerId = Array.from(connections.keys())[idx];
+                        const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
+                        const unreadBadge = unreadCount > 0 ? `<span class="unread-counter" style="background:var(--danger); color:white; font-size:9px; padding:2px 5px; border-radius:10px; margin-left:4px;">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+                        const videoBadge = data.videoActive ? `<span class="video-badge" style="background:var(--success);">📹</span>` : `<span class="video-badge" style="background:var(--text-muted);">🎧</span>`;
+                        return `
+                            <li class="user-item" data-peer-id="${escapeHtml(peerId)}">
+                                <span class="online-dot"></span>
+                                <span>${escapeHtml(data.username)}</span>
+                                ${videoBadge}
+                                <span class="dm-badge" onclick="window.openDMFromSidebar('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadBadge}</span>
+                            </li>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+        
+        window.openDMFromSidebar = (peerId, username) => {
+            openDM(peerId, username);
+        };
+        
+        function copyPeerId() {
+            if (peer && peer.id) {
+                navigator.clipboard.writeText(peer.id);
+                addSystemMessage('📋 Peer ID copied to clipboard');
+            }
+        }
+        
         function leaveRoom() {
             if (localStream) localStream.getTracks().forEach(t => t.stop());
-            if (vdo && vdo.disconnect) vdo.disconnect();
-            addSystemMessage('👋 Left room. Reload to rejoin.');
+            if (peer) peer.destroy();
+            addSystemMessage('👋 Left. Reload to rejoin.');
             setTimeout(() => window.location.reload(), 1500);
         }
         
-        // ==================== Event Listeners ====================
-        document.getElementById('enableCameraBtn').onclick = enableCamera;
-        document.getElementById('toggleAudioBtn').onclick = toggleAudio;
-        document.getElementById('toggleVideoBtn').onclick = toggleVideo;
-        document.getElementById('sendBtn').onclick = sendMessage;
-        document.getElementById('connectRoomBtn').onclick = connectToRoom;
-        document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
-        messageInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
-        
-        // File cabinet modal
-        const fileModal = document.getElementById('fileCabinetModal');
+        // ==================== DOM Elements for sidebar ====================
+        const copyPeerIdBtn = document.getElementById('copyPeerIdBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        const peerIdInput = document.getElementById('peerIdInput');
+        const enableCameraBtn = document.getElementById('enableCameraBtn');
+        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const leaveRoomBtn = document.getElementById('leaveRoomBtn');
         const fileStorageBtn = document.getElementById('fileStorageBtn');
+        const fileCabinetModalEl = document.getElementById('fileCabinetModal');
         const closeCabinetBtn = document.getElementById('closeCabinetBtn');
         const uploadFileBtn = document.getElementById('uploadFileBtn');
         const fileInputEl = document.getElementById('fileInput');
         
-        fileStorageBtn.onclick = () => fileModal.classList.add('active');
-        closeCabinetBtn.onclick = () => fileModal.classList.remove('active');
-        fileModal.onclick = (e) => { if (e.target === fileModal) fileModal.classList.remove('active'); };
-        uploadFileBtn.onclick = () => fileInputEl.click();
-        fileInputEl.onchange = (e) => {
-            Array.from(e.target.files).forEach(file => uploadAndShareFile(file));
+        // Event listeners
+        if (enableCameraBtn) enableCameraBtn.onclick = enableCamera;
+        if (toggleAudioBtn) toggleAudioBtn.onclick = toggleAudio;
+        if (toggleVideoBtn) toggleVideoBtn.onclick = toggleVideo;
+        if (sendBtn) sendBtn.onclick = sendMessage;
+        if (leaveRoomBtn) leaveRoomBtn.onclick = leaveRoom;
+        if (connectBtn) connectBtn.onclick = () => {
+            const targetId = peerIdInput.value.trim();
+            if (targetId) connectToPeer(targetId);
+            peerIdInput.value = '';
+        };
+        if (copyPeerIdBtn) copyPeerIdBtn.onclick = copyPeerId;
+        if (messageInput) messageInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+        
+        // File cabinet modal
+        if (fileStorageBtn) fileStorageBtn.onclick = () => fileCabinetModalEl.classList.add('active');
+        if (closeCabinetBtn) closeCabinetBtn.onclick = () => fileCabinetModalEl.classList.remove('active');
+        if (fileCabinetModalEl) fileCabinetModalEl.onclick = (e) => { if (e.target === fileCabinetModalEl) fileCabinetModalEl.classList.remove('active'); };
+        if (uploadFileBtn) uploadFileBtn.onclick = () => fileInputEl.click();
+        if (fileInputEl) fileInputEl.onchange = (e) => {
+            Array.from(e.target.files).forEach(file => uploadFile(file));
             fileInputEl.value = '';
         };
         
         // Mobile sidebar
-        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const hamburgerBtnEl = document.getElementById('hamburgerBtn');
         const sidebarEl = document.getElementById('sidebar');
         const sidebarOverlayEl = document.getElementById('sidebarOverlay');
-        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+        const sidebarCloseBtnEl = document.getElementById('sidebarCloseBtn');
         
         function openSidebar() { sidebarEl.classList.add('open'); sidebarOverlayEl.classList.add('active'); }
         function closeSidebar() { sidebarEl.classList.remove('open'); sidebarOverlayEl.classList.remove('active'); }
-        hamburgerBtn.onclick = openSidebar;
-        if (sidebarCloseBtn) sidebarCloseBtn.onclick = closeSidebar;
-        sidebarOverlayEl.onclick = closeSidebar;
+        if (hamburgerBtnEl) hamburgerBtnEl.onclick = openSidebar;
+        if (sidebarCloseBtnEl) sidebarCloseBtnEl.onclick = closeSidebar;
+        if (sidebarOverlayEl) sidebarOverlayEl.onclick = closeSidebar;
         
-        // Initial system message
-        addSystemMessage(`⚔️ Welcome to KatanaShare, ${escapeHtml(username)}!`);
-        addSystemMessage(`📹 Click "Enable Camera" to start video`);
-        addSystemMessage(`📁 Click "File Storage" to share files P2P`);
-        addSystemMessage(`🔗 Enter a room name and click "Join Room" to connect with others`);
+        // ==================== Initialize PeerJS ====================
+        function init() {
+            addSystemMessage(`🎉 Welcome to KatanaShare, ${escapeHtml(username)}!`);
+            addSystemMessage(`📊 SnoW Architecture: Max ${MAX_USERS} users, ${MAX_ACTIVE_VIDEOS} active video streams`);
+            addSystemMessage(`📹 Click "Enable Camera" to start video calls`);
+            addSystemMessage(`📁 Click "File Storage" to share files with connected peers`);
+            addSystemMessage(`🔗 Share your Peer ID to connect with others`);
+            
+            peer = new Peer({
+                debug: 1,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
+            
+            peer.on('open', (id) => {
+                connectionStatusSpan.textContent = 'Connected';
+                myPeerIdSpan.textContent = id;
+                addSystemMessage(`✅ PeerJS ready! Your ID: ${id}`);
+                addSystemMessage(`📊 SnoW Mesh Network: ${MAX_USERS} user capacity`);
+            });
+            
+            peer.on('connection', handleIncomingConnection);
+            peer.on('call', handleIncomingCall);
+            
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                connectionStatusSpan.textContent = 'Error';
+                if (err.type !== 'unavailable-id') {
+                    addSystemMessage(`❌ Peer error: ${err.type}`);
+                }
+            });
+            
+            renderChatTabs();
+            updateConnectionCounter();
+            renderVideos();
+            renderFileList();
+        }
         
-        // Auto-connect to default room after a short delay
-        setTimeout(() => {
-            document.getElementById('roomInput').value = 'lobby';
-            connectToRoom();
-        }, 500);
+        init();
     </script>
 </body>
 </html>
