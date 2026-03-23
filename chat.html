@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SnoW - 30-Way P2P Video Conference with File Sharing</title>
+    <title>SnoW - 30-Way P2P Video Conference with DMs</title>
     <style>
         :root {
             --bg: #0a0a0a;
@@ -97,6 +97,7 @@
             align-items: center;
             gap: 8px;
             list-style: none;
+            cursor: pointer;
         }
         .user-item:hover { background: #2b2d31; }
         .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
@@ -108,6 +109,16 @@
             font-size: 9px;
             cursor: pointer;
             margin-left: auto;
+            position: relative;
+        }
+        .unread-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 8px;
+            height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
         }
         
         .connect-section {
@@ -245,44 +256,6 @@
             border-radius: 4px;
             font-size: 9px;
         }
-        .thumbnail-reaction {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            font-size: 14px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Reaction Buttons */
-        .reaction-bar {
-            position: absolute;
-            bottom: 60px;
-            right: 20px;
-            display: flex;
-            gap: 8px;
-            z-index: 20;
-            background: rgba(0,0,0,0.6);
-            padding: 8px 12px;
-            border-radius: 40px;
-            backdrop-filter: blur(8px);
-        }
-        .reaction-emoji {
-            background: #2b2d31;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .reaction-emoji:hover { transform: scale(1.1); background: var(--accent); }
 
         .video-controls {
             position: absolute;
@@ -307,32 +280,113 @@
         }
         .video-control-btn.active { background: var(--success); }
 
-        /* Chat Section */
+        /* Reaction Bar */
+        .reaction-bar {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 40px;
+            backdrop-filter: blur(8px);
+        }
+        .reaction-emoji {
+            background: #2b2d31;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .reaction-emoji:hover { transform: scale(1.1); background: var(--accent); }
+
+        /* Chat Section with Tabs */
         .chat-section {
-            height: 30vh;
-            min-height: 200px;
+            height: 32vh;
+            min-height: 220px;
             display: flex;
             flex-direction: column;
             border-top: 1px solid var(--border);
             background: var(--bg);
         }
-        .chat-tabs {
-            display: flex;
-            gap: 4px;
-            padding: 6px 12px;
+        .chat-tabs-container {
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border);
-            overflow-x: auto;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
         }
-        .chat-tab {
-            padding: 4px 12px;
+        .chat-tabs-scroll {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            display: flex;
+            gap: 4px;
+            padding: 6px 8px;
+            scroll-behavior: smooth;
+        }
+        .chat-tabs-scroll::-webkit-scrollbar {
+            height: 3px;
+        }
+        .chat-tabs-scroll::-webkit-scrollbar-track {
+            background: var(--border);
+        }
+        .chat-tabs-scroll::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 3px;
+        }
+        .nav-arrow {
             background: #2b2d31;
-            border-radius: 16px;
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .nav-arrow:hover { background: var(--accent); }
+        .chat-tab {
+            padding: 6px 14px;
+            background: #2b2d31;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 11px;
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            flex-shrink: 0;
         }
         .chat-tab.active { background: var(--accent); }
+        .chat-tab .unread-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .chat-tab .close-tab {
+            margin-left: 6px;
+            font-size: 11px;
+            opacity: 0.7;
+            cursor: pointer;
+        }
+        .chat-tab .close-tab:hover { opacity: 1; }
+        
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -343,6 +397,17 @@
             display: flex;
             gap: 8px;
             margin-bottom: 8px;
+            animation: fadeIn 0.2s;
+        }
+        .message.dm {
+            background: rgba(88,101,242,0.1);
+            border-left: 3px solid var(--accent);
+            padding-left: 8px;
+            border-radius: 6px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .message-avatar {
             width: 28px;
@@ -354,7 +419,14 @@
             justify-content: center;
             font-weight: 700;
             font-size: 10px;
+            flex-shrink: 0;
         }
+        .message-content { flex: 1; }
+        .message-header { display: flex; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+        .message-author { font-weight: 600; font-size: 11px; }
+        .message-time { font-size: 9px; color: var(--text-muted); }
+        .message-text { font-size: 11px; word-break: break-word; }
+
         .input-area {
             padding: 8px 12px;
             border-top: 1px solid var(--border);
@@ -373,6 +445,7 @@
             color: white;
             outline: none;
             font-size: 12px;
+            resize: none;
         }
         .send-btn {
             background: var(--accent);
@@ -456,11 +529,12 @@
             .sidebar.open { transform: translateX(0); }
             .top-bar { display: flex !important; }
             .video-layout { flex-direction: column; }
-            .thumbnails-area { max-height: 120px; }
+            .thumbnails-area { max-height: 110px; }
             .thumbnails-scroll { flex-direction: row; overflow-x: auto; }
-            .thumbnail-item { min-width: 140px; flex-shrink: 0; }
+            .thumbnail-item { min-width: 130px; flex-shrink: 0; }
             .reaction-bar { bottom: 100px; right: 10px; }
             .reaction-emoji { width: 36px; height: 36px; font-size: 18px; }
+            .chat-tab { padding: 4px 10px; font-size: 10px; }
         }
         .top-bar {
             display: none;
@@ -555,7 +629,6 @@
             <div class="main-content" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
                 <!-- Video Layout: Main + Thumbnails -->
                 <div class="video-layout" id="videoLayout">
-                    <!-- Main Video Area -->
                     <div class="main-video-area" id="mainVideoArea">
                         <video id="mainVideo" class="main-video-element" autoplay playsinline muted></video>
                         <div class="main-video-label" id="mainVideoLabel">Your Camera</div>
@@ -568,7 +641,6 @@
                             <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
                             <button class="video-control-btn" id="toggleVideoBtn">📹</button>
                         </div>
-                        <!-- Reaction Buttons -->
                         <div class="reaction-bar" id="reactionBar" style="display:none;">
                             <button class="reaction-emoji" data-reaction="😊">😊</button>
                             <button class="reaction-emoji" data-reaction="✋">✋</button>
@@ -579,21 +651,25 @@
                         </div>
                     </div>
 
-                    <!-- Thumbnails Area -->
                     <div class="thumbnails-area">
                         <div class="thumbnails-header">📹 Active Videos</div>
                         <div class="thumbnails-scroll" id="thumbnailsScroll"></div>
                     </div>
                 </div>
 
+                <!-- Chat Section with Scrollable Tabs -->
                 <div class="chat-section">
-                    <div class="chat-tabs" id="chatTabs">
-                        <div class="chat-tab active" data-chat-type="global">💬 Conference Chat</div>
+                    <div class="chat-tabs-container">
+                        <button class="nav-arrow" id="scrollTabsLeft">◀</button>
+                        <div class="chat-tabs-scroll" id="chatTabsScroll">
+                            <div class="chat-tab active" data-chat-type="global" data-peer-id="">💬 Conference Chat</div>
+                        </div>
+                        <button class="nav-arrow" id="scrollTabsRight">▶</button>
                     </div>
                     <div class="messages-container" id="messagesContainer"></div>
                     <div class="input-area">
                         <div class="message-input-wrapper">
-                            <textarea class="message-input" id="messageInput" placeholder="Message everyone... (Enter to send)" rows="1"></textarea>
+                            <textarea class="message-input" id="messageInput" placeholder="Type a message... (Enter to send)" rows="1"></textarea>
                             <button class="send-btn" id="sendBtn">Send</button>
                         </div>
                     </div>
@@ -638,12 +714,15 @@
         let isVideoEnabled = true;
         let currentMainVideo = { type: 'local', peerId: null, label: 'Your Camera' };
         
+        // Chat State
+        let activeChat = 'global'; // 'global' or peerId
+        let globalMessages = [];
+        let dmMessages = new Map(); // peerId -> messages[]
+        let dmTabs = new Map(); // peerId -> { username, unreadCount }
+        let globalUnreadCount = 0;
+        
         // File sharing
         let sharedFiles = new Map();
-        
-        // Chat state
-        let activeChat = 'global';
-        let globalMessages = [];
         
         // DOM Elements
         const mainVideo = document.getElementById('mainVideo');
@@ -653,6 +732,7 @@
         const thumbnailsScroll = document.getElementById('thumbnailsScroll');
         const messagesContainer = document.getElementById('messagesContainer');
         const messageInput = document.getElementById('messageInput');
+        const chatTabsScroll = document.getElementById('chatTabsScroll');
         const peerListEl = document.getElementById('peerList');
         const peerCountSpan = document.getElementById('peerCount');
         const peerCountSidebar = document.getElementById('peerCountSidebar');
@@ -689,14 +769,18 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        function addChatMessage(author, text, time) {
+        function addMessageToUI(author, text, time, isDM = false, recipient = null) {
             const div = document.createElement('div');
-            div.className = 'message';
+            div.className = `message ${isDM ? 'dm' : ''}`;
+            const dmLabel = isDM && recipient ? ` → ${escapeHtml(recipient)}` : '';
             div.innerHTML = `
                 <div class="message-avatar">${escapeHtml(author.substring(0,2).toUpperCase())}</div>
                 <div class="message-content">
-                    <div style="display:flex; gap:6px;"><strong>${escapeHtml(author)}</strong><span style="font-size:10px;color:#9ca3af;">${time}</span></div>
-                    <div>${escapeHtml(text)}</div>
+                    <div class="message-header">
+                        <span class="message-author">${escapeHtml(author)}${dmLabel}</span>
+                        <span class="message-time">${escapeHtml(time)}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(text)}</div>
                 </div>
             `;
             messagesContainer.appendChild(div);
@@ -710,7 +794,221 @@
             peerCountSidebar.textContent = `${count}/${MAX_PARTICIPANTS}`;
         }
         
-        // ==================== Video Layout: Main + Thumbnails ====================
+        // ==================== Chat Tab Management ====================
+        function updateUnreadCounters() {
+            // Update chat tabs
+            const tabs = document.querySelectorAll('.chat-tab');
+            tabs.forEach(tab => {
+                const chatType = tab.getAttribute('data-chat-type');
+                const peerId = tab.getAttribute('data-peer-id');
+                let unread = 0;
+                if (chatType === 'global') {
+                    unread = globalUnreadCount;
+                } else if (peerId) {
+                    unread = dmTabs.get(peerId)?.unreadCount || 0;
+                }
+                
+                const existingBadge = tab.querySelector('.unread-badge');
+                if (unread > 0) {
+                    if (existingBadge) {
+                        existingBadge.textContent = unread > 99 ? '99+' : unread;
+                    } else {
+                        const badge = document.createElement('span');
+                        badge.className = 'unread-badge';
+                        badge.textContent = unread > 99 ? '99+' : unread;
+                        tab.appendChild(badge);
+                    }
+                } else if (existingBadge) {
+                    existingBadge.remove();
+                }
+            });
+            
+            // Update sidebar DM badges
+            for (let [peerId, data] of connections) {
+                const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
+                const userItem = document.querySelector(`.user-item[data-peer-id="${peerId}"] .dm-badge`);
+                if (userItem) {
+                    const existingDot = userItem.querySelector('.unread-dot');
+                    if (unreadCount > 0) {
+                        if (!existingDot) {
+                            userItem.innerHTML += '<span class="unread-dot"></span>';
+                        }
+                    } else if (existingDot) {
+                        existingDot.remove();
+                    }
+                }
+            }
+        }
+        
+        function markChatRead(chatId) {
+            if (chatId === 'global') {
+                globalUnreadCount = 0;
+            } else {
+                const tab = dmTabs.get(chatId);
+                if (tab) {
+                    tab.unreadCount = 0;
+                    dmTabs.set(chatId, tab);
+                }
+            }
+            updateUnreadCounters();
+        }
+        
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            markChatRead(activeChat);
+            
+            if (activeChat === 'global') {
+                globalMessages.forEach(msg => {
+                    addMessageToUI(msg.author, msg.text, msg.time);
+                });
+                messageInput.placeholder = 'Message everyone...';
+            } else {
+                const msgs = dmMessages.get(activeChat) || [];
+                const peerUsername = connections.get(activeChat)?.username || activeChat.substring(0, 8);
+                msgs.forEach(msg => {
+                    addMessageToUI(msg.author, msg.text, msg.time, true, peerUsername);
+                });
+                messageInput.placeholder = `Message @${peerUsername} (DM)...`;
+            }
+        }
+        
+        function renderChatTabs() {
+            let html = `
+                <div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global" data-peer-id="">
+                    💬 Conference Chat
+                    ${globalUnreadCount > 0 ? `<span class="unread-badge">${globalUnreadCount > 99 ? '99+' : globalUnreadCount}</span>` : ''}
+                </div>
+            `;
+            
+            for (let [peerId, data] of dmTabs) {
+                const displayName = data.username.length > 15 ? data.username.substring(0, 12) + '..' : data.username;
+                const unreadBadge = data.unreadCount > 0 ? `<span class="unread-badge">${data.unreadCount > 99 ? '99+' : data.unreadCount}</span>` : '';
+                html += `
+                    <div class="chat-tab ${activeChat === peerId ? 'active' : ''}" data-chat-type="dm" data-peer-id="${escapeHtml(peerId)}">
+                        💬 ${escapeHtml(displayName)}${unreadBadge}
+                        <span class="close-tab" data-peer-id="${escapeHtml(peerId)}">✕</span>
+                    </div>
+                `;
+            }
+            
+            chatTabsScroll.innerHTML = html;
+            
+            // Add event listeners to tabs
+            document.querySelectorAll('.chat-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('close-tab')) {
+                        e.stopPropagation();
+                        const peerId = e.target.getAttribute('data-peer-id');
+                        closeDMTab(peerId);
+                    } else {
+                        const chatType = tab.getAttribute('data-chat-type');
+                        if (chatType === 'global') {
+                            activeChat = 'global';
+                        } else {
+                            const peerId = tab.getAttribute('data-peer-id');
+                            activeChat = peerId;
+                        }
+                        renderMessages();
+                        renderChatTabs();
+                    }
+                });
+            });
+        }
+        
+        function openDM(peerId, peerUsername) {
+            if (!dmTabs.has(peerId)) {
+                dmTabs.set(peerId, { username: peerUsername, unreadCount: 0 });
+                if (!dmMessages.has(peerId)) {
+                    dmMessages.set(peerId, []);
+                }
+            }
+            activeChat = peerId;
+            renderMessages();
+            renderChatTabs();
+            
+            // Scroll to make the new tab visible
+            setTimeout(() => {
+                const newTab = document.querySelector(`.chat-tab[data-peer-id="${peerId}"]`);
+                if (newTab) {
+                    newTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, 100);
+        }
+        
+        function closeDMTab(peerId) {
+            dmTabs.delete(peerId);
+            if (activeChat === peerId) {
+                activeChat = 'global';
+                renderMessages();
+            }
+            renderChatTabs();
+        }
+        
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            const time = getTime();
+            
+            if (activeChat === 'global') {
+                globalMessages.push({ author: username, text, time });
+                addMessageToUI(username, text, time);
+                
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({ type: 'chat', text: text, author: username, time: time, isGlobal: true });
+                    }
+                }
+            } else {
+                const peerId = activeChat;
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: username, text, time, isDM: true });
+                addMessageToUI(username, text, time, true, peerUsername);
+                
+                const connection = connections.get(peerId)?.connection;
+                if (connection && connection.open) {
+                    connection.send({ type: 'dm', text: text, author: username, time: time, to: peerId });
+                }
+            }
+            
+            messageInput.value = '';
+        }
+        
+        function receiveMessage(peerId, data) {
+            if (data.isGlobal) {
+                globalMessages.push({ author: data.author, text: data.text, time: data.time });
+                if (activeChat === 'global') {
+                    addMessageToUI(data.author, data.text, data.time);
+                } else {
+                    globalUnreadCount++;
+                }
+            } else {
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: data.author, text: data.text, time: data.time, isDM: true });
+                
+                if (!dmTabs.has(peerId)) {
+                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
+                    renderChatTabs();
+                } else {
+                    const tab = dmTabs.get(peerId);
+                    if (activeChat !== peerId) {
+                        tab.unreadCount = (tab.unreadCount || 0) + 1;
+                        dmTabs.set(peerId, tab);
+                    }
+                }
+                
+                if (activeChat === peerId) {
+                    addMessageToUI(data.author, data.text, data.time, true, peerUsername);
+                    markChatRead(peerId);
+                }
+            }
+            updateUnreadCounters();
+            renderChatTabs();
+        }
+        
+        // ==================== Video Layout Functions ====================
         function setMainVideo(type, stream, label, peerId = null) {
             currentMainVideo = { type, stream, label, peerId };
             if (stream) {
@@ -731,7 +1029,6 @@
         function renderThumbnails() {
             let html = '';
             
-            // Local thumbnail
             if (localStream && isCameraActive) {
                 const isActive = (currentMainVideo.type === 'local');
                 html += `
@@ -746,7 +1043,6 @@
                 }, 50);
             }
             
-            // Remote thumbnails
             for (let [peerId, data] of connections) {
                 if (data.stream) {
                     const isActive = (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId);
@@ -791,11 +1087,9 @@
         }
         
         function sendReaction(emoji) {
-            // Show on own main video
             showReactionOnMainVideo(emoji);
             addSystemMessage(`✨ You sent ${emoji}`);
             
-            // Broadcast to all peers
             for (let [peerId, data] of connections) {
                 if (data.connection && data.connection.open) {
                     data.connection.send({ type: 'reaction', emoji: emoji, sender: username });
@@ -804,7 +1098,6 @@
         }
         
         function receiveReaction(peerId, emoji, sender) {
-            // Show on main video if it's the active remote video
             if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId) {
                 showReactionOnMainVideo(emoji);
             }
@@ -825,7 +1118,6 @@
                 document.getElementById('toggleAudioBtn').classList.add('active');
                 document.getElementById('toggleVideoBtn').classList.add('active');
                 
-                // Call all existing peers
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open && !data.call) {
                         const call = peer.call(peerId, localStream);
@@ -958,33 +1250,6 @@
         window.downloadFile = downloadFile;
         window.deleteFile = deleteFile;
         
-        // ==================== Chat ====================
-        function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text) return;
-            const time = getTime();
-            globalMessages.push({ author: username, text, time });
-            addChatMessage(username, text, time);
-            for (let [peerId, data] of connections) {
-                if (data.connection && data.connection.open) {
-                    data.connection.send({ type: 'chat', text: text, author: username, time: time });
-                }
-            }
-            messageInput.value = '';
-        }
-        
-        function receiveMessage(peerId, data) {
-            globalMessages.push({ author: data.author, text: data.text, time: data.time });
-            if (activeChat === 'global') {
-                addChatMessage(data.author, data.text, data.time);
-            }
-        }
-        
-        function renderMessages() {
-            messagesContainer.innerHTML = '';
-            globalMessages.forEach(msg => addChatMessage(msg.author, msg.text, msg.time));
-        }
-        
         // ==================== PeerJS Setup ====================
         function setupCall(call, peerId) {
             call.on('stream', (remoteStream) => {
@@ -1052,7 +1317,7 @@
                         sharedFiles.delete(data.fileId);
                         renderFileList();
                     }
-                } else if (data.type === 'chat') {
+                } else if (data.type === 'chat' || data.type === 'dm') {
                     receiveMessage(targetPeerId, data);
                 } else if (data.type === 'reaction') {
                     receiveReaction(targetPeerId, data.emoji, data.sender);
@@ -1108,7 +1373,7 @@
                         sharedFiles.delete(data.fileId);
                         renderFileList();
                     }
-                } else if (data.type === 'chat') {
+                } else if (data.type === 'chat' || data.type === 'dm') {
                     receiveMessage(peerId, data);
                 } else if (data.type === 'reaction') {
                     receiveReaction(peerId, data.emoji, data.sender);
@@ -1149,21 +1414,18 @@
                 } else {
                     peerListEl.innerHTML = peerList.map((data, idx) => {
                         const peerId = Array.from(connections.keys())[idx];
+                        const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
+                        const unreadDot = unreadCount > 0 ? '<span class="unread-dot"></span>' : '';
                         return `
                             <li class="user-item" data-peer-id="${escapeHtml(peerId)}">
                                 <span class="online-dot"></span>
                                 <span>${escapeHtml(data.username)}</span>
-                                <span class="dm-badge" onclick="openDM('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM</span>
+                                <span class="dm-badge" onclick="openDM('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadDot}</span>
                             </li>
                         `;
                     }).join('');
                 }
             }
-        }
-        
-        function openDM(peerId, username) {
-            activeChat = peerId;
-            addSystemMessage(`💬 DM with ${username} - Feature coming soon`);
         }
         
         function copyPeerId() {
@@ -1200,6 +1462,12 @@
             setTimeout(() => window.location.reload(), 1500);
         }
         
+        // ==================== Tab Scrolling ====================
+        function scrollTabs(direction) {
+            const scrollAmount = 150;
+            chatTabsScroll.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+        }
+        
         // ==================== Event Listeners ====================
         document.getElementById('enableCameraBtn')?.addEventListener('click', enableCamera);
         document.getElementById('toggleAudioBtn')?.addEventListener('click', toggleAudio);
@@ -1226,6 +1494,10 @@
                 reactionBar.style.display = 'none';
             });
         });
+        
+        // Tab scrolling
+        document.getElementById('scrollTabsLeft')?.addEventListener('click', () => scrollTabs(-1));
+        document.getElementById('scrollTabsRight')?.addEventListener('click', () => scrollTabs(1));
         
         // File cabinet modal
         const fileModal = document.getElementById('fileCabinetModal');
@@ -1258,11 +1530,12 @@
             addSystemMessage(`📊 Max ${MAX_PARTICIPANTS} participants | Click "Join SnoW Room" to start`);
             addSystemMessage(`📹 Enable camera to share video | Click thumbnails to switch main view`);
             addSystemMessage(`😊 Click the reaction button (😊) to send emoji reactions!`);
+            addSystemMessage(`💬 Click DM on any participant to start private chat - tabs scroll horizontally!`);
             
             renderMessages();
+            renderChatTabs();
             renderFileList();
             
-            // Auto-join default room
             setTimeout(() => joinRoom(), 500);
         }
         
