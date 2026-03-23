@@ -270,7 +270,6 @@
             }
         }
 
-        /* Rest of the styles - keeping same as before */
         .content-area {
             display: flex;
             flex: 1;
@@ -464,10 +463,6 @@
             border: 1px solid var(--accent);
             animation: slideDown 0.3s ease;
         }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
         .main-video-area {
             flex: 2;
             background: #000;
@@ -522,7 +517,7 @@
             background: #2b2d31;
             border: none;
             border-radius: 40px;
-            padding: 8px 12px;
+            padding: 8px 8px;
             cursor: pointer;
             font-size: 20px;
             transition: all 0.2s;
@@ -892,6 +887,7 @@
         
         // ==================== FILE SHARING FUNCTIONS ====================
         function renderFileList() {
+            console.log('Rendering file list, files count:', sharedFiles.size);
             if (sharedFiles.size === 0) {
                 fileListContainer.innerHTML = '<div class="empty-files">📂 No files shared yet. Upload a file to share with peers.</div>';
                 return;
@@ -905,9 +901,9 @@
                 const sizeKB = (file.size / 1024).toFixed(1);
                 const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
                 const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
-                const fileIcon = file.type.startsWith('image/') ? '🖼️' : 
-                                 file.type.startsWith('video/') ? '🎬' : 
-                                 file.type.startsWith('audio/') ? '🎵' : '📄';
+                const fileIcon = file.type && file.type.startsWith('image/') ? '🖼️' : 
+                                 file.type && file.type.startsWith('video/') ? '🎬' : 
+                                 file.type && file.type.startsWith('audio/') ? '🎵' : '📄';
                 const timeAgo = getTimeAgo(file.timestamp);
                 
                 html += `
@@ -961,6 +957,7 @@
                 addSystemMessage(`📤 ${username} shared: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
                 
                 // Broadcast to all connected peers
+                console.log('Broadcasting file to', connections.size, 'peers');
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open) {
                         data.connection.send({
@@ -973,6 +970,7 @@
                             uploader: username,
                             timestamp: Date.now()
                         });
+                        console.log('Sent file to peer:', peerId);
                     }
                 }
             };
@@ -981,6 +979,7 @@
         }
         
         function receiveFile(fileData) {
+            console.log('Received file:', fileData.name, 'from', fileData.uploader);
             if (!sharedFiles.has(fileData.fileId)) {
                 sharedFiles.set(fileData.fileId, {
                     id: fileData.fileId,
@@ -1358,6 +1357,7 @@
                 }
                 
                 // Share ALL existing files with the new peer
+                console.log('Sharing existing files with new peer, files:', sharedFiles.size);
                 for (let [fileId, file] of sharedFiles) {
                     conn.send({
                         type: 'file-share',
@@ -1369,6 +1369,7 @@
                         uploader: file.uploader,
                         timestamp: file.timestamp
                     });
+                    console.log('Shared file:', file.name);
                 }
                 
                 renderUserList();
@@ -1376,6 +1377,7 @@
             });
             
             conn.on('data', (data) => {
+                console.log('Received data type:', data.type);
                 if (data.type === 'username') {
                     const connData = connections.get(peerId);
                     if (connData) { connData.username = data.username; connections.set(peerId, connData); renderUserList(); renderChatTabs(); renderThumbnails(); }
@@ -1417,6 +1419,7 @@
                 conn.send({ type: 'username', username: username });
                 
                 // Share ALL existing files with new peer
+                console.log('Sharing existing files with incoming peer, files:', sharedFiles.size);
                 for (let [fileId, file] of sharedFiles) {
                     conn.send({
                         type: 'file-share',
@@ -1434,6 +1437,7 @@
                 renderThumbnails();
             });
             conn.on('data', (data) => {
+                console.log('Received data type:', data.type);
                 if (data.type === 'username') {
                     const connData = connections.get(peerId);
                     if (connData) { connData.username = data.username; connections.set(peerId, connData); renderUserList(); renderChatTabs(); renderThumbnails(); }
@@ -1552,7 +1556,11 @@
         closeCabinetBtn.onclick = () => fileCabinetModal.classList.remove('active');
         fileCabinetModal.onclick = (e) => { if (e.target === fileCabinetModal) fileCabinetModal.classList.remove('active'); };
         uploadFileBtn.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => { Array.from(e.target.files).forEach(file => uploadFile(file)); fileInput.value = ''; };
+        fileInput.onchange = (e) => { 
+            console.log('Files selected:', e.target.files.length);
+            Array.from(e.target.files).forEach(file => uploadFile(file)); 
+            fileInput.value = ''; 
+        };
         
         // ==================== EMOTE BUTTONS ====================
         document.querySelectorAll('.emote-btn').forEach(btn => {
@@ -1564,7 +1572,7 @@
             addSystemMessage(`🎉 Welcome to AralShare, ${escapeHtml(username)}!`);
             addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed`);
             addSystemMessage(`📹 Click "Enable Camera" for video calls`);
-            addSystemMessage(`📁 Click "File Storage" to share files with peers - ALL connected peers will see and download your files!`);
+            addSystemMessage(`📁 Click "File Storage" to share files - ALL connected peers will see and download your files!`);
             
             peer = new Peer({ debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
             peer.on('open', (id) => { connectionStatusSpan.textContent = 'Connected'; myPeerIdSpan.textContent = id; addSystemMessage(`✅ PeerJS ready! ID: ${id}`); });
@@ -1587,6 +1595,7 @@
             renderChatTabs();
             updateConnectionCounter();
             renderThumbnails();
+            renderFileList(); // Initial render
         }
         
         init();
