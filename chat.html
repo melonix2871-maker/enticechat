@@ -193,7 +193,7 @@
 
         /* Main Video Area - Responsive Fluid Width */
         .main-video-area {
-            flex: 1;
+            flex: 2;
             background: #000;
             border-radius: 20px;
             overflow: hidden;
@@ -223,7 +223,7 @@
 
         /* Thumbnails Area - Desktop Vertical Scroll */
         .thumbnails-area {
-            width: 200px;
+            width: 220px;
             background: rgba(0,0,0,0.3);
             border-radius: 20px;
             overflow-y: auto;
@@ -298,7 +298,7 @@
             font-size: 12px;
         }
 
-        /* MOBILE: Thumbnails - 20% width, horizontal scrollable */
+        /* MOBILE: 3-Column Grid, Scrollable Vertically */
         @media (max-width: 768px) {
             .video-layout {
                 flex-direction: column;
@@ -313,25 +313,30 @@
             }
             .thumbnails-area {
                 width: 100%;
-                overflow-x: auto;
-                overflow-y: hidden;
+                max-height: 40%;
+                overflow-y: auto;
+                overflow-x: hidden;
                 padding: 8px;
                 border-radius: 16px;
                 background: rgba(0,0,0,0.2);
             }
             .thumbnails-title {
-                display: none;
+                display: block;
+                font-size: 11px;
+                padding: 4px 4px 8px 4px;
+                margin-bottom: 4px;
             }
             .thumbnails-grid {
-                flex-direction: row;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
                 gap: 8px;
-                padding-bottom: 4px;
+                flex-direction: row;
             }
             .thumbnail-item {
-                min-width: 20%;
-                width: 20%;
-                flex-shrink: 0;
-                border-radius: 12px;
+                width: 100%;
+                min-width: 0;
+                flex-shrink: 1;
+                border-radius: 10px;
             }
             .thumbnail-item:hover {
                 transform: translateY(-2px);
@@ -578,6 +583,9 @@
                 cursor: pointer;
                 -webkit-tap-highlight-color: transparent;
             }
+            .thumbnails-area {
+                -webkit-overflow-scrolling: touch;
+            }
         }
     </style>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -642,7 +650,7 @@
                     </div>
                 </div>
 
-                <!-- Thumbnails Area - Desktop vertical, Mobile horizontal scrollable at 20% width -->
+                <!-- Thumbnails Area - Desktop vertical, Mobile 3-column grid vertical scroll -->
                 <div class="thumbnails-area" id="thumbnailsArea">
                     <div class="thumbnails-title">📹 ACTIVE VIDEOS</div>
                     <div class="thumbnails-grid" id="thumbnailsGrid"></div>
@@ -1381,7 +1389,7 @@
             addSystemMessage(`🎉 Welcome to ${roomName}, ${escapeHtml(username)}!`);
             addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed in this room`);
             addSystemMessage(`📹 Click "Enable Camera" to start video calls`);
-            addSystemMessage(`🖼️ On mobile, thumbnails are 20% width and scrollable horizontally`);
+            addSystemMessage(`🖼️ On mobile, thumbnails are in a 3-column grid, scrollable vertically`);
             addSystemMessage(`💬 Use "DM" for private chat - unread messages show counters`);
             
             peer = new Peer({
