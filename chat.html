@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KatanaShare - Serverless n-Party Video Chat</title>
+    <title>SnoW - 30-Way P2P Video Conference with File Sharing</title>
     <style>
         :root {
-            --bg: #1e1f22;
+            --bg: #0a0a0a;
             --sidebar-bg: #111214;
             --accent: #5865f2;
             --accent-hover: #4752c4;
@@ -32,41 +32,41 @@
         .main-header {
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border);
-            padding: 12px 20px;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-shrink: 0;
             z-index: 50;
         }
-        .logo-area { display: flex; align-items: center; gap: 10px; }
-        .logo-icon { font-size: 28px; }
+        .logo-area { display: flex; align-items: center; gap: 8px; }
+        .logo-icon { font-size: 24px; }
         .logo-text {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             background: linear-gradient(135deg, var(--accent), #a855f7);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
-        .header-right { display: flex; align-items: center; gap: 12px; }
-        .file-storage-btn {
-            background: var(--accent);
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .file-storage-btn, .reaction-btn {
+            background: #2b2d31;
             border: none;
-            padding: 8px 20px;
+            padding: 6px 14px;
             border-radius: 30px;
             color: white;
-            font-weight: 600;
+            font-size: 12px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
         .room-badge, .peer-count {
             background: #2b2d31;
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 30px;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         /* Content Area */
@@ -74,63 +74,55 @@
         
         /* Sidebar */
         .sidebar {
-            width: 280px;
+            width: 260px;
             background: var(--sidebar-bg);
             display: flex;
             flex-direction: column;
             border-right: 1px solid var(--border);
             flex-shrink: 0;
         }
-        .workspace-header { padding: 20px 16px; border-bottom: 1px solid var(--border); }
-        .workspace-name { font-size: 18px; font-weight: 700; }
-        .workspace-status { font-size: 12px; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+        .workspace-header { padding: 16px; border-bottom: 1px solid var(--border); }
+        .workspace-name { font-size: 16px; font-weight: 700; }
+        .workspace-status { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; }
         .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         
-        .users-section { flex: 1; overflow-y: auto; padding: 16px; }
-        .user-section-title { font-size: 11px; color: var(--text-muted); margin: 0 0 12px 8px; text-transform: uppercase; }
+        .users-section { flex: 1; overflow-y: auto; padding: 12px; }
+        .user-section-title { font-size: 10px; color: var(--text-muted); margin: 0 0 8px 6px; text-transform: uppercase; }
         .user-item {
-            padding: 10px 12px;
+            padding: 8px 10px;
             margin: 2px 0;
             border-radius: 8px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             list-style: none;
         }
         .user-item:hover { background: #2b2d31; }
-        .online-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); }
-        .you-badge { background: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: auto; }
+        .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+        .you-badge { background: var(--accent); padding: 2px 6px; border-radius: 10px; font-size: 9px; margin-left: auto; }
         .dm-badge {
             background: #4b5563;
             padding: 2px 8px;
             border-radius: 10px;
-            font-size: 10px;
+            font-size: 9px;
             cursor: pointer;
             margin-left: auto;
         }
-        .video-badge {
-            background: var(--success);
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 9px;
-            margin-left: 6px;
-        }
         
         .connect-section {
-            padding: 16px;
+            padding: 12px;
             border-top: 1px solid var(--border);
             background: var(--sidebar-bg);
-            flex-shrink: 0;
         }
         .peer-id-input {
             width: 100%;
             background: #2b2d31;
             border: none;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 8px;
             color: white;
-            font-size: 12px;
+            font-size: 11px;
             margin-bottom: 8px;
         }
         .connect-btn {
@@ -142,63 +134,166 @@
             color: white;
             cursor: pointer;
             font-weight: 600;
+            font-size: 12px;
         }
         .limit-warning {
-            background: rgba(245, 158, 11, 0.2);
-            border-left: 3px solid var(--warning);
-            padding: 8px;
-            font-size: 10px;
-            margin-top: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 6px;
+            font-size: 9px;
+            margin-top: 8px;
             border-radius: 6px;
             text-align: center;
         }
 
-        /* Video Grid */
-        .video-grid {
+        /* Video Layout - Main + Thumbnails */
+        .video-layout {
             flex: 1;
-            background: #0a0a0a;
-            overflow-y: auto;
-            padding: 12px;
-        }
-        .videos-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 12px;
-        }
-        .video-wrapper {
-            position: relative;
-            background: #000;
-            border-radius: 12px;
+            display: flex;
+            gap: 8px;
+            padding: 10px;
             overflow: hidden;
-            border: 2px solid var(--border);
+            background: #0a0a0a;
+        }
+        .main-video-area {
+            flex: 3;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid var(--accent);
             aspect-ratio: 16 / 9;
         }
-        .video-wrapper.local { border-color: var(--accent); }
-        .video-wrapper.remote { border-color: var(--success); }
-        .video-element {
+        .main-video-element {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        .video-label {
+        .main-video-label {
             position: absolute;
-            bottom: 8px;
-            left: 8px;
+            bottom: 10px;
+            left: 10px;
             background: rgba(0,0,0,0.7);
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
             font-size: 11px;
+            z-index: 5;
         }
+        .reaction-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            animation: reactionPop 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+        @keyframes reactionPop {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+
+        .thumbnails-area {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(4px);
+        }
+        .thumbnails-header {
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+        .thumbnails-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .thumbnail-item {
+            background: #1a1c20;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            aspect-ratio: 16 / 9;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .thumbnail-item.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+        .thumbnail-item:hover { transform: scale(1.02); border-color: var(--accent); }
+        .thumbnail-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .thumbnail-label {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+        }
+        .thumbnail-reaction {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Reaction Buttons */
+        .reaction-bar {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 12px;
+            border-radius: 40px;
+            backdrop-filter: blur(8px);
+        }
+        .reaction-emoji {
+            background: #2b2d31;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .reaction-emoji:hover { transform: scale(1.1); background: var(--accent); }
+
         .video-controls {
             position: absolute;
-            bottom: 12px;
-            right: 12px;
+            bottom: 16px;
+            left: 16px;
             background: rgba(0,0,0,0.7);
-            padding: 6px;
+            padding: 6px 12px;
             border-radius: 40px;
             display: flex;
-            gap: 6px;
-            z-index: 10;
+            gap: 8px;
+            z-index: 20;
         }
         .video-control-btn {
             width: 36px;
@@ -211,28 +306,11 @@
             cursor: pointer;
         }
         .video-control-btn.active { background: var(--success); }
-        .video-placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            height: 100%;
-            background: linear-gradient(135deg, #1e1f22, #111214);
-        }
-        .video-placeholder button {
-            background: var(--accent);
-            border: none;
-            padding: 12px 28px;
-            border-radius: 30px;
-            color: white;
-            cursor: pointer;
-        }
 
         /* Chat Section */
         .chat-section {
-            height: 35vh;
-            min-height: 250px;
+            height: 30vh;
+            min-height: 200px;
             display: flex;
             flex-direction: column;
             border-top: 1px solid var(--border);
@@ -241,68 +319,52 @@
         .chat-tabs {
             display: flex;
             gap: 4px;
-            padding: 8px 12px;
+            padding: 6px 12px;
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border);
             overflow-x: auto;
         }
         .chat-tab {
-            padding: 6px 14px;
+            padding: 4px 12px;
             background: #2b2d31;
-            border-radius: 20px;
+            border-radius: 16px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             white-space: nowrap;
-            position: relative;
         }
         .chat-tab.active { background: var(--accent); }
-        .chat-tab .unread-badge {
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            background: var(--danger);
-            color: white;
-            font-size: 9px;
-            padding: 2px 5px;
-            border-radius: 10px;
-        }
         .messages-container {
             flex: 1;
             overflow-y: auto;
-            padding: 12px;
+            padding: 10px;
+            font-size: 12px;
         }
         .message {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .message.dm {
-            background: rgba(88,101,242,0.1);
-            border-left: 3px solid var(--accent);
-            padding-left: 8px;
-            border-radius: 6px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
         .message-avatar {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 10px;
         }
         .input-area {
-            padding: 10px 12px;
+            padding: 8px 12px;
             border-top: 1px solid var(--border);
         }
         .message-input-wrapper {
             background: #2b2d31;
-            border-radius: 24px;
-            padding: 8px 12px;
+            border-radius: 20px;
+            padding: 6px 10px;
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
         .message-input {
             flex: 1;
@@ -310,14 +372,16 @@
             border: none;
             color: white;
             outline: none;
+            font-size: 12px;
         }
         .send-btn {
             background: var(--accent);
             border: none;
-            padding: 6px 20px;
-            border-radius: 24px;
+            padding: 4px 14px;
+            border-radius: 20px;
             color: white;
             cursor: pointer;
+            font-size: 11px;
         }
 
         /* File Cabinet Modal */
@@ -337,16 +401,16 @@
         .modal-overlay.active { display: flex; }
         .file-cabinet {
             background: var(--sidebar-bg);
-            border-radius: 24px;
+            border-radius: 20px;
             width: 90%;
-            max-width: 800px;
+            max-width: 700px;
             height: 70%;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
         .cabinet-header {
-            padding: 20px 24px;
+            padding: 16px 20px;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
@@ -358,8 +422,8 @@
         }
         .file-item {
             background: #2b2d31;
-            border-radius: 12px;
-            padding: 12px;
+            border-radius: 10px;
+            padding: 10px;
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
@@ -368,15 +432,16 @@
         .download-btn, .delete-btn {
             background: #1e1f22;
             border: none;
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 6px;
             color: white;
             cursor: pointer;
-            margin-left: 8px;
+            margin-left: 6px;
+            font-size: 11px;
         }
         .download-btn:hover { background: var(--success); }
         .delete-btn:hover { background: var(--danger); }
-        
+
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -386,16 +451,22 @@
                 transform: translateX(-100%);
                 transition: transform 0.2s;
                 z-index: 300;
+                width: 280px;
             }
             .sidebar.open { transform: translateX(0); }
             .top-bar { display: flex !important; }
-            .videos-container { grid-template-columns: 1fr; }
+            .video-layout { flex-direction: column; }
+            .thumbnails-area { max-height: 120px; }
+            .thumbnails-scroll { flex-direction: row; overflow-x: auto; }
+            .thumbnail-item { min-width: 140px; flex-shrink: 0; }
+            .reaction-bar { bottom: 100px; right: 10px; }
+            .reaction-emoji { width: 36px; height: 36px; font-size: 18px; }
         }
         .top-bar {
             display: none;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 16px;
+            padding: 10px 16px;
             background: var(--sidebar-bg);
             position: fixed;
             top: 0;
@@ -407,10 +478,10 @@
             background: var(--accent);
             border: none;
             color: white;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 8px;
-            font-size: 20px;
+            font-size: 18px;
             cursor: pointer;
         }
         .sidebar-overlay {
@@ -432,38 +503,36 @@
     <div class="app-container">
         <div class="main-header">
             <div class="logo-area">
-                <span class="logo-icon">⚔️</span>
-                <span class="logo-text">KatanaShare</span>
+                <span class="logo-icon">❄️</span>
+                <span class="logo-text">SnoW Conference</span>
             </div>
             <div class="header-right">
                 <div class="room-badge">🏠 <span id="roomDisplay">lobby</span></div>
                 <div class="peer-count" id="peerCount">👥 0/30</div>
-                <button class="file-storage-btn" id="fileStorageBtn">📁 File Storage</button>
+                <button class="file-storage-btn" id="fileStorageBtn">📁 Files</button>
+                <button class="reaction-btn" id="reactionToggleBtn">😊 React</button>
             </div>
         </div>
 
         <div class="top-bar" id="mobileTopBar">
             <button class="hamburger" id="hamburgerBtn">☰</button>
             <div class="room-title-mobile" id="mobileRoomName"></div>
-            <div style="width: 40px;"></div>
+            <div style="width: 36px;"></div>
         </div>
 
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <div class="content-area">
             <div class="sidebar" id="sidebar">
-                <button class="sidebar-close-btn" style="display:none;" id="sidebarCloseBtn">✕</button>
                 <div class="workspace-header">
-                    <div class="workspace-name">KatanaShare</div>
+                    <div class="workspace-name">SnoW Mesh Network</div>
                     <div class="workspace-status">
                         <span class="status-indicator"></span>
                         <span id="connectionStatus">Initializing...</span>
                     </div>
-                    <div class="limit-warning" id="limitWarning">
-                        📊 <span id="currentConnections">0</span>/30 users connected
-                    </div>
-                    <div style="font-size: 11px; margin-top: 8px; word-break: break-all; background:#2b2d31; padding:6px; border-radius:6px;">
-                        <strong>Your ID:</strong> <span id="myPeerId">connecting...</span>
+                    <div class="limit-warning" id="limitWarning">❄️ <span id="currentConnections">0</span>/30 participants</div>
+                    <div style="font-size: 10px; margin-top: 8px; background:#2b2d31; padding:5px; border-radius:6px; word-break:break-all;">
+                        <strong>ID:</strong> <span id="myPeerId">connecting...</span>
                         <button id="copyPeerIdBtn" style="background:var(--accent); border:none; border-radius:4px; padding:2px 6px; margin-left:6px; cursor:pointer;">Copy</button>
                     </div>
                 </div>
@@ -472,40 +541,59 @@
                     <ul id="currentUserList" style="list-style:none;">
                         <li class="user-item"><span class="online-dot"></span><span id="currentUsername">You</span><span class="you-badge">You</span></li>
                     </ul>
-                    <div class="user-section-title" style="margin-top:16px;">🟢 CONNECTED (<span id="peerCountSidebar">0</span>/30)</div>
+                    <div class="user-section-title" style="margin-top:12px;">🟢 PARTICIPANTS (<span id="peerCountSidebar">0</span>/30)</div>
                     <ul id="peerList" style="list-style:none;"></ul>
                 </div>
                 <div class="connect-section">
-                    <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Enter Peer ID to connect">
-                    <button id="connectBtn" class="connect-btn">🔗 Connect to Peer</button>
-                    <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 8px;">
-                        SnoW Architecture: Mesh Network | Max 30 Participants
-                    </div>
+                    <input type="text" id="roomInput" class="peer-id-input" placeholder="Room name" value="snow-demo">
+                    <button id="connectRoomBtn" class="connect-btn">❄️ Join SnoW Room</button>
+                    <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Or enter Peer ID to connect" style="margin-top:8px;">
+                    <button id="connectPeerBtn" class="connect-btn">🔗 Connect to Peer</button>
                 </div>
             </div>
 
             <div class="main-content" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-                <div class="video-grid" id="videoGrid">
-                    <div class="video-placeholder" id="videoPlaceholder">
-                        <div style="font-size: 48px;">🎥</div>
-                        <button id="enableCameraBtn">Enable Camera</button>
-                        <p style="margin-top:8px;">Share your video with connected peers</p>
+                <!-- Video Layout: Main + Thumbnails -->
+                <div class="video-layout" id="videoLayout">
+                    <!-- Main Video Area -->
+                    <div class="main-video-area" id="mainVideoArea">
+                        <video id="mainVideo" class="main-video-element" autoplay playsinline muted></video>
+                        <div class="main-video-label" id="mainVideoLabel">Your Camera</div>
+                        <div class="video-placeholder" id="videoPlaceholder" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#1e1f22,#111214); z-index:5;">
+                            <div style="font-size: 40px;">❄️</div>
+                            <button id="enableCameraBtn" style="background:var(--accent); border:none; padding:10px 24px; border-radius:30px; color:white; cursor:pointer; margin-top:12px;">Enable Camera</button>
+                            <p style="margin-top:8px; font-size:11px;">Join the SnoW conference</p>
+                        </div>
+                        <div class="video-controls" id="videoControls" style="display:none;">
+                            <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
+                            <button class="video-control-btn" id="toggleVideoBtn">📹</button>
+                        </div>
+                        <!-- Reaction Buttons -->
+                        <div class="reaction-bar" id="reactionBar" style="display:none;">
+                            <button class="reaction-emoji" data-reaction="😊">😊</button>
+                            <button class="reaction-emoji" data-reaction="✋">✋</button>
+                            <button class="reaction-emoji" data-reaction="👏">👏</button>
+                            <button class="reaction-emoji" data-reaction="👍">👍</button>
+                            <button class="reaction-emoji" data-reaction="🎉">🎉</button>
+                            <button class="reaction-emoji" data-reaction="❤️">❤️</button>
+                        </div>
                     </div>
-                    <div class="videos-container" id="videosContainer" style="display:none;"></div>
-                    <div class="video-controls" id="videoControls" style="display:none;">
-                        <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
-                        <button class="video-control-btn" id="toggleVideoBtn">📹</button>
+
+                    <!-- Thumbnails Area -->
+                    <div class="thumbnails-area">
+                        <div class="thumbnails-header">📹 Active Videos</div>
+                        <div class="thumbnails-scroll" id="thumbnailsScroll"></div>
                     </div>
                 </div>
 
                 <div class="chat-section">
                     <div class="chat-tabs" id="chatTabs">
-                        <div class="chat-tab active" data-chat-type="global">🌍 General Chat</div>
+                        <div class="chat-tab active" data-chat-type="global">💬 Conference Chat</div>
                     </div>
                     <div class="messages-container" id="messagesContainer"></div>
                     <div class="input-area">
                         <div class="message-input-wrapper">
-                            <textarea class="message-input" id="messageInput" placeholder="Type a message... (Enter to send)" rows="1"></textarea>
+                            <textarea class="message-input" id="messageInput" placeholder="Message everyone... (Enter to send)" rows="1"></textarea>
                             <button class="send-btn" id="sendBtn">Send</button>
                         </div>
                     </div>
@@ -518,52 +606,51 @@
     <div class="modal-overlay" id="fileCabinetModal">
         <div class="file-cabinet">
             <div class="cabinet-header">
-                <h2>📁 File Cabinet</h2>
-                <button class="close-cabinet" id="closeCabinetBtn" style="background:#2b2d31; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer;">✕</button>
+                <h3>📁 File Cabinet</h3>
+                <button class="close-cabinet" id="closeCabinetBtn" style="background:#2b2d31; border:none; width:28px; height:28px; border-radius:50%; cursor:pointer;">✕</button>
             </div>
-            <div class="upload-area" style="padding:16px 24px; border-bottom:1px solid var(--border);">
-                <input type="file" id="fileInput" style="display: none;" multiple>
-                <button id="uploadFileBtn" style="background:var(--accent); border:none; padding:8px 20px; border-radius:30px; color:white; cursor:pointer;">📤 Upload File</button>
-                <span style="margin-left:12px; font-size:12px;">Files shared P2P with connected peers</span>
+            <div style="padding:12px 20px; border-bottom:1px solid var(--border);">
+                <input type="file" id="fileInput" style="display:none;" multiple>
+                <button id="uploadFileBtn" style="background:var(--accent); border:none; padding:6px 16px; border-radius:20px; color:white; cursor:pointer;">📤 Upload File</button>
+                <span style="margin-left:10px; font-size:11px;">Files shared P2P with all participants</span>
             </div>
             <div class="file-list" id="fileListContainer">
-                <div style="text-align:center; padding:40px;">No files shared yet</div>
+                <div style="text-align:center; padding:30px;">No files shared yet</div>
             </div>
         </div>
     </div>
 
     <script>
         // ==================== CONFIG ====================
-        const MAX_USERS = 30;
-        const MAX_ACTIVE_VIDEOS = 12;  // Limit video streams for performance (SnoW recommendation)
+        const MAX_PARTICIPANTS = 30;
         
         const urlParams = new URLSearchParams(window.location.search);
-        const roomName = urlParams.get('room') || 'lobby';
+        const roomName = urlParams.get('room') || 'snow-demo';
         const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
         window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
 
         // ==================== STATE ====================
         let peer = null;
         let localStream = null;
-        let connections = new Map(); // peerId -> { connection, username, call, stream, videoActive }
+        let connections = new Map();
         let isCameraActive = false;
         let isAudioEnabled = true;
         let isVideoEnabled = true;
-        
-        // Chat state
-        let activeChat = 'global';
-        let globalMessages = [];
-        let dmMessages = new Map();
-        let dmTabs = new Map();
-        let globalUnreadCount = 0;
+        let currentMainVideo = { type: 'local', peerId: null, label: 'Your Camera' };
         
         // File sharing
         let sharedFiles = new Map();
         
+        // Chat state
+        let activeChat = 'global';
+        let globalMessages = [];
+        
         // DOM Elements
-        const videosContainer = document.getElementById('videosContainer');
+        const mainVideo = document.getElementById('mainVideo');
+        const mainVideoLabel = document.getElementById('mainVideoLabel');
         const videoPlaceholder = document.getElementById('videoPlaceholder');
         const videoControls = document.getElementById('videoControls');
+        const thumbnailsScroll = document.getElementById('thumbnailsScroll');
         const messagesContainer = document.getElementById('messagesContainer');
         const messageInput = document.getElementById('messageInput');
         const peerListEl = document.getElementById('peerList');
@@ -576,7 +663,8 @@
         const connectionStatusSpan = document.getElementById('connectionStatus');
         const currentUsernameSpan = document.getElementById('currentUsername');
         const fileListContainer = document.getElementById('fileListContainer');
-        const limitWarningDiv = document.getElementById('limitWarning');
+        const reactionBar = document.getElementById('reactionBar');
+        const reactionToggleBtn = document.getElementById('reactionToggleBtn');
         
         currentUsernameSpan.textContent = username;
         roomDisplay.textContent = roomName;
@@ -596,19 +684,18 @@
             const div = document.createElement('div');
             div.className = 'message';
             div.style.opacity = '0.7';
-            div.innerHTML = `<div class="message-avatar">🤖</div><div class="message-content"><div>${escapeHtml(msg)}</div></div>`;
+            div.innerHTML = `<div class="message-avatar">❄️</div><div class="message-content"><div>${escapeHtml(msg)}</div></div>`;
             messagesContainer.appendChild(div);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        function addChatMessage(author, text, time, isDM = false, recipient = null) {
+        function addChatMessage(author, text, time) {
             const div = document.createElement('div');
-            div.className = `message ${isDM ? 'dm' : ''}`;
-            const dmLabel = isDM && recipient ? ` → ${escapeHtml(recipient)}` : '';
+            div.className = 'message';
             div.innerHTML = `
                 <div class="message-avatar">${escapeHtml(author.substring(0,2).toUpperCase())}</div>
                 <div class="message-content">
-                    <div style="display:flex; gap:8px;"><strong>${escapeHtml(author)}${dmLabel}</strong><span style="font-size:11px;color:#9ca3af;">${time}</span></div>
+                    <div style="display:flex; gap:6px;"><strong>${escapeHtml(author)}</strong><span style="font-size:10px;color:#9ca3af;">${time}</span></div>
                     <div>${escapeHtml(text)}</div>
                 </div>
             `;
@@ -619,122 +706,134 @@
         function updateConnectionCounter() {
             const count = connections.size;
             currentConnectionsSpan.textContent = count;
-            peerCountSpan.textContent = `👥 ${count}/${MAX_USERS}`;
-            peerCountSidebar.textContent = `${count}/${MAX_USERS}`;
-            
-            if (count >= MAX_USERS) {
-                limitWarningDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-                limitWarningDiv.style.borderLeftColor = '#ef4444';
-                limitWarningDiv.innerHTML = `⚠️ ROOM FULL - ${count}/${MAX_USERS} users connected`;
-            } else if (count >= MAX_USERS - 5) {
-                limitWarningDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-                limitWarningDiv.style.borderLeftColor = '#f59e0b';
-                limitWarningDiv.innerHTML = `⚠️ ${count}/${MAX_USERS} - Only ${MAX_USERS - count} spots left!`;
+            peerCountSpan.textContent = `👥 ${count}/${MAX_PARTICIPANTS}`;
+            peerCountSidebar.textContent = `${count}/${MAX_PARTICIPANTS}`;
+        }
+        
+        // ==================== Video Layout: Main + Thumbnails ====================
+        function setMainVideo(type, stream, label, peerId = null) {
+            currentMainVideo = { type, stream, label, peerId };
+            if (stream) {
+                mainVideo.srcObject = stream;
+                mainVideo.muted = (type === 'local');
+                mainVideoLabel.textContent = label;
+                videoPlaceholder.style.display = 'none';
+                videoControls.style.display = 'flex';
+                mainVideo.style.display = 'block';
             } else {
-                limitWarningDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-                limitWarningDiv.style.borderLeftColor = '#f59e0b';
-                limitWarningDiv.innerHTML = `📊 ${count}/${MAX_USERS} users connected (SnoW Mesh)`;
+                videoPlaceholder.style.display = 'flex';
+                videoControls.style.display = 'none';
+                mainVideo.style.display = 'none';
+            }
+            renderThumbnails();
+        }
+        
+        function renderThumbnails() {
+            let html = '';
+            
+            // Local thumbnail
+            if (localStream && isCameraActive) {
+                const isActive = (currentMainVideo.type === 'local');
+                html += `
+                    <div class="thumbnail-item ${isActive ? 'active' : ''}" onclick="selectThumbnail('local', null, 'Your Camera')">
+                        <video id="thumb_local" class="thumbnail-video" autoplay playsinline muted></video>
+                        <div class="thumbnail-label">📹 You</div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    const thumb = document.getElementById('thumb_local');
+                    if (thumb && localStream) thumb.srcObject = localStream;
+                }, 50);
+            }
+            
+            // Remote thumbnails
+            for (let [peerId, data] of connections) {
+                if (data.stream) {
+                    const isActive = (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId);
+                    const displayName = data.username || peerId.substring(0, 8);
+                    html += `
+                        <div class="thumbnail-item ${isActive ? 'active' : ''}" onclick="selectThumbnail('remote', '${escapeHtml(peerId)}', '${escapeHtml(displayName)}')">
+                            <video id="thumb_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}" class="thumbnail-video" autoplay playsinline></video>
+                            <div class="thumbnail-label">👤 ${escapeHtml(displayName)}</div>
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        const thumb = document.getElementById(`thumb_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                        if (thumb && data.stream) thumb.srcObject = data.stream;
+                    }, 50);
+                }
+            }
+            
+            if (html === '') {
+                html = '<div style="padding:20px; text-align:center; color:#6b7280;">No active videos<br>Enable camera to start</div>';
+            }
+            thumbnailsScroll.innerHTML = html;
+        }
+        
+        window.selectThumbnail = function(type, peerId, label) {
+            if (type === 'local' && localStream && isCameraActive) {
+                setMainVideo('local', localStream, label);
+            } else if (type === 'remote' && peerId) {
+                const data = connections.get(peerId);
+                if (data && data.stream) {
+                    setMainVideo('remote', data.stream, label, peerId);
+                }
+            }
+        };
+        
+        // ==================== Reactions ====================
+        function showReactionOnMainVideo(emoji) {
+            const overlay = document.createElement('div');
+            overlay.className = 'reaction-overlay';
+            overlay.textContent = emoji;
+            document.getElementById('mainVideoArea').appendChild(overlay);
+            setTimeout(() => overlay.remove(), 500);
+        }
+        
+        function sendReaction(emoji) {
+            // Show on own main video
+            showReactionOnMainVideo(emoji);
+            addSystemMessage(`✨ You sent ${emoji}`);
+            
+            // Broadcast to all peers
+            for (let [peerId, data] of connections) {
+                if (data.connection && data.connection.open) {
+                    data.connection.send({ type: 'reaction', emoji: emoji, sender: username });
+                }
             }
         }
         
-        // ==================== Video Rendering ====================
-        function renderVideos() {
-            const hasLocal = isCameraActive;
-            const hasRemote = Array.from(connections.values()).some(c => c.stream);
-            
-            if (!hasLocal && !hasRemote) {
-                videosContainer.style.display = 'none';
-                videoPlaceholder.style.display = 'flex';
-                videoControls.style.display = 'none';
-                return;
+        function receiveReaction(peerId, emoji, sender) {
+            // Show on main video if it's the active remote video
+            if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId) {
+                showReactionOnMainVideo(emoji);
             }
-            
-            videosContainer.style.display = 'grid';
-            videoPlaceholder.style.display = 'none';
-            videoControls.style.display = 'flex';
-            
-            let html = '';
-            
-            // Local video
-            if (localStream && isCameraActive) {
-                html += `
-                    <div class="video-wrapper local">
-                        <video id="localVideo" class="video-element" autoplay playsinline muted></video>
-                        <div class="video-label">📹 You (${escapeHtml(username)})</div>
-                    </div>
-                `;
-                setTimeout(() => {
-                    const vid = document.getElementById('localVideo');
-                    if (vid && localStream) vid.srcObject = localStream;
-                }, 100);
-            }
-            
-            // Remote videos - limit to MAX_ACTIVE_VIDEOS (SnoW recommendation)
-            const videoPeers = Array.from(connections.entries())
-                .filter(([_, data]) => data.stream)
-                .slice(0, MAX_ACTIVE_VIDEOS);
-            
-            for (let [peerId, data] of videoPeers) {
-                html += `
-                    <div class="video-wrapper remote">
-                        <video id="remote_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}" class="video-element" autoplay playsinline></video>
-                        <div class="video-label">👤 ${escapeHtml(data.username || peerId.substring(0, 8))}</div>
-                    </div>
-                `;
-                setTimeout(() => {
-                    const vid = document.getElementById(`remote_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}`);
-                    if (vid && data.stream) vid.srcObject = data.stream;
-                }, 100);
-            }
-            
-            // Show extra count if more peers without video
-            const videoCount = videoPeers.length;
-            const totalPeers = connections.size;
-            if (totalPeers > videoCount && videoCount > 0) {
-                html += `
-                    <div class="video-wrapper" style="background: #1a1a1a; display: flex; align-items: center; justify-content: center;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 24px;">👥</div>
-                            <div style="font-size: 11px;">+${totalPeers - videoCount} more (audio/data only)</div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            videosContainer.innerHTML = html;
+            addSystemMessage(`✨ ${sender} sent ${emoji}`);
         }
         
         // ==================== Camera ====================
         async function enableCamera() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: 16/9 },
+                    video: { width: { ideal: 640 }, height: { ideal: 360 }, aspectRatio: 16/9 },
                     audio: true
                 });
                 isCameraActive = true;
-                renderVideos();
-                addSystemMessage('🎥 Camera enabled - Sharing with connected peers');
+                setMainVideo('local', localStream, 'Your Camera');
+                addSystemMessage('🎥 Camera enabled');
                 
                 document.getElementById('toggleAudioBtn').classList.add('active');
                 document.getElementById('toggleVideoBtn').classList.add('active');
                 
                 // Call all existing peers
-                let callCount = 0;
                 for (let [peerId, data] of connections) {
-                    if (callCount >= MAX_ACTIVE_VIDEOS) {
-                        addSystemMessage(`⚠️ Max video streams (${MAX_ACTIVE_VIDEOS}) reached. ${data.username} connected for audio/data only.`);
-                        continue;
-                    }
                     if (data.connection && data.connection.open && !data.call) {
                         const call = peer.call(peerId, localStream);
                         setupCall(call, peerId);
                         data.call = call;
-                        data.videoActive = true;
                         connections.set(peerId, data);
-                        callCount++;
                     }
                 }
-                
                 renderUserList();
             } catch(err) {
                 addSystemMessage('❌ Camera access denied');
@@ -768,7 +867,7 @@
         // ==================== File Sharing ====================
         function renderFileList() {
             if (sharedFiles.size === 0) {
-                fileListContainer.innerHTML = '<div style="text-align:center; padding:40px;">📂 No files shared yet. Upload a file to share with peers.</div>';
+                fileListContainer.innerHTML = '<div style="text-align:center; padding:30px;">📂 No files shared yet</div>';
                 return;
             }
             
@@ -777,10 +876,7 @@
                 const sizeKB = (file.size / 1024).toFixed(1);
                 html += `
                     <div class="file-item">
-                        <div>
-                            <strong>${escapeHtml(file.name)}</strong><br>
-                            <small>${sizeKB} KB • ${escapeHtml(file.uploader)}</small>
-                        </div>
+                        <div><strong>${escapeHtml(file.name)}</strong><br><small>${sizeKB} KB • ${escapeHtml(file.uploader)}</small></div>
                         <div>
                             <button class="download-btn" onclick="window.downloadFile('${escapeHtml(fileId)}')">⬇️ Download</button>
                             ${file.uploader === username ? `<button class="delete-btn" onclick="window.deleteFile('${escapeHtml(fileId)}')">🗑️ Delete</button>` : ''}
@@ -801,7 +897,6 @@
                     id: fileId,
                     name: file.name,
                     size: file.size,
-                    type: file.type,
                     data: fileData,
                     uploader: username,
                     timestamp: Date.now()
@@ -811,22 +906,12 @@
                 renderFileList();
                 addSystemMessage(`📤 Shared: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
                 
-                // Broadcast to all connected peers
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open) {
-                        data.connection.send({
-                            type: 'file-share',
-                            fileId: fileId,
-                            name: file.name,
-                            size: file.size,
-                            type: file.type,
-                            data: fileData,
-                            uploader: username
-                        });
+                        data.connection.send({ type: 'file-share', fileId: fileId, name: file.name, size: file.size, data: fileData, uploader: username });
                     }
                 }
             };
-            
             reader.readAsDataURL(file);
         }
         
@@ -836,7 +921,6 @@
                     id: fileData.fileId,
                     name: fileData.name,
                     size: fileData.size,
-                    type: fileData.type,
                     data: fileData.data,
                     uploader: fileData.uploader,
                     timestamp: Date.now()
@@ -863,7 +947,6 @@
                 sharedFiles.delete(fileId);
                 renderFileList();
                 addSystemMessage(`🗑️ Deleted: ${file.name}`);
-                
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open) {
                         data.connection.send({ type: 'file-delete', fileId: fileId });
@@ -875,175 +958,31 @@
         window.downloadFile = downloadFile;
         window.deleteFile = deleteFile;
         
-        // ==================== Chat Functions ====================
-        function updateUnreadCounters() {
-            const tabs = document.querySelectorAll('.chat-tab');
-            tabs.forEach(tab => {
-                const chatType = tab.getAttribute('data-chat-type');
-                let unread = 0;
-                if (chatType === 'global') {
-                    unread = globalUnreadCount;
-                } else {
-                    const peerId = tab.getAttribute('data-peer-id');
-                    unread = dmTabs.get(peerId)?.unreadCount || 0;
-                }
-                
-                const existingBadge = tab.querySelector('.unread-badge');
-                if (unread > 0) {
-                    if (existingBadge) {
-                        existingBadge.textContent = unread > 99 ? '99+' : unread;
-                    } else {
-                        const badge = document.createElement('span');
-                        badge.className = 'unread-badge';
-                        badge.textContent = unread > 99 ? '99+' : unread;
-                        tab.appendChild(badge);
-                    }
-                } else if (existingBadge) {
-                    existingBadge.remove();
-                }
-            });
-        }
-        
-        function markChatRead(chatId) {
-            if (chatId === 'global') {
-                globalUnreadCount = 0;
-            } else {
-                const tab = dmTabs.get(chatId);
-                if (tab) tab.unreadCount = 0;
-            }
-            updateUnreadCounters();
-        }
-        
-        function renderMessages() {
-            messagesContainer.innerHTML = '';
-            markChatRead(activeChat);
-            
-            if (activeChat === 'global') {
-                globalMessages.forEach(msg => addChatMessage(msg.author, msg.text, msg.time));
-                messageInput.placeholder = 'Message everyone...';
-            } else {
-                const msgs = dmMessages.get(activeChat) || [];
-                const peerUsername = connections.get(activeChat)?.username || activeChat.substring(0, 8);
-                msgs.forEach(msg => addChatMessage(msg.author, msg.text, msg.time, true, peerUsername));
-                messageInput.placeholder = `Message @${peerUsername} (DM)...`;
-            }
-        }
-        
-        function renderChatTabs() {
-            let html = `<div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global">🌍 General Chat</div>`;
-            
-            for (let [peerId, data] of dmTabs) {
-                const displayName = data.username.length > 12 ? data.username.substring(0, 10) + '..' : data.username;
-                const unreadBadge = data.unreadCount > 0 ? `<span class="unread-badge">${data.unreadCount > 99 ? '99+' : data.unreadCount}</span>` : '';
-                html += `
-                    <div class="chat-tab ${activeChat === peerId ? 'active' : ''}" data-chat-type="dm" data-peer-id="${escapeHtml(peerId)}">
-                        💬 ${escapeHtml(displayName)}${unreadBadge}
-                        <span class="close-tab" data-peer-id="${escapeHtml(peerId)}">✕</span>
-                    </div>
-                `;
-            }
-            
-            chatTabs.innerHTML = html;
-            
-            document.querySelectorAll('.chat-tab').forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('close-tab')) {
-                        e.stopPropagation();
-                        const peerId = e.target.getAttribute('data-peer-id');
-                        dmTabs.delete(peerId);
-                        if (activeChat === peerId) {
-                            activeChat = 'global';
-                            renderMessages();
-                        }
-                        renderChatTabs();
-                    } else {
-                        const chatType = tab.getAttribute('data-chat-type');
-                        if (chatType === 'global') {
-                            activeChat = 'global';
-                        } else {
-                            const peerId = tab.getAttribute('data-peer-id');
-                            activeChat = peerId;
-                        }
-                        renderMessages();
-                        renderChatTabs();
-                    }
-                });
-            });
-        }
-        
-        function openDM(peerId, username) {
-            if (!dmTabs.has(peerId)) {
-                dmTabs.set(peerId, { username, unreadCount: 0 });
-                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
-            }
-            activeChat = peerId;
-            renderMessages();
-            renderChatTabs();
-        }
-        
+        // ==================== Chat ====================
         function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
             const time = getTime();
-            
-            if (activeChat === 'global') {
-                globalMessages.push({ author: username, text, time });
-                addChatMessage(username, text, time);
-                
-                for (let [peerId, data] of connections) {
-                    if (data.connection && data.connection.open) {
-                        data.connection.send({ type: 'global-chat', text: text, author: username, time: time });
-                    }
-                }
-            } else {
-                const peerId = activeChat;
-                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
-                
-                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
-                dmMessages.get(peerId).push({ author: username, text, time, isDM: true });
-                addChatMessage(username, text, time, true, peerUsername);
-                
-                const connection = connections.get(peerId)?.connection;
-                if (connection && connection.open) {
-                    connection.send({ type: 'dm', text: text, author: username, time: time });
+            globalMessages.push({ author: username, text, time });
+            addChatMessage(username, text, time);
+            for (let [peerId, data] of connections) {
+                if (data.connection && data.connection.open) {
+                    data.connection.send({ type: 'chat', text: text, author: username, time: time });
                 }
             }
-            
             messageInput.value = '';
         }
         
-        function receiveMessage(peerId, type, data) {
-            if (type === 'global-chat') {
-                globalMessages.push({ author: data.author, text: data.text, time: data.time });
-                if (activeChat === 'global') {
-                    addChatMessage(data.author, data.text, data.time);
-                } else {
-                    globalUnreadCount++;
-                }
-            } else if (type === 'dm') {
-                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
-                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
-                dmMessages.get(peerId).push({ author: data.author, text: data.text, time: data.time, isDM: true });
-                
-                if (!dmTabs.has(peerId)) {
-                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
-                    renderChatTabs();
-                } else {
-                    const tab = dmTabs.get(peerId);
-                    if (activeChat !== peerId) {
-                        tab.unreadCount = (tab.unreadCount || 0) + 1;
-                        dmTabs.set(peerId, tab);
-                    }
-                }
-                
-                if (activeChat === peerId) {
-                    addChatMessage(data.author, data.text, data.time, true, peerUsername);
-                    markChatRead(peerId);
-                }
+        function receiveMessage(peerId, data) {
+            globalMessages.push({ author: data.author, text: data.text, time: data.time });
+            if (activeChat === 'global') {
+                addChatMessage(data.author, data.text, data.time);
             }
-            
-            updateUnreadCounters();
-            renderChatTabs();
+        }
+        
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            globalMessages.forEach(msg => addChatMessage(msg.author, msg.text, msg.time));
         }
         
         // ==================== PeerJS Setup ====================
@@ -1053,35 +992,26 @@
                 if (data) {
                     data.stream = remoteStream;
                     connections.set(peerId, data);
-                    renderVideos();
-                    addSystemMessage(`📹 Video received from ${data.username || peerId.substring(0, 8)}`);
+                    renderThumbnails();
+                    if (currentMainVideo.type === 'local' && !currentMainVideo.stream) {
+                        setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId);
+                    }
                 }
             });
-            
             call.on('close', () => {
                 const data = connections.get(peerId);
                 if (data) {
                     data.stream = null;
-                    data.videoActive = false;
                     connections.set(peerId, data);
-                    renderVideos();
+                    renderThumbnails();
                 }
             });
         }
         
         function connectToPeer(targetPeerId) {
-            if (connections.has(targetPeerId)) {
-                addSystemMessage(`Already connected to ${targetPeerId}`);
-                return;
-            }
-            if (targetPeerId === peer.id) {
-                addSystemMessage(`Cannot connect to yourself`);
-                return;
-            }
-            if (connections.size >= MAX_USERS) {
-                addSystemMessage(`⚠️ Max users (${MAX_USERS}) reached. Cannot connect to ${targetPeerId}`);
-                return;
-            }
+            if (connections.has(targetPeerId)) { addSystemMessage(`Already connected to ${targetPeerId}`); return; }
+            if (targetPeerId === peer.id) { addSystemMessage(`Cannot connect to yourself`); return; }
+            if (connections.size >= MAX_PARTICIPANTS) { addSystemMessage(`⚠️ Max participants (${MAX_PARTICIPANTS}) reached`); return; }
             
             addSystemMessage(`Connecting to ${targetPeerId}...`);
             const conn = peer.connect(targetPeerId);
@@ -1094,26 +1024,17 @@
                     connection: conn,
                     username: targetPeerId.substring(0, 8),
                     call: null,
-                    stream: null,
-                    videoActive: false
+                    stream: null
                 });
                 updateConnectionCounter();
                 
-                // SnoW-inspired: Limit active video streams to preserve bandwidth
-                const activeVideoCount = Array.from(connections.values()).filter(c => c.videoActive).length;
-                if (localStream && isCameraActive && activeVideoCount < MAX_ACTIVE_VIDEOS) {
+                if (localStream && isCameraActive) {
                     const call = peer.call(targetPeerId, localStream);
                     setupCall(call, targetPeerId);
-                    const data = connections.get(targetPeerId);
-                    data.call = call;
-                    data.videoActive = true;
-                    connections.set(targetPeerId, data);
-                } else if (localStream && isCameraActive) {
-                    addSystemMessage(`⚠️ Max video streams (${MAX_ACTIVE_VIDEOS}) reached. ${targetPeerId.substring(0,8)} connected for audio/data only.`);
+                    connections.get(targetPeerId).call = call;
                 }
-                
                 renderUserList();
-                renderVideos();
+                renderThumbnails();
             });
             
             conn.on('data', (data) => {
@@ -1123,7 +1044,6 @@
                         connData.username = data.username;
                         connections.set(targetPeerId, connData);
                         renderUserList();
-                        renderChatTabs();
                     }
                 } else if (data.type === 'file-share') {
                     receiveFile(data);
@@ -1131,10 +1051,11 @@
                     if (sharedFiles.has(data.fileId)) {
                         sharedFiles.delete(data.fileId);
                         renderFileList();
-                        addSystemMessage(`🗑️ File deleted by peer`);
                     }
-                } else if (data.type === 'global-chat' || data.type === 'dm') {
-                    receiveMessage(targetPeerId, data.type, data);
+                } else if (data.type === 'chat') {
+                    receiveMessage(targetPeerId, data);
+                } else if (data.type === 'reaction') {
+                    receiveReaction(targetPeerId, data.emoji, data.sender);
                 }
             });
             
@@ -1142,42 +1063,36 @@
                 addSystemMessage(`❌ Disconnected from ${targetPeerId}`);
                 connections.delete(targetPeerId);
                 updateConnectionCounter();
-                renderVideos();
+                renderThumbnails();
                 renderUserList();
-                if (dmTabs.has(targetPeerId)) {
-                    dmTabs.delete(targetPeerId);
-                    renderChatTabs();
+                if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === targetPeerId && localStream && isCameraActive) {
+                    setMainVideo('local', localStream, 'Your Camera');
                 }
             });
         }
         
         function handleIncomingConnection(conn) {
             const peerId = conn.peer;
-            
-            if (connections.size >= MAX_USERS) {
-                addSystemMessage(`⚠️ Max users (${MAX_USERS}) reached. Cannot accept connection from ${peerId}`);
+            if (connections.size >= MAX_PARTICIPANTS) {
+                addSystemMessage(`⚠️ Room full. Cannot accept connection from ${peerId}`);
                 conn.close();
                 return;
             }
             
             addSystemMessage(`📞 Incoming connection from ${peerId}`);
-            
             conn.on('open', () => {
                 addSystemMessage(`✅ Connected to ${peerId}`);
-                conn.send({ type: 'username', username: username });
-                
                 connections.set(peerId, {
                     connection: conn,
                     username: peerId.substring(0, 8),
                     call: null,
-                    stream: null,
-                    videoActive: false
+                    stream: null
                 });
                 updateConnectionCounter();
+                conn.send({ type: 'username', username: username });
                 renderUserList();
-                renderVideos();
+                renderThumbnails();
             });
-            
             conn.on('data', (data) => {
                 if (data.type === 'username') {
                     const connData = connections.get(peerId);
@@ -1185,7 +1100,6 @@
                         connData.username = data.username;
                         connections.set(peerId, connData);
                         renderUserList();
-                        renderChatTabs();
                     }
                 } else if (data.type === 'file-share') {
                     receiveFile(data);
@@ -1193,45 +1107,29 @@
                     if (sharedFiles.has(data.fileId)) {
                         sharedFiles.delete(data.fileId);
                         renderFileList();
-                        addSystemMessage(`🗑️ File deleted by peer`);
                     }
-                } else if (data.type === 'global-chat' || data.type === 'dm') {
-                    receiveMessage(peerId, data.type, data);
+                } else if (data.type === 'chat') {
+                    receiveMessage(peerId, data);
+                } else if (data.type === 'reaction') {
+                    receiveReaction(peerId, data.emoji, data.sender);
                 }
             });
-            
             conn.on('close', () => {
                 addSystemMessage(`❌ Disconnected from ${peerId}`);
                 connections.delete(peerId);
                 updateConnectionCounter();
-                renderVideos();
+                renderThumbnails();
                 renderUserList();
-                if (dmTabs.has(peerId)) {
-                    dmTabs.delete(peerId);
-                    renderChatTabs();
-                }
             });
         }
         
         function handleIncomingCall(call) {
             const peerId = call.peer;
-            
-            const activeVideoCount = Array.from(connections.values()).filter(c => c.videoActive).length;
-            if (activeVideoCount >= MAX_ACTIVE_VIDEOS) {
-                addSystemMessage(`⚠️ Max video streams (${MAX_ACTIVE_VIDEOS}) reached. Cannot accept video from ${peerId}`);
-                call.close();
-                return;
-            }
-            
             if (localStream && isCameraActive) {
                 call.answer(localStream);
                 setupCall(call, peerId);
                 const connData = connections.get(peerId);
-                if (connData) {
-                    connData.call = call;
-                    connData.videoActive = true;
-                    connections.set(peerId, connData);
-                }
+                if (connData) connData.call = call;
             } else {
                 call.close();
             }
@@ -1245,22 +1143,17 @@
             }
             
             const peerList = Array.from(connections.values());
-            
             if (peerListEl) {
                 if (peerList.length === 0) {
                     peerListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No connected peers</li>';
                 } else {
                     peerListEl.innerHTML = peerList.map((data, idx) => {
                         const peerId = Array.from(connections.keys())[idx];
-                        const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
-                        const unreadBadge = unreadCount > 0 ? `<span class="unread-counter" style="background:var(--danger); color:white; font-size:9px; padding:2px 5px; border-radius:10px; margin-left:4px;">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
-                        const videoBadge = data.videoActive ? `<span class="video-badge" style="background:var(--success);">📹</span>` : `<span class="video-badge" style="background:var(--text-muted);">🎧</span>`;
                         return `
                             <li class="user-item" data-peer-id="${escapeHtml(peerId)}">
                                 <span class="online-dot"></span>
                                 <span>${escapeHtml(data.username)}</span>
-                                ${videoBadge}
-                                <span class="dm-badge" onclick="window.openDMFromSidebar('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadBadge}</span>
+                                <span class="dm-badge" onclick="openDM('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM</span>
                             </li>
                         `;
                     }).join('');
@@ -1268,15 +1161,36 @@
             }
         }
         
-        window.openDMFromSidebar = (peerId, username) => {
-            openDM(peerId, username);
-        };
+        function openDM(peerId, username) {
+            activeChat = peerId;
+            addSystemMessage(`💬 DM with ${username} - Feature coming soon`);
+        }
         
         function copyPeerId() {
             if (peer && peer.id) {
                 navigator.clipboard.writeText(peer.id);
-                addSystemMessage('📋 Peer ID copied to clipboard');
+                addSystemMessage('📋 Peer ID copied');
             }
+        }
+        
+        function joinRoom() {
+            const room = document.getElementById('roomInput').value.trim() || 'snow-demo';
+            addSystemMessage(`❄️ Joining SnoW room: ${room}...`);
+            
+            peer = new Peer({
+                debug: 1,
+                config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
+            });
+            
+            peer.on('open', (id) => {
+                connectionStatusSpan.textContent = 'Connected';
+                myPeerIdSpan.textContent = id;
+                addSystemMessage(`✅ Connected! Your ID: ${id}`);
+                addSystemMessage(`❄️ Share this ID to invite others. Max: ${MAX_PARTICIPANTS} participants`);
+            });
+            peer.on('connection', handleIncomingConnection);
+            peer.on('call', handleIncomingCall);
+            peer.on('error', (err) => { addSystemMessage(`❌ Error: ${err.type}`); });
         }
         
         function leaveRoom() {
@@ -1286,98 +1200,70 @@
             setTimeout(() => window.location.reload(), 1500);
         }
         
-        // ==================== DOM Elements for sidebar ====================
-        const copyPeerIdBtn = document.getElementById('copyPeerIdBtn');
-        const connectBtn = document.getElementById('connectBtn');
-        const peerIdInput = document.getElementById('peerIdInput');
-        const enableCameraBtn = document.getElementById('enableCameraBtn');
-        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
-        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
-        const sendBtn = document.getElementById('sendBtn');
-        const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+        // ==================== Event Listeners ====================
+        document.getElementById('enableCameraBtn')?.addEventListener('click', enableCamera);
+        document.getElementById('toggleAudioBtn')?.addEventListener('click', toggleAudio);
+        document.getElementById('toggleVideoBtn')?.addEventListener('click', toggleVideo);
+        document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
+        document.getElementById('connectRoomBtn')?.addEventListener('click', joinRoom);
+        document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
+            const targetId = document.getElementById('peerIdInput').value.trim();
+            if (targetId) connectToPeer(targetId);
+        });
+        document.getElementById('copyPeerIdBtn')?.addEventListener('click', copyPeerId);
+        document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
+        messageInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+        
+        // Reaction toggle
+        reactionToggleBtn?.addEventListener('click', () => {
+            const isVisible = reactionBar.style.display === 'flex';
+            reactionBar.style.display = isVisible ? 'none' : 'flex';
+        });
+        document.querySelectorAll('.reaction-emoji').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const emoji = btn.getAttribute('data-reaction');
+                sendReaction(emoji);
+                reactionBar.style.display = 'none';
+            });
+        });
+        
+        // File cabinet modal
+        const fileModal = document.getElementById('fileCabinetModal');
         const fileStorageBtn = document.getElementById('fileStorageBtn');
-        const fileCabinetModalEl = document.getElementById('fileCabinetModal');
         const closeCabinetBtn = document.getElementById('closeCabinetBtn');
         const uploadFileBtn = document.getElementById('uploadFileBtn');
         const fileInputEl = document.getElementById('fileInput');
         
-        // Event listeners
-        if (enableCameraBtn) enableCameraBtn.onclick = enableCamera;
-        if (toggleAudioBtn) toggleAudioBtn.onclick = toggleAudio;
-        if (toggleVideoBtn) toggleVideoBtn.onclick = toggleVideo;
-        if (sendBtn) sendBtn.onclick = sendMessage;
-        if (leaveRoomBtn) leaveRoomBtn.onclick = leaveRoom;
-        if (connectBtn) connectBtn.onclick = () => {
-            const targetId = peerIdInput.value.trim();
-            if (targetId) connectToPeer(targetId);
-            peerIdInput.value = '';
-        };
-        if (copyPeerIdBtn) copyPeerIdBtn.onclick = copyPeerId;
-        if (messageInput) messageInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
-        
-        // File cabinet modal
-        if (fileStorageBtn) fileStorageBtn.onclick = () => fileCabinetModalEl.classList.add('active');
-        if (closeCabinetBtn) closeCabinetBtn.onclick = () => fileCabinetModalEl.classList.remove('active');
-        if (fileCabinetModalEl) fileCabinetModalEl.onclick = (e) => { if (e.target === fileCabinetModalEl) fileCabinetModalEl.classList.remove('active'); };
-        if (uploadFileBtn) uploadFileBtn.onclick = () => fileInputEl.click();
-        if (fileInputEl) fileInputEl.onchange = (e) => {
+        fileStorageBtn?.addEventListener('click', () => fileModal.classList.add('active'));
+        closeCabinetBtn?.addEventListener('click', () => fileModal.classList.remove('active'));
+        fileModal?.addEventListener('click', (e) => { if (e.target === fileModal) fileModal.classList.remove('active'); });
+        uploadFileBtn?.addEventListener('click', () => fileInputEl.click());
+        fileInputEl?.addEventListener('change', (e) => {
             Array.from(e.target.files).forEach(file => uploadFile(file));
             fileInputEl.value = '';
-        };
+        });
         
         // Mobile sidebar
-        const hamburgerBtnEl = document.getElementById('hamburgerBtn');
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
         const sidebarEl = document.getElementById('sidebar');
         const sidebarOverlayEl = document.getElementById('sidebarOverlay');
-        const sidebarCloseBtnEl = document.getElementById('sidebarCloseBtn');
-        
         function openSidebar() { sidebarEl.classList.add('open'); sidebarOverlayEl.classList.add('active'); }
         function closeSidebar() { sidebarEl.classList.remove('open'); sidebarOverlayEl.classList.remove('active'); }
-        if (hamburgerBtnEl) hamburgerBtnEl.onclick = openSidebar;
-        if (sidebarCloseBtnEl) sidebarCloseBtnEl.onclick = closeSidebar;
-        if (sidebarOverlayEl) sidebarOverlayEl.onclick = closeSidebar;
+        hamburgerBtn?.addEventListener('click', openSidebar);
+        sidebarOverlayEl?.addEventListener('click', closeSidebar);
         
-        // ==================== Initialize PeerJS ====================
+        // ==================== INIT ====================
         function init() {
-            addSystemMessage(`🎉 Welcome to KatanaShare, ${escapeHtml(username)}!`);
-            addSystemMessage(`📊 SnoW Architecture: Max ${MAX_USERS} users, ${MAX_ACTIVE_VIDEOS} active video streams`);
-            addSystemMessage(`📹 Click "Enable Camera" to start video calls`);
-            addSystemMessage(`📁 Click "File Storage" to share files with connected peers`);
-            addSystemMessage(`🔗 Share your Peer ID to connect with others`);
+            addSystemMessage(`❄️ Welcome to SnoW Conference, ${escapeHtml(username)}!`);
+            addSystemMessage(`📊 Max ${MAX_PARTICIPANTS} participants | Click "Join SnoW Room" to start`);
+            addSystemMessage(`📹 Enable camera to share video | Click thumbnails to switch main view`);
+            addSystemMessage(`😊 Click the reaction button (😊) to send emoji reactions!`);
             
-            peer = new Peer({
-                debug: 1,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' }
-                    ]
-                }
-            });
-            
-            peer.on('open', (id) => {
-                connectionStatusSpan.textContent = 'Connected';
-                myPeerIdSpan.textContent = id;
-                addSystemMessage(`✅ PeerJS ready! Your ID: ${id}`);
-                addSystemMessage(`📊 SnoW Mesh Network: ${MAX_USERS} user capacity`);
-            });
-            
-            peer.on('connection', handleIncomingConnection);
-            peer.on('call', handleIncomingCall);
-            
-            peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                connectionStatusSpan.textContent = 'Error';
-                if (err.type !== 'unavailable-id') {
-                    addSystemMessage(`❌ Peer error: ${err.type}`);
-                }
-            });
-            
-            renderChatTabs();
-            updateConnectionCounter();
-            renderVideos();
+            renderMessages();
             renderFileList();
+            
+            // Auto-join default room
+            setTimeout(() => joinRoom(), 500);
         }
         
         init();
