@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>EnticeChat - P2P Video Chat (35 Users Max)</title>
+    <style>
+        :root {
+            --bg: #1e1f22;
+            --sidebar: #111214;
+            --accent: #5865f2;
+            --accent-hover: #4752c4;
+            --text: #e0e0e0;
+            --text-muted: #9ca3af;
+            --border: #2b2d31;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+        .app-container { display: flex; height: 100vh; }
+
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+                transition: transform 0.2s ease;
+                z-index: 300;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .top-bar { display: flex !important; }
+        }
+
+        .top-bar {
+            display: none;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--sidebar);
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 150;
+        }
+        .hamburger {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0 12px;
+        }
+        .room-title-mobile { flex: 1; text-align: center; font-weight: 700; }
+
+        .workspace-header { padding: 20px 16px; border-bottom: 1px solid var(--border); }
+        .workspace-name { font-size: 18px; font-weight: 700; }
+        .workspace-status {
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .users-section { flex: 1; overflow-y: auto; padding: 16px; }
+        .user-section-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0 0 12px 8px;
+            text-transform: uppercase;
+        }
+        .user-count-badge {
+            background: var(--accent);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+        }
+        .user-item {
+            padding: 10px 12px;
+            margin: 2px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            list-style: none;
+            cursor: pointer;
+            position: relative;
+        }
+        .user-item:hover { background: #2b2d31; }
+        .online-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .dm-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            cursor: pointer;
+            background: #4b5563;
+            margin-left: auto;
+            position: relative;
+        }
+        .dm-badge .unread-counter {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--danger);
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .you-badge {
+            background: var(--accent);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-left: auto;
+        }
+        .peer-id-card {
+            background: #2b2d31;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 12px;
+            font-size: 11px;
+            word-break: break-all;
+        }
+        .peer-id-card button {
+            background: var(--accent);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+            margin-left: 8px;
+        }
+        .limit-warning {
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 3px solid var(--warning);
+            padding: 8px;
+            font-size: 10px;
+            margin-top: 12px;
+            border-radius: 6px;
+        }
+        .limit-warning.warning-full {
+            background: rgba(239, 68, 68, 0.2);
+            border-left-color: var(--danger);
+        }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        .video-section {
+            background: #0a0a0a;
+            position: relative;
+            height: 45vh;
+            min-height: 280px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid var(--border);
+            aspect-ratio: 16 / 9;
+        }
+        .video-container.local-video { border-color: var(--accent); }
+        .video-container.remote-video { border-color: var(--success); }
+        .video-element {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-label {
+            position: absolute;
+            bottom: 6px;
+            left: 6px;
+            background: rgba(0,0,0,0.7);
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-size: 10px;
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px;
+            border-radius: 40px;
+            display: flex;
+            gap: 6px;
+            z-index: 20;
+        }
+        .video-control-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #2b2d31;
+            border: none;
+            font-size: 18px;
+            color: white;
+            cursor: pointer;
+        }
+        .video-control-btn.active { background: var(--success); }
+        .video-control-btn.muted { background: var(--danger); }
+        .video-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            background: linear-gradient(135deg, #1e1f22, #111214);
+            z-index: 15;
+        }
+        .video-placeholder button {
+            background: var(--accent);
+            border: none;
+            padding: 12px 28px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+            overflow: hidden;
+            min-height: 200px;
+        }
+        .chat-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 6px 12px;
+            background: var(--sidebar);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+        .chat-tab {
+            padding: 6px 14px;
+            background: #2b2d31;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+        .chat-tab.active {
+            background: var(--accent);
+        }
+        .chat-tab .unread-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 12px;
+            min-width: 20px;
+            text-align: center;
+        }
+        .chat-tab .close-tab {
+            margin-left: 6px;
+            font-size: 12px;
+            opacity: 0.7;
+            cursor: pointer;
+        }
+        .chat-tab .close-tab:hover { opacity: 1; }
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message {
+            display: flex;
+            gap: 8px;
+            animation: fadeIn 0.2s;
+        }
+        .message.dm {
+            background: rgba(88,101,242,0.1);
+            border-left: 3px solid var(--accent);
+            padding-left: 8px;
+            border-radius: 6px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+        .message-content { flex: 1; }
+        .message-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 3px;
+            flex-wrap: wrap;
+        }
+        .message-author { font-weight: 700; font-size: 13px; }
+        .message-time { font-size: 10px; color: var(--text-muted); }
+        .message-text { font-size: 13px; word-break: break-word; }
+
+        .input-area {
+            padding: 10px 12px;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+            flex-shrink: 0;
+        }
+        .message-input-wrapper {
+            background: #2b2d31;
+            border-radius: 10px;
+            padding: 6px 10px;
+            display: flex;
+            gap: 8px;
+        }
+        .message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 13px;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+        }
+        .send-btn {
+            background: var(--accent);
+            border: none;
+            padding: 6px 18px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .connection-badge {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: #2b2d31;
+            padding: 6px 14px;
+            border-radius: 25px;
+            font-size: 11px;
+            z-index: 100;
+        }
+    </style>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div class="top-bar" id="mobileTopBar">
+        <button class="hamburger" id="hamburgerBtn">☰</button>
+        <div class="room-title-mobile" id="mobileRoomName"></div>
+    </div>
+
+    <div class="app-container">
+        <div class="sidebar" id="sidebar">
+            <div class="workspace-header">
+                <div class="workspace-name" id="workspaceName">EnticeChat</div>
+                <div class="workspace-status">
+                    <span class="status-indicator"></span>
+                    <span id="connectionStatus">Initializing...</span>
+                </div>
+                <div class="peer-id-card">
+                    <strong>Your ID:</strong> <span id="myPeerId">connecting...</span>
+                    <button id="copyPeerIdBtn">Copy</button>
+                </div>
+                <div class="limit-warning" id="limitWarning">
+                    📊 <span id="currentConnections">0</span>/<span id="maxConnections">35</span> users connected
+                </div>
+                <button id="leaveRoomBtn" style="margin-top:10px;width:100%;background:#ef4444;border:none;border-radius:8px;padding:8px;color:white;cursor:pointer;font-size:12px;">🚪 Leave Room</button>
+            </div>
+            <div class="users-section">
+                <div class="user-section-title">👤 YOU</div>
+                <ul id="currentUserList" style="list-style:none;"></ul>
+                <div class="user-section-title" style="margin-top:16px;">🟢 CONNECTED (<span id="activeUserCount">0</span>/<span id="maxUserDisplay">35</span>)</div>
+                <ul id="activeUserList" style="list-style:none;"></ul>
+                <div class="user-section-title" style="margin-top:16px;">➕ CONNECT TO PEER</div>
+                <div style="display: flex; gap: 6px; margin-top: 6px;">
+                    <input type="text" id="peerIdInput" placeholder="Enter Peer ID" style="flex:1; background:#2b2d31; border:none; border-radius:6px; padding:6px 10px; color:white; font-size:12px;">
+                    <button id="connectBtn" style="background:var(--accent); border:none; border-radius:6px; padding:6px 12px; color:white; cursor:pointer; font-size:12px;">Connect</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="video-section">
+                <div class="video-placeholder" id="videoPlaceholder">
+                    <div style="font-size:40px;">🎥</div>
+                    <button id="enableCameraBtn">Enable Camera</button>
+                    <p style="margin-top:8px;font-size:11px;">Share your video with connected peers</p>
+                </div>
+                <div class="videos-grid" id="videosGrid" style="display:none;"></div>
+                <div class="video-controls" id="videoControls" style="display:none;">
+                    <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
+                    <button class="video-control-btn" id="toggleVideoBtn">📹</button>
+                </div>
+            </div>
+
+            <div class="chat-section">
+                <div class="chat-tabs" id="chatTabs">
+                    <div class="chat-tab active" data-chat-type="global">🌍 General Chat</div>
+                </div>
+                <div class="messages-container" id="messagesContainer"></div>
+                <div class="input-area">
+                    <div class="message-input-wrapper">
+                        <textarea class="message-input" id="messageInput" placeholder="Type a message... (Enter to send)" rows="1"></textarea>
+                        <button class="send-btn" id="sendBtn">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="connection-badge" id="connectionBadge">
+        🔗 Room: <span id="roomUrlDisplay"></span> | 35 User Limit
+    </div>
+
+    <script>
+        // ==================== CONFIG ====================
+        const MAX_USERS = 35;
+        const MAX_VIDEO_STREAMS = 12;
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomName = urlParams.get('room') || 'lobby';
+        const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
+        window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
+
+        // ==================== STATE ====================
+        let peer = null;
+        let localStream = null;
+        let connections = new Map();
+        let isCameraActive = false;
+        let isAudioEnabled = true;
+        let isVideoEnabled = true;
+        
+        let activeChat = 'global';
+        let globalMessages = [];
+        let dmMessages = new Map();
+        let dmTabs = new Map();
+        let globalUnreadCount = 0;
+        
+        // ==================== DOM Elements ====================
+        const videosGrid = document.getElementById('videosGrid');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const videoControls = document.getElementById('videoControls');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const chatTabs = document.getElementById('chatTabs');
+        const activeUserListEl = document.getElementById('activeUserList');
+        const currentUserListEl = document.getElementById('currentUserList');
+        const activeUserCountSpan = document.getElementById('activeUserCount');
+        const currentConnectionsSpan = document.getElementById('currentConnections');
+        const maxConnectionsSpan = document.getElementById('maxConnections');
+        const maxUserDisplaySpan = document.getElementById('maxUserDisplay');
+        const limitWarningDiv = document.getElementById('limitWarning');
+        const roomUrlDisplay = document.getElementById('roomUrlDisplay');
+        const workspaceNameSpan = document.getElementById('workspaceName');
+        const mobileRoomNameSpan = document.getElementById('mobileRoomName');
+        const sidebar = document.getElementById('sidebar');
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const connectionStatusSpan = document.getElementById('connectionStatus');
+        const myPeerIdSpan = document.getElementById('myPeerId');
+        const peerIdInput = document.getElementById('peerIdInput');
+        const connectBtn = document.getElementById('connectBtn');
+        const copyPeerIdBtn = document.getElementById('copyPeerIdBtn');
+        
+        maxConnectionsSpan.textContent = MAX_USERS;
+        maxUserDisplaySpan.textContent = MAX_USERS;
+        
+        // ==================== Helpers ====================
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
+        }
+        
+        function getTime() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function updateConnectionCounter() {
+            const count = connections.size;
+            currentConnectionsSpan.textContent = count;
+            activeUserCountSpan.textContent = count;
+            
+            if (count >= MAX_USERS) {
+                limitWarningDiv.classList.add('warning-full');
+                limitWarningDiv.innerHTML = `⚠️ <strong>ROOM FULL</strong> - ${count}/${MAX_USERS} users connected`;
+            } else if (count >= MAX_USERS - 5) {
+                limitWarningDiv.classList.add('warning-full');
+                limitWarningDiv.innerHTML = `⚠️ ${count}/${MAX_USERS} users - Only ${MAX_USERS - count} spots left!`;
+            } else {
+                limitWarningDiv.classList.remove('warning-full');
+                limitWarningDiv.innerHTML = `📊 ${count}/${MAX_USERS} users connected`;
+            }
+        }
+        
+        function addSystemMessage(msg) {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.style.opacity = '0.7';
+            div.innerHTML = `<div class="message-avatar">🤖</div><div class="message-content"><div class="message-text">${escapeHtml(msg)}</div></div>`;
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function addMessageToUI(author, text, time, isDM = false, recipient = null) {
+            const div = document.createElement('div');
+            div.className = `message ${isDM ? 'dm' : ''}`;
+            const avatarText = author.substring(0, 2).toUpperCase();
+            const dmLabel = isDM && recipient ? ` → ${escapeHtml(recipient)}` : '';
+            
+            div.innerHTML = `
+                <div class="message-avatar">${escapeHtml(avatarText)}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${escapeHtml(author)}${dmLabel}</span>
+                        <span class="message-time">${escapeHtml(time)}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(text)}</div>
+                </div>
+            `;
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function updateUnreadCounters() {
+            const tabs = document.querySelectorAll('.chat-tab');
+            tabs.forEach(tab => {
+                const chatType = tab.getAttribute('data-chat-type');
+                let unread = 0;
+                
+                if (chatType === 'global') {
+                    unread = globalUnreadCount;
+                } else {
+                    const peerId = tab.getAttribute('data-peer-id');
+                    unread = dmTabs.get(peerId)?.unreadCount || 0;
+                }
+                
+                const existingBadge = tab.querySelector('.unread-badge');
+                if (unread > 0) {
+                    if (existingBadge) {
+                        existingBadge.textContent = unread > 99 ? '99+' : unread;
+                    } else {
+                        const badge = document.createElement('span');
+                        badge.className = 'unread-badge';
+                        badge.textContent = unread > 99 ? '99+' : unread;
+                        tab.appendChild(badge);
+                    }
+                } else if (existingBadge) {
+                    existingBadge.remove();
+                }
+            });
+            
+            for (let [peerId, data] of connections) {
+                const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
+                const userItem = document.querySelector(`.user-item[data-peer-id="${peerId}"] .dm-badge`);
+                if (userItem) {
+                    const existingCounter = userItem.querySelector('.unread-counter');
+                    if (unreadCount > 0) {
+                        if (existingCounter) {
+                            existingCounter.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                        } else {
+                            userItem.innerHTML += `<span class="unread-counter">${unreadCount > 99 ? '99+' : unreadCount}</span>`;
+                        }
+                    } else if (existingCounter) {
+                        existingCounter.remove();
+                    }
+                }
+            }
+        }
+        
+        function markChatRead(chatId) {
+            if (chatId === 'global') {
+                globalUnreadCount = 0;
+            } else {
+                const tab = dmTabs.get(chatId);
+                if (tab) {
+                    tab.unreadCount = 0;
+                    dmTabs.set(chatId, tab);
+                }
+            }
+            updateUnreadCounters();
+        }
+        
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            markChatRead(activeChat);
+            
+            if (activeChat === 'global') {
+                globalMessages.forEach(msg => {
+                    addMessageToUI(msg.author, msg.text, msg.time);
+                });
+                messageInput.placeholder = 'Message everyone...';
+            } else {
+                const msgs = dmMessages.get(activeChat) || [];
+                const peerUsername = connections.get(activeChat)?.username || activeChat.substring(0, 8);
+                msgs.forEach(msg => {
+                    addMessageToUI(msg.author, msg.text, msg.time, true, msg.isDM ? peerUsername : null);
+                });
+                messageInput.placeholder = `Message @${peerUsername} (DM)...`;
+            }
+        }
+        
+        function renderChatTabs() {
+            let html = `<div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global">🌍 General Chat</div>`;
+            
+            for (let [peerId, data] of dmTabs) {
+                const displayName = data.username.length > 12 ? data.username.substring(0, 10) + '..' : data.username;
+                const unreadBadge = data.unreadCount > 0 ? `<span class="unread-badge">${data.unreadCount > 99 ? '99+' : data.unreadCount}</span>` : '';
+                html += `
+                    <div class="chat-tab ${activeChat === peerId ? 'active' : ''}" data-chat-type="dm" data-peer-id="${escapeHtml(peerId)}">
+                        💬 ${escapeHtml(displayName)}${unreadBadge}
+                        <span class="close-tab" data-peer-id="${escapeHtml(peerId)}">✕</span>
+                    </div>
+                `;
+            }
+            
+            chatTabs.innerHTML = html;
+            
+            document.querySelectorAll('.chat-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('close-tab')) {
+                        e.stopPropagation();
+                        const peerId = e.target.getAttribute('data-peer-id');
+                        closeDMTab(peerId);
+                    } else {
+                        const chatType = tab.getAttribute('data-chat-type');
+                        if (chatType === 'global') {
+                            activeChat = 'global';
+                        } else {
+                            const peerId = tab.getAttribute('data-peer-id');
+                            activeChat = peerId;
+                        }
+                        renderMessages();
+                        renderChatTabs();
+                    }
+                });
+            });
+        }
+        
+        function openDM(peerId, username) {
+            if (!dmTabs.has(peerId)) {
+                dmTabs.set(peerId, { username, unreadCount: 0 });
+                if (!dmMessages.has(peerId)) {
+                    dmMessages.set(peerId, []);
+                }
+            }
+            activeChat = peerId;
+            renderMessages();
+            renderChatTabs();
+        }
+        
+        function closeDMTab(peerId) {
+            dmTabs.delete(peerId);
+            if (activeChat === peerId) {
+                activeChat = 'global';
+                renderMessages();
+            }
+            renderChatTabs();
+        }
+        
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            const time = getTime();
+            
+            if (activeChat === 'global') {
+                globalMessages.push({ author: username, text, time });
+                addMessageToUI(username, text, time);
+                
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({ type: 'global-chat', text: text, author: username, time: time });
+                    }
+                }
+            } else {
+                const peerId = activeChat;
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: username, text, time, isDM: true });
+                addMessageToUI(username, text, time, true, peerUsername);
+                
+                const connection = connections.get(peerId)?.connection;
+                if (connection && connection.open) {
+                    connection.send({ type: 'dm', text: text, author: username, time: time });
+                }
+            }
+            
+            messageInput.value = '';
+        }
+        
+        function receiveMessage(peerId, type, data) {
+            if (type === 'global-chat') {
+                globalMessages.push({ author: data.author, text: data.text, time: data.time });
+                if (activeChat === 'global') {
+                    addMessageToUI(data.author, data.text, data.time);
+                } else {
+                    globalUnreadCount++;
+                }
+            } else if (type === 'dm') {
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: data.author, text: data.text, time: data.time, isDM: true });
+                
+                if (!dmTabs.has(peerId)) {
+                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
+                    renderChatTabs();
+                } else {
+                    const tab = dmTabs.get(peerId);
+                    if (activeChat !== peerId) {
+                        tab.unreadCount = (tab.unreadCount || 0) + 1;
+                        dmTabs.set(peerId, tab);
+                    }
+                }
+                
+                if (activeChat === peerId) {
+                    addMessageToUI(data.author, data.text, data.time, true, peerUsername);
+                    markChatRead(peerId);
+                }
+            }
+            
+            updateUnreadCounters();
+            renderChatTabs();
+        }
+        
+        // ==================== Video Rendering ====================
+        function renderVideos() {
+            const hasVideos = isCameraActive || connections.size > 0;
+            
+            if (!hasVideos) {
+                videosGrid.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+                videoControls.style.display = 'none';
+                return;
+            }
+            
+            videosGrid.style.display = 'grid';
+            videoPlaceholder.style.display = 'none';
+            videoControls.style.display = 'flex';
+            
+            let html = '';
+            
+            if (localStream && isCameraActive) {
+                html += `
+                    <div class="video-container local-video">
+                        <video id="localVideo" class="video-element" autoplay playsinline muted></video>
+                        <div class="video-label">📹 You (${escapeHtml(username)})</div>
+                    </div>
+                `;
+            }
+            
+            const activeVideoPeers = Array.from(connections.entries())
+                .filter(([_, data]) => data.stream)
+                .slice(0, MAX_VIDEO_STREAMS);
+            
+            for (let [peerId, data] of activeVideoPeers) {
+                const vidId = `remote_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                html += `
+                    <div class="video-container remote-video">
+                        <video id="${vidId}" class="video-element" autoplay playsinline></video>
+                        <div class="video-label">👤 ${escapeHtml(data.username || peerId.substring(0, 8))}</div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    const el = document.getElementById(vidId);
+                    if (el && data.stream) el.srcObject = data.stream;
+                }, 100);
+            }
+            
+            const videoCount = activeVideoPeers.length;
+            const totalPeers = connections.size;
+            if (totalPeers > videoCount) {
+                html += `
+                    <div class="video-container" style="background: #1a1a1a; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; margin-bottom: 8px;">👥</div>
+                            <div style="font-size: 11px;">${totalPeers - videoCount} more connected</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            videosGrid.innerHTML = html;
+            setTimeout(() => {
+                const localVid = document.getElementById('localVideo');
+                if (localVid && localStream) localVid.srcObject = localStream;
+            }, 100);
+        }
+        
+        // ==================== Camera ====================
+        async function enableCamera() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 360 }, aspectRatio: 16/9 },
+                    audio: true
+                });
+                isCameraActive = true;
+                renderVideos();
+                addSystemMessage('🎥 Camera enabled - Sharing with connected peers');
+                
+                document.getElementById('toggleAudioBtn').classList.add('active');
+                document.getElementById('toggleVideoBtn').classList.add('active');
+                
+                let callCount = 0;
+                for (let [peerId, data] of connections) {
+                    if (callCount >= MAX_VIDEO_STREAMS) break;
+                    if (data.connection && data.connection.open && !data.call) {
+                        const call = peer.call(peerId, localStream);
+                        setupCall(call, peerId);
+                        data.call = call;
+                        connections.set(peerId, data);
+                        callCount++;
+                    }
+                }
+                
+                renderUserList();
+            } catch(err) {
+                addSystemMessage('❌ Camera access denied');
+            }
+        }
+        
+        function toggleAudio() {
+            if (!localStream) return;
+            const track = localStream.getAudioTracks()[0];
+            if (track) {
+                isAudioEnabled = !isAudioEnabled;
+                track.enabled = isAudioEnabled;
+                const btn = document.getElementById('toggleAudioBtn');
+                btn.textContent = isAudioEnabled ? '🎤' : '🔇';
+                btn.classList.toggle('active', isAudioEnabled);
+                btn.classList.toggle('muted', !isAudioEnabled);
+            }
+        }
+        
+        function toggleVideo() {
+            if (!localStream) return;
+            const track = localStream.getVideoTracks()[0];
+            if (track) {
+                isVideoEnabled = !isVideoEnabled;
+                track.enabled = isVideoEnabled;
+                const btn = document.getElementById('toggleVideoBtn');
+                btn.textContent = isVideoEnabled ? '📹' : '🚫';
+                btn.classList.toggle('active', isVideoEnabled);
+                btn.classList.toggle('muted', !isVideoEnabled);
+            }
+        }
+        
+        // ==================== PeerJS ====================
+        function setupCall(call, peerId) {
+            call.on('stream', (remoteStream) => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = remoteStream;
+                    connections.set(peerId, data);
+                    renderVideos();
+                }
+            });
+            
+            call.on('close', () => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = null;
+                    connections.set(peerId, data);
+                    renderVideos();
+                }
+            });
+        }
+        
+        function connectToPeer(peerId) {
+            if (connections.has(peerId)) {
+                addSystemMessage(`Already connected to ${peerId}`);
+                return;
+            }
+            if (peerId === peer.id) {
+                addSystemMessage(`Cannot connect to yourself`);
+                return;
+            }
+            if (connections.size >= MAX_USERS) {
+                addSystemMessage(`⚠️ Room is full (${MAX_USERS} users max). Cannot connect to ${peerId}`);
+                return;
+            }
+            
+            addSystemMessage(`Connecting to ${peerId}...`);
+            
+            const conn = peer.connect(peerId);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${peerId}`);
+                
+                conn.send({ type: 'username', username: username });
+                
+                connections.set(peerId, {
+                    connection: conn,
+                    username: peerId.substring(0, 8),
+                    call: null,
+                    stream: null
+                });
+                updateConnectionCounter();
+                
+                if (localStream && isCameraActive && connections.size <= MAX_VIDEO_STREAMS) {
+                    const call = peer.call(peerId, localStream);
+                    setupCall(call, peerId);
+                    const data = connections.get(peerId);
+                    data.call = call;
+                    connections.set(peerId, data);
+                }
+                
+                renderUserList();
+                renderVideos();
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(peerId);
+                    if (connData) {
+                        connData.username = data.username;
+                        connections.set(peerId, connData);
+                        renderUserList();
+                        renderChatTabs();
+                    }
+                } else if (data.type === 'global-chat' || data.type === 'dm') {
+                    receiveMessage(peerId, data.type, data);
+                }
+            });
+            
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${peerId}`);
+                connections.delete(peerId);
+                updateConnectionCounter();
+                closeDMTab(peerId);
+                renderVideos();
+                renderUserList();
+            });
+        }
+        
+        function handleIncomingConnection(conn) {
+            const peerId = conn.peer;
+            
+            if (connections.size >= MAX_USERS) {
+                addSystemMessage(`⚠️ Room is full (${MAX_USERS} users max). Cannot accept connection from ${peerId}`);
+                conn.send({ type: 'room-full', message: 'Room is full' });
+                conn.close();
+                return;
+            }
+            
+            addSystemMessage(`📞 Incoming connection from ${peerId}`);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${peerId}`);
+                
+                connections.set(peerId, {
+                    connection: conn,
+                    username: peerId.substring(0, 8),
+                    call: null,
+                    stream: null
+                });
+                updateConnectionCounter();
+                
+                conn.send({ type: 'username', username: username });
+                renderUserList();
+                renderVideos();
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(peerId);
+                    if (connData) {
+                        connData.username = data.username;
+                        connections.set(peerId, connData);
+                        renderUserList();
+                        renderChatTabs();
+                    }
+                } else if (data.type === 'global-chat' || data.type === 'dm') {
+                    receiveMessage(peerId, data.type, data);
+                }
+            });
+            
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${peerId}`);
+                connections.delete(peerId);
+                updateConnectionCounter();
+                closeDMTab(peerId);
+                renderVideos();
+                renderUserList();
+            });
+        }
+        
+        function handleIncomingCall(call) {
+            const peerId = call.peer;
+            
+            if (connections.size >= MAX_VIDEO_STREAMS) {
+                addSystemMessage(`⚠️ Max video streams reached. Cannot accept video call from ${peerId}`);
+                call.close();
+                return;
+            }
+            
+            if (localStream && isCameraActive) {
+                call.answer(localStream);
+                setupCall(call, peerId);
+                
+                const connData = connections.get(peerId);
+                if (connData) {
+                    connData.call = call;
+                    connections.set(peerId, connData);
+                }
+            } else {
+                call.close();
+            }
+        }
+        
+        // ==================== UI ====================
+        function renderUserList() {
+            if (currentUserListEl) {
+                currentUserListEl.innerHTML = `
+                    <li class="user-item" style="background:#2b2d31;">
+                        <span class="online-dot"></span>
+                        <span>${escapeHtml(username)}</span>
+                        <span class="you-badge">You</span>
+                    </li>
+                `;
+            }
+            
+            const peerList = Array.from(connections.values());
+            
+            if (activeUserListEl) {
+                if (peerList.length === 0) {
+                    activeUserListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No connected peers</li>';
+                } else {
+                    activeUserListEl.innerHTML = peerList.map((data, idx) => {
+                        const peerId = Array.from(connections.keys())[idx];
+                        const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
+                        const unreadBadge = unreadCount > 0 ? `<span class="unread-counter">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+                        return `
+                            <li class="user-item" data-peer-id="${escapeHtml(peerId)}">
+                                <span class="online-dot"></span>
+                                <span>${escapeHtml(data.username)}</span>
+                                <span class="dm-badge" onclick="window.openDMFromSidebar('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadBadge}</span>
+                            </li>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+        
+        function copyPeerId() {
+            if (peer && peer.id) {
+                navigator.clipboard.writeText(peer.id);
+                addSystemMessage('📋 Peer ID copied to clipboard');
+            }
+        }
+        
+        function leaveRoom() {
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (peer) peer.destroy();
+            addSystemMessage('👋 Left. Reload to rejoin.');
+            setTimeout(() => window.location.reload(), 1500);
+        }
+        
+        window.openDMFromSidebar = (peerId, username) => {
+            openDM(peerId, username);
+        };
+        
+        // ==================== Init ====================
+        function init() {
+            roomUrlDisplay.textContent = roomName;
+            workspaceNameSpan.textContent = roomName;
+            if (mobileRoomNameSpan) mobileRoomNameSpan.textContent = roomName;
+            
+            addSystemMessage(`🎉 Welcome to ${roomName}, ${escapeHtml(username)}!`);
+            addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed in this room`);
+            addSystemMessage(`📹 Click "Enable Camera" to start video calls`);
+            addSystemMessage(`🔗 Share your Peer ID to connect with others`);
+            addSystemMessage(`💬 Use "DM" for private chat - unread messages show counters`);
+            
+            peer = new Peer({
+                debug: 1,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
+            
+            peer.on('open', (id) => {
+                connectionStatusSpan.textContent = 'Connected';
+                myPeerIdSpan.textContent = id;
+                addSystemMessage(`✅ PeerJS ready! Your ID: ${id}`);
+                addSystemMessage(`📊 Room capacity: ${MAX_USERS} users`);
+            });
+            
+            peer.on('connection', handleIncomingConnection);
+            peer.on('call', handleIncomingCall);
+            
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                connectionStatusSpan.textContent = 'Error';
+                if (err.type !== 'unavailable-id') {
+                    addSystemMessage(`❌ PeerJS error: ${err.type}`);
+                }
+            });
+            
+            document.getElementById('enableCameraBtn').onclick = enableCamera;
+            document.getElementById('toggleAudioBtn').onclick = toggleAudio;
+            document.getElementById('toggleVideoBtn').onclick = toggleVideo;
+            document.getElementById('sendBtn').onclick = sendMessage;
+            document.getElementById('leaveRoomBtn').onclick = leaveRoom;
+            connectBtn.onclick = () => {
+                const targetId = peerIdInput.value.trim();
+                if (targetId) connectToPeer(targetId);
+                peerIdInput.value = '';
+            };
+            copyPeerIdBtn.onclick = copyPeerId;
+            messageInput.onkeydown = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            };
+            hamburgerBtn.onclick = () => sidebar.classList.toggle('open');
+            
+            renderChatTabs();
+            updateConnectionCounter();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
