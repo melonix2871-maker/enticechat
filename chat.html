@@ -97,7 +97,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             backdrop-filter: blur(8px);
             z-index: 1000;
             align-items: center;
@@ -185,6 +185,11 @@
             flex-wrap: wrap;
             gap: 12px;
             transition: all 0.2s;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .file-item:hover {
             background: #3a3c44;
@@ -241,10 +246,6 @@
             padding: 40px;
             color: var(--text-muted);
         }
-        .file-progress {
-            font-size: 11px;
-            color: var(--accent);
-        }
         @media (max-width: 768px) {
             .file-cabinet {
                 width: 95%;
@@ -269,7 +270,7 @@
             }
         }
 
-        /* Rest of the styles remain same as previous */
+        /* Rest of the styles - keeping same as before */
         .content-area {
             display: flex;
             flex: 1;
@@ -437,7 +438,6 @@
             font-weight: 600;
         }
 
-        /* Video Layout */
         .video-layout {
             background: #0a0a0a;
             flex: 1;
@@ -462,6 +462,11 @@
             align-items: center;
             gap: 12px;
             border: 1px solid var(--accent);
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         .main-video-area {
             flex: 2;
@@ -517,7 +522,7 @@
             background: #2b2d31;
             border: none;
             border-radius: 40px;
-            padding: 8px 8px;
+            padding: 8px 12px;
             cursor: pointer;
             font-size: 20px;
             transition: all 0.2s;
@@ -682,6 +687,7 @@
             z-index: 299;
         }
         .sidebar-overlay.active { display: block; }
+        @media (min-width: 769px) { .sidebar-overlay { display: none !important; } }
     </style>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -806,7 +812,7 @@
                 <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Files shared with all connected peers</span>
             </div>
             <div class="file-list" id="fileListContainer">
-                <div class="empty-files">No files shared yet. Upload a file to share with peers.</div>
+                <div class="empty-files">📂 No files shared yet. Upload a file to share with peers.</div>
             </div>
         </div>
     </div>
@@ -822,8 +828,7 @@
         window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
 
         // ==================== FILE SHARING STATE ====================
-        let sharedFiles = new Map(); // fileId -> { name, size, type, data, uploader }
-        let fileChunkSize = 64 * 1024; // 64KB chunks
+        let sharedFiles = new Map(); // fileId -> { name, size, type, data, uploader, timestamp }
         
         // ==================== STATE ====================
         let peer = null;
@@ -858,7 +863,7 @@
         const maxConnectionsSpan = document.getElementById('maxConnections');
         const maxUserDisplaySpan = document.getElementById('maxUserDisplay');
         const limitWarningDiv = document.getElementById('limitWarning');
-        const roomUrlDisplay = document.getElementById('headerRoomName');
+        const headerRoomName = document.getElementById('headerRoomName');
         const workspaceNameSpan = document.getElementById('workspaceName');
         const mobileRoomNameSpan = document.getElementById('mobileRoomName');
         const sidebar = document.getElementById('sidebar');
@@ -881,7 +886,7 @@
         
         maxConnectionsSpan.textContent = MAX_USERS;
         maxUserDisplaySpan.textContent = MAX_USERS;
-        roomUrlDisplay.textContent = roomName;
+        headerRoomName.textContent = roomName;
         workspaceNameSpan.textContent = 'AralShare';
         if (mobileRoomNameSpan) mobileRoomNameSpan.textContent = roomName;
         
@@ -893,26 +898,30 @@
             }
             
             let html = '';
-            for (let [fileId, file] of sharedFiles) {
+            // Sort files by timestamp (newest first)
+            const sortedFiles = Array.from(sharedFiles.values()).sort((a, b) => b.timestamp - a.timestamp);
+            
+            for (let file of sortedFiles) {
                 const sizeKB = (file.size / 1024).toFixed(1);
                 const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
                 const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
                 const fileIcon = file.type.startsWith('image/') ? '🖼️' : 
                                  file.type.startsWith('video/') ? '🎬' : 
                                  file.type.startsWith('audio/') ? '🎵' : '📄';
+                const timeAgo = getTimeAgo(file.timestamp);
                 
                 html += `
-                    <div class="file-item" data-file-id="${escapeHtml(fileId)}">
+                    <div class="file-item" data-file-id="${escapeHtml(file.id)}">
                         <div class="file-info">
                             <div class="file-icon">${fileIcon}</div>
                             <div class="file-details">
                                 <div class="file-name">${escapeHtml(file.name)}</div>
-                                <div class="file-meta">${sizeDisplay} • ${escapeHtml(file.uploader)}</div>
+                                <div class="file-meta">${sizeDisplay} • ${escapeHtml(file.uploader)} • ${timeAgo}</div>
                             </div>
                         </div>
                         <div class="file-actions">
-                            <button class="download-btn" onclick="downloadFile('${escapeHtml(fileId)}')">⬇️ Download</button>
-                            ${file.uploader === username ? `<button class="delete-btn" onclick="deleteFile('${escapeHtml(fileId)}')">🗑️ Delete</button>` : ''}
+                            <button class="download-btn" onclick="window.downloadFile('${escapeHtml(file.id)}')">⬇️ Download</button>
+                            ${file.uploader === username ? `<button class="delete-btn" onclick="window.deleteFile('${escapeHtml(file.id)}')">🗑️ Delete</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -920,9 +929,20 @@
             fileListContainer.innerHTML = html;
         }
         
+        function getTimeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+        
         function uploadFile(file) {
             const reader = new FileReader();
-            const fileId = Date.now() + '_' + file.name;
+            const fileId = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             
             reader.onload = (e) => {
                 const fileData = e.target.result;
@@ -932,12 +952,13 @@
                     size: file.size,
                     type: file.type,
                     data: fileData,
-                    uploader: username
+                    uploader: username,
+                    timestamp: Date.now()
                 };
                 
                 sharedFiles.set(fileId, fileObj);
                 renderFileList();
-                addSystemMessage(`📤 ${username} shared: ${file.name}`);
+                addSystemMessage(`📤 ${username} shared: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
                 
                 // Broadcast to all connected peers
                 for (let [peerId, data] of connections) {
@@ -949,7 +970,8 @@
                             size: file.size,
                             type: file.type,
                             data: fileData,
-                            uploader: username
+                            uploader: username,
+                            timestamp: Date.now()
                         });
                     }
                 }
@@ -966,10 +988,11 @@
                     size: fileData.size,
                     type: fileData.type,
                     data: fileData.data,
-                    uploader: fileData.uploader
+                    uploader: fileData.uploader,
+                    timestamp: fileData.timestamp || Date.now()
                 });
                 renderFileList();
-                addSystemMessage(`📥 New file received: ${fileData.name} from ${fileData.uploader}`);
+                addSystemMessage(`📥 New file received: ${fileData.name} from ${fileData.uploader} (${(fileData.size / 1024).toFixed(1)} KB)`);
             }
         }
         
@@ -993,7 +1016,7 @@
                 renderFileList();
                 addSystemMessage(`🗑️ Deleted: ${file.name}`);
                 
-                // Broadcast deletion to peers
+                // Broadcast deletion to all peers
                 for (let [peerId, data] of connections) {
                     if (data.connection && data.connection.open) {
                         data.connection.send({
@@ -1171,192 +1194,6 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // ==================== PEERJS ====================
-        function setupCall(call, peerId) {
-            call.on('stream', (remoteStream) => {
-                const data = connections.get(peerId);
-                if (data) {
-                    data.stream = remoteStream;
-                    connections.set(peerId, data);
-                    renderThumbnails();
-                    if (currentMainVideo.type === 'local' && !currentMainVideo.stream) {
-                        setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId);
-                    }
-                }
-            });
-            call.on('close', () => {
-                const data = connections.get(peerId);
-                if (data) {
-                    data.stream = null;
-                    connections.set(peerId, data);
-                    renderThumbnails();
-                    if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId && localStream && isCameraActive) {
-                        setMainVideo('local', localStream, 'Your Camera');
-                    }
-                }
-            });
-        }
-        
-        function connectToPeer(peerId) {
-            if (connections.has(peerId)) { addSystemMessage(`Already connected to ${peerId}`); return; }
-            if (peerId === peer.id) { addSystemMessage(`Cannot connect to yourself`); return; }
-            if (connections.size >= MAX_USERS) { addSystemMessage(`⚠️ Room is full (${MAX_USERS} users max)`); return; }
-            
-            addSystemMessage(`Connecting to ${peerId}...`);
-            const conn = peer.connect(peerId);
-            
-            conn.on('open', () => {
-                addSystemMessage(`✅ Connected to ${peerId}`);
-                conn.send({ type: 'username', username: username });
-                connections.set(peerId, { connection: conn, username: peerId.substring(0, 8), call: null, stream: null });
-                updateConnectionCounter();
-                
-                if (localStream && isCameraActive && connections.size <= MAX_VIDEO_STREAMS) {
-                    const call = peer.call(peerId, localStream);
-                    setupCall(call, peerId);
-                    connections.get(peerId).call = call;
-                }
-                
-                // Share existing files with new peer
-                for (let [fileId, file] of sharedFiles) {
-                    conn.send({
-                        type: 'file-share',
-                        fileId: fileId,
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        data: file.data,
-                        uploader: file.uploader
-                    });
-                }
-                
-                renderUserList();
-                renderThumbnails();
-            });
-            
-            conn.on('data', (data) => {
-                if (data.type === 'username') {
-                    const connData = connections.get(peerId);
-                    if (connData) { connData.username = data.username; connections.set(peerId, connData); renderUserList(); renderChatTabs(); renderThumbnails(); }
-                } else if (data.type === 'file-share') {
-                    receiveFile(data);
-                } else if (data.type === 'file-delete') {
-                    if (sharedFiles.has(data.fileId)) {
-                        sharedFiles.delete(data.fileId);
-                        renderFileList();
-                        addSystemMessage(`🗑️ File deleted by peer`);
-                    }
-                } else if (data.type === 'global-chat' || data.type === 'dm' || data.type === 'emote') {
-                    receiveMessage(peerId, data.type, data);
-                }
-            });
-            
-            conn.on('close', () => {
-                addSystemMessage(`❌ Disconnected from ${peerId}`);
-                connections.delete(peerId);
-                updateConnectionCounter();
-                renderThumbnails();
-                renderUserList();
-            });
-        }
-        
-        function handleIncomingConnection(conn) {
-            const peerId = conn.peer;
-            if (connections.size >= MAX_USERS) {
-                addSystemMessage(`⚠️ Room is full. Cannot accept connection from ${peerId}`);
-                conn.close();
-                return;
-            }
-            
-            addSystemMessage(`📞 Incoming connection from ${peerId}`);
-            conn.on('open', () => {
-                addSystemMessage(`✅ Connected to ${peerId}`);
-                connections.set(peerId, { connection: conn, username: peerId.substring(0, 8), call: null, stream: null });
-                updateConnectionCounter();
-                conn.send({ type: 'username', username: username });
-                
-                // Share existing files
-                for (let [fileId, file] of sharedFiles) {
-                    conn.send({
-                        type: 'file-share',
-                        fileId: fileId,
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        data: file.data,
-                        uploader: file.uploader
-                    });
-                }
-                
-                renderUserList();
-                renderThumbnails();
-            });
-            conn.on('data', (data) => {
-                if (data.type === 'username') {
-                    const connData = connections.get(peerId);
-                    if (connData) { connData.username = data.username; connections.set(peerId, connData); renderUserList(); renderChatTabs(); renderThumbnails(); }
-                } else if (data.type === 'file-share') {
-                    receiveFile(data);
-                } else if (data.type === 'file-delete') {
-                    if (sharedFiles.has(data.fileId)) {
-                        sharedFiles.delete(data.fileId);
-                        renderFileList();
-                    }
-                } else if (data.type === 'global-chat' || data.type === 'dm' || data.type === 'emote') {
-                    receiveMessage(peerId, data.type, data);
-                }
-            });
-            conn.on('close', () => {
-                addSystemMessage(`❌ Disconnected from ${peerId}`);
-                connections.delete(peerId);
-                updateConnectionCounter();
-                renderThumbnails();
-                renderUserList();
-            });
-        }
-        
-        function handleIncomingCall(call) {
-            const peerId = call.peer;
-            if (connections.size >= MAX_VIDEO_STREAMS) {
-                addSystemMessage(`⚠️ Max video streams reached. Cannot accept video call from ${peerId}`);
-                call.close();
-                return;
-            }
-            if (localStream && isCameraActive) {
-                call.answer(localStream);
-                setupCall(call, peerId);
-                const connData = connections.get(peerId);
-                if (connData) connData.call = call;
-            } else {
-                call.close();
-            }
-        }
-        
-        function receiveMessage(peerId, type, data) {
-            if (type === 'global-chat') {
-                globalMessages.push({ author: data.author, text: data.text, time: data.time });
-                if (activeChat === 'global') addMessageToUI(data.author, data.text, data.time);
-                else globalUnreadCount++;
-            } else if (type === 'dm') {
-                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
-                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
-                dmMessages.get(peerId).push({ author: data.author, text: data.text, time: data.time, isDM: true });
-                if (!dmTabs.has(peerId)) {
-                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
-                    renderChatTabs();
-                } else if (activeChat !== peerId) {
-                    const tab = dmTabs.get(peerId);
-                    tab.unreadCount = (tab.unreadCount || 0) + 1;
-                    dmTabs.set(peerId, tab);
-                }
-                if (activeChat === peerId) addMessageToUI(data.author, data.text, data.time, true, peerUsername);
-            } else if (type === 'emote') {
-                showNotification(data.emote, data.action, data.sender);
-            }
-            updateUnreadCounters();
-            renderChatTabs();
-        }
-        
         // ==================== CHAT FUNCTIONS ====================
         function updateUnreadCounters() {
             const tabs = document.querySelectorAll('.chat-tab');
@@ -1449,6 +1286,195 @@
             messageInput.value = '';
         }
         
+        function receiveMessage(peerId, type, data) {
+            if (type === 'global-chat') {
+                globalMessages.push({ author: data.author, text: data.text, time: data.time });
+                if (activeChat === 'global') addMessageToUI(data.author, data.text, data.time);
+                else globalUnreadCount++;
+            } else if (type === 'dm') {
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                dmMessages.get(peerId).push({ author: data.author, text: data.text, time: data.time, isDM: true });
+                if (!dmTabs.has(peerId)) {
+                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
+                    renderChatTabs();
+                } else if (activeChat !== peerId) {
+                    const tab = dmTabs.get(peerId);
+                    tab.unreadCount = (tab.unreadCount || 0) + 1;
+                    dmTabs.set(peerId, tab);
+                }
+                if (activeChat === peerId) addMessageToUI(data.author, data.text, data.time, true, peerUsername);
+            } else if (type === 'emote') {
+                showNotification(data.emote, data.action, data.sender);
+            }
+            updateUnreadCounters();
+            renderChatTabs();
+        }
+        
+        // ==================== PEERJS ====================
+        function setupCall(call, peerId) {
+            call.on('stream', (remoteStream) => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = remoteStream;
+                    connections.set(peerId, data);
+                    renderThumbnails();
+                    if (currentMainVideo.type === 'local' && !currentMainVideo.stream) {
+                        setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId);
+                    }
+                }
+            });
+            call.on('close', () => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = null;
+                    connections.set(peerId, data);
+                    renderThumbnails();
+                    if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId && localStream && isCameraActive) {
+                        setMainVideo('local', localStream, 'Your Camera');
+                    }
+                }
+            });
+        }
+        
+        function connectToPeer(peerId) {
+            if (connections.has(peerId)) { addSystemMessage(`Already connected to ${peerId}`); return; }
+            if (peerId === peer.id) { addSystemMessage(`Cannot connect to yourself`); return; }
+            if (connections.size >= MAX_USERS) { addSystemMessage(`⚠️ Room is full (${MAX_USERS} users max)`); return; }
+            
+            addSystemMessage(`Connecting to ${peerId}...`);
+            const conn = peer.connect(peerId);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${peerId}`);
+                conn.send({ type: 'username', username: username });
+                connections.set(peerId, { connection: conn, username: peerId.substring(0, 8), call: null, stream: null });
+                updateConnectionCounter();
+                
+                if (localStream && isCameraActive && connections.size <= MAX_VIDEO_STREAMS) {
+                    const call = peer.call(peerId, localStream);
+                    setupCall(call, peerId);
+                    connections.get(peerId).call = call;
+                }
+                
+                // Share ALL existing files with the new peer
+                for (let [fileId, file] of sharedFiles) {
+                    conn.send({
+                        type: 'file-share',
+                        fileId: fileId,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: file.data,
+                        uploader: file.uploader,
+                        timestamp: file.timestamp
+                    });
+                }
+                
+                renderUserList();
+                renderThumbnails();
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(peerId);
+                    if (connData) { connData.username = data.username; connections.set(peerId, connData); renderUserList(); renderChatTabs(); renderThumbnails(); }
+                } else if (data.type === 'file-share') {
+                    receiveFile(data);
+                } else if (data.type === 'file-delete') {
+                    if (sharedFiles.has(data.fileId)) {
+                        sharedFiles.delete(data.fileId);
+                        renderFileList();
+                        addSystemMessage(`🗑️ File deleted by peer`);
+                    }
+                } else if (data.type === 'global-chat' || data.type === 'dm' || data.type === 'emote') {
+                    receiveMessage(peerId, data.type, data);
+                }
+            });
+            
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${peerId}`);
+                connections.delete(peerId);
+                updateConnectionCounter();
+                renderThumbnails();
+                renderUserList();
+            });
+        }
+        
+        function handleIncomingConnection(conn) {
+            const peerId = conn.peer;
+            if (connections.size >= MAX_USERS) {
+                addSystemMessage(`⚠️ Room is full. Cannot accept connection from ${peerId}`);
+                conn.close();
+                return;
+            }
+            
+            addSystemMessage(`📞 Incoming connection from ${peerId}`);
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${peerId}`);
+                connections.set(peerId, { connection: conn, username: peerId.substring(0, 8), call: null, stream: null });
+                updateConnectionCounter();
+                conn.send({ type: 'username', username: username });
+                
+                // Share ALL existing files with new peer
+                for (let [fileId, file] of sharedFiles) {
+                    conn.send({
+                        type: 'file-share',
+                        fileId: fileId,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: file.data,
+                        uploader: file.uploader,
+                        timestamp: file.timestamp
+                    });
+                }
+                
+                renderUserList();
+                renderThumbnails();
+            });
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(peerId);
+                    if (connData) { connData.username = data.username; connections.set(peerId, connData); renderUserList(); renderChatTabs(); renderThumbnails(); }
+                } else if (data.type === 'file-share') {
+                    receiveFile(data);
+                } else if (data.type === 'file-delete') {
+                    if (sharedFiles.has(data.fileId)) {
+                        sharedFiles.delete(data.fileId);
+                        renderFileList();
+                        addSystemMessage(`🗑️ File deleted by peer`);
+                    }
+                } else if (data.type === 'global-chat' || data.type === 'dm' || data.type === 'emote') {
+                    receiveMessage(peerId, data.type, data);
+                }
+            });
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${peerId}`);
+                connections.delete(peerId);
+                updateConnectionCounter();
+                renderThumbnails();
+                renderUserList();
+            });
+        }
+        
+        function handleIncomingCall(call) {
+            const peerId = call.peer;
+            if (connections.size >= MAX_VIDEO_STREAMS) {
+                addSystemMessage(`⚠️ Max video streams reached. Cannot accept video call from ${peerId}`);
+                call.close();
+                return;
+            }
+            if (localStream && isCameraActive) {
+                call.answer(localStream);
+                setupCall(call, peerId);
+                const connData = connections.get(peerId);
+                if (connData) connData.call = call;
+            } else {
+                call.close();
+            }
+        }
+        
         // ==================== CAMERA ====================
         async function enableCamera() {
             try {
@@ -1538,7 +1564,7 @@
             addSystemMessage(`🎉 Welcome to AralShare, ${escapeHtml(username)}!`);
             addSystemMessage(`📊 Maximum ${MAX_USERS} users allowed`);
             addSystemMessage(`📹 Click "Enable Camera" for video calls`);
-            addSystemMessage(`📁 Click "File Storage" to share files with peers`);
+            addSystemMessage(`📁 Click "File Storage" to share files with peers - ALL connected peers will see and download your files!`);
             
             peer = new Peer({ debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
             peer.on('open', (id) => { connectionStatusSpan.textContent = 'Connected'; myPeerIdSpan.textContent = id; addSystemMessage(`✅ PeerJS ready! ID: ${id}`); });
