@@ -183,7 +183,7 @@
             background: #0a0a0a;
             flex: 1;
             display: flex;
-            gap: 8px;
+            gap: 12px;
             padding: 12px;
             overflow: hidden;
             min-height: 0;
@@ -193,11 +193,12 @@
         .main-video-area {
             flex: 3;
             background: #000;
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
             position: relative;
             border: 2px solid var(--accent);
             aspect-ratio: 16 / 9;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         .main-video-element {
             width: 100%;
@@ -208,43 +209,57 @@
             position: absolute;
             bottom: 12px;
             left: 12px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.75);
             padding: 6px 12px;
-            border-radius: 8px;
+            border-radius: 20px;
             font-size: 12px;
             font-weight: 500;
+            backdrop-filter: blur(4px);
             z-index: 10;
         }
 
-        /* Thumbnails Sidebar/Strip */
+        /* Thumbnails Area - Smaller, better spacing */
         .thumbnails-area {
             flex: 1;
-            background: #111214;
-            border-radius: 16px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 8px;
+            padding: 12px;
+            backdrop-filter: blur(4px);
+        }
+        .thumbnails-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 0 4px 8px 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .thumbnails-grid {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .thumbnail-item {
-            background: #1e1f22;
+            background: #1a1c20;
             border-radius: 12px;
             overflow: hidden;
             cursor: pointer;
             border: 2px solid var(--border);
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             aspect-ratio: 16 / 9;
             position: relative;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
         .thumbnail-item:hover {
             border-color: var(--accent);
-            transform: scale(1.02);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
         .thumbnail-item.active {
             border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--accent);
+            box-shadow: 0 0 0 3px var(--accent);
         }
         .thumbnail-video {
             width: 100%;
@@ -253,45 +268,81 @@
         }
         .thumbnail-label {
             position: absolute;
-            bottom: 4px;
-            left: 4px;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 9px;
+            bottom: 6px;
+            left: 6px;
+            background: rgba(0,0,0,0.7);
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 10px;
+            font-weight: 500;
+            backdrop-filter: blur(2px);
         }
-        .thumbnails-title {
-            font-size: 11px;
+        .thumbnail-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: var(--accent);
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+        .empty-thumbnails {
+            text-align: center;
+            padding: 30px 16px;
             color: var(--text-muted);
-            padding: 4px 8px;
-            text-transform: uppercase;
-            font-weight: 600;
+            font-size: 12px;
         }
 
-        /* Mobile: Thumbnails below main video */
+        /* Mobile: Horizontal scrollable thumbnails */
         @media (max-width: 768px) {
             .video-layout {
                 flex-direction: column;
                 padding: 8px;
-                gap: 8px;
+                gap: 10px;
             }
             .main-video-area {
                 flex: 2;
-                min-height: 250px;
+                min-height: 220px;
+                border-radius: 16px;
             }
             .thumbnails-area {
-                flex-direction: row;
+                flex-direction: column;
                 overflow-x: auto;
                 overflow-y: hidden;
-                min-height: 100px;
-                max-height: 120px;
-            }
-            .thumbnail-item {
-                min-width: 120px;
-                flex-shrink: 0;
+                padding: 8px;
+                border-radius: 16px;
+                background: rgba(0,0,0,0.2);
             }
             .thumbnails-title {
                 display: none;
+            }
+            .thumbnails-grid {
+                flex-direction: row;
+                gap: 10px;
+                padding-bottom: 4px;
+            }
+            .thumbnail-item {
+                min-width: 140px;
+                flex-shrink: 0;
+                border-radius: 12px;
+            }
+            .thumbnail-item:hover {
+                transform: translateY(-2px);
+            }
+            .thumbnail-label {
+                font-size: 9px;
+                padding: 2px 6px;
+            }
+        }
+
+        /* Desktop: Compact vertical thumbnails */
+        @media (min-width: 769px) {
+            .thumbnails-grid {
+                max-height: calc(100% - 30px);
+            }
+            .thumbnail-item {
+                margin-bottom: 2px;
             }
         }
 
@@ -299,22 +350,24 @@
             position: absolute;
             bottom: 16px;
             right: 16px;
-            background: rgba(0,0,0,0.7);
-            padding: 8px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
             border-radius: 40px;
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 20;
+            backdrop-filter: blur(4px);
         }
         .video-control-btn {
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             background: #2b2d31;
             border: none;
             font-size: 18px;
             color: white;
             cursor: pointer;
+            transition: all 0.2s;
         }
         .video-control-btn.active { background: var(--success); }
         .video-control-btn.muted { background: var(--danger); }
@@ -333,11 +386,15 @@
             background: var(--accent);
             border: none;
             padding: 12px 28px;
-            border-radius: 10px;
+            border-radius: 40px;
             color: white;
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .video-placeholder button:hover {
+            transform: scale(1.02);
         }
 
         /* Chat Section */
@@ -352,8 +409,8 @@
         }
         .chat-tabs {
             display: flex;
-            gap: 4px;
-            padding: 6px 12px;
+            gap: 6px;
+            padding: 8px 12px;
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border);
             overflow-x: auto;
@@ -362,7 +419,7 @@
         .chat-tab {
             padding: 6px 14px;
             background: #2b2d31;
-            border-radius: 8px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 12px;
             white-space: nowrap;
@@ -370,6 +427,7 @@
             align-items: center;
             gap: 6px;
             position: relative;
+            transition: all 0.2s;
         }
         .chat-tab.active { background: var(--accent); }
         .chat-tab .unread-badge {
@@ -377,7 +435,7 @@
             color: white;
             font-size: 10px;
             padding: 2px 6px;
-            border-radius: 12px;
+            border-radius: 20px;
             min-width: 20px;
             text-align: center;
         }
@@ -388,26 +446,26 @@
             padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         .message {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             animation: fadeIn 0.2s;
         }
         .message.dm {
             background: rgba(88,101,242,0.1);
             border-left: 3px solid var(--accent);
-            padding-left: 8px;
-            border-radius: 6px;
+            padding-left: 10px;
+            border-radius: 8px;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .message-avatar {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
@@ -419,10 +477,10 @@
             text-transform: uppercase;
         }
         .message-content { flex: 1; }
-        .message-header { display: flex; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
+        .message-header { display: flex; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
         .message-author { font-weight: 700; font-size: 13px; }
         .message-time { font-size: 10px; color: var(--text-muted); }
-        .message-text { font-size: 13px; word-break: break-word; }
+        .message-text { font-size: 13px; word-break: break-word; line-height: 1.4; }
 
         .input-area {
             padding: 10px 12px;
@@ -432,8 +490,8 @@
         }
         .message-input-wrapper {
             background: #2b2d31;
-            border-radius: 10px;
-            padding: 6px 10px;
+            border-radius: 24px;
+            padding: 8px 12px;
             display: flex;
             gap: 8px;
         }
@@ -450,22 +508,24 @@
         .send-btn {
             background: var(--accent);
             border: none;
-            padding: 6px 18px;
-            border-radius: 8px;
+            padding: 6px 20px;
+            border-radius: 24px;
             color: white;
             cursor: pointer;
             font-size: 12px;
+            font-weight: 600;
         }
 
         .connection-badge {
             position: fixed;
             bottom: 16px;
             right: 16px;
-            background: #2b2d31;
+            background: rgba(0,0,0,0.8);
             padding: 6px 14px;
-            border-radius: 25px;
+            border-radius: 30px;
             font-size: 11px;
             z-index: 100;
+            backdrop-filter: blur(4px);
         }
 
         .sidebar-overlay {
@@ -481,6 +541,20 @@
         }
         .sidebar-overlay.active { display: block; }
         @media (min-width: 769px) { .sidebar-overlay { display: none !important; } }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--border);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
     </style>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -534,9 +608,9 @@
                     <video id="mainVideo" class="main-video-element" autoplay playsinline muted></video>
                     <div class="main-video-label" id="mainVideoLabel">Your Camera</div>
                     <div class="video-placeholder" id="videoPlaceholder" style="display: flex;">
-                        <div style="font-size:40px;">🎥</div>
+                        <div style="font-size: 48px;">🎥</div>
                         <button id="enableCameraBtn">Enable Camera</button>
-                        <p style="margin-top:8px;font-size:11px;">Share your video with connected peers</p>
+                        <p style="margin-top:8px;font-size:11px;opacity:0.8;">Share your video with connected peers</p>
                     </div>
                     <div class="video-controls" id="videoControls" style="display: none;">
                         <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
@@ -544,10 +618,10 @@
                     </div>
                 </div>
 
-                <!-- Thumbnails Area (Desktop: right sidebar, Mobile: below) -->
+                <!-- Thumbnails Area - Smaller, better spacing -->
                 <div class="thumbnails-area" id="thumbnailsArea">
-                    <div class="thumbnails-title">📹 Active Videos</div>
-                    <div id="thumbnailsList"></div>
+                    <div class="thumbnails-title">📹 ACTIVE VIDEOS</div>
+                    <div class="thumbnails-grid" id="thumbnailsGrid"></div>
                 </div>
             </div>
 
@@ -602,7 +676,7 @@
         const mainVideoLabel = document.getElementById('mainVideoLabel');
         const videoPlaceholder = document.getElementById('videoPlaceholder');
         const videoControls = document.getElementById('videoControls');
-        const thumbnailsList = document.getElementById('thumbnailsList');
+        const thumbnailsGrid = document.getElementById('thumbnailsGrid');
         const messagesContainer = document.getElementById('messagesContainer');
         const messageInput = document.getElementById('messageInput');
         const chatTabs = document.getElementById('chatTabs');
@@ -663,14 +737,17 @@
         
         function renderThumbnails() {
             let html = '';
+            let hasVideos = false;
             
             // Local video thumbnail
             if (localStream && isCameraActive) {
+                hasVideos = true;
                 const isActive = (currentMainVideo.type === 'local');
                 html += `
-                    <div class="thumbnail-item ${isActive ? 'active' : ''}" data-type="local" data-peer-id="" onclick="selectThumbnail('local', null, 'Your Camera')">
+                    <div class="thumbnail-item ${isActive ? 'active' : ''}" data-type="local" onclick="selectThumbnail('local', null, 'Your Camera')">
                         <video id="thumbnail_local" class="thumbnail-video" autoplay playsinline muted></video>
                         <div class="thumbnail-label">📹 You</div>
+                        <div class="thumbnail-badge">YOU</div>
                     </div>
                 `;
                 setTimeout(() => {
@@ -682,6 +759,7 @@
             // Remote video thumbnails
             for (let [peerId, data] of connections) {
                 if (data.stream) {
+                    hasVideos = true;
                     const isActive = (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId);
                     const username_short = data.username || peerId.substring(0, 8);
                     html += `
@@ -697,11 +775,11 @@
                 }
             }
             
-            if (html === '') {
-                html = '<div style="padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">No active videos<br>Enable camera to start</div>';
+            if (!hasVideos) {
+                html = '<div class="empty-thumbnails">🎥 No active videos<br>Enable camera to start</div>';
             }
             
-            thumbnailsList.innerHTML = html;
+            thumbnailsGrid.innerHTML = html;
         }
         
         window.selectThumbnail = function(type, peerId, label) {
@@ -1044,7 +1122,6 @@
                     data.stream = remoteStream;
                     connections.set(peerId, data);
                     renderThumbnails();
-                    // Auto-select first remote video if no main video set
                     if (currentMainVideo.type === 'local' && !currentMainVideo.stream) {
                         setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId);
                     }
