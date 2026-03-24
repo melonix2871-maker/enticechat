@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SnoW - 30-Way P2P Video Conference with DMs</title>
+    <title>AralShare Virtual Classroom</title>
     <style>
         :root {
             --bg: #0a0a0a;
@@ -24,7 +24,7 @@
             background: var(--bg);
             color: var(--text);
             height: 100vh;
-            overflow: hidden;
+            overflow: hidden;           
         }
         .app-container { display: flex; flex-direction: column; height: 100vh; }
 
@@ -48,6 +48,8 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+            scale: .8;
+    margin-left: -14px;
         }
         .header-right { display: flex; align-items: center; gap: 10px; }
         .file-storage-btn, .reaction-btn {
@@ -150,10 +152,11 @@
         .limit-warning {
             background: rgba(16, 185, 129, 0.1);
             padding: 6px;
-            font-size: 9px;
+            font-size: 12px;
             margin-top: 8px;
             border-radius: 6px;
             text-align: center;
+            margin-left: 8px;
         }
 
         /* Video Layout - Main + Thumbnails */
@@ -433,7 +436,7 @@
         }
         .message-input-wrapper {
             background: #2b2d31;
-            border-radius: 20px;
+            border-radius: 5px;
             padding: 6px 10px;
             display: flex;
             gap: 6px;
@@ -444,17 +447,17 @@
             border: none;
             color: white;
             outline: none;
-            font-size: 12px;
+            font-size: 14px;
             resize: none;
         }
         .send-btn {
             background: var(--accent);
             border: none;
             padding: 4px 14px;
-            border-radius: 20px;
+            border-radius: 5px;
             color: white;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 13px;
         }
 
         /* File Cabinet Modal */
@@ -516,6 +519,9 @@
         .delete-btn:hover { background: var(--danger); }
 
         @media (max-width: 768px) {
+            .main-content{
+                margin-top: 60px;
+            }
             .sidebar {
                 position: fixed;
                 left: 0;
@@ -547,6 +553,7 @@
             left: 0;
             right: 0;
             z-index: 200;
+            margin-top: 54px;
         }
         .hamburger {
             background: var(--accent);
@@ -570,18 +577,23 @@
         }
         .sidebar-overlay.active { display: block; }
         @media (min-width: 769px) { .sidebar-overlay { display: none !important; } }
+        .logo-text svg{
+            filter: brightness(0) saturate(100%) invert(91%) sepia(74%) saturate(853%) hue-rotate(350deg) brightness(99%) contrast(106%);
+        }       
     </style>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div class="app-container">
         <div class="main-header">
-            <div class="logo-area">
-                <span class="logo-icon">❄️</span>
-                <span class="logo-text">SnoW Conference</span>
+            <div class="logo-area">                
+                <span class="logo-text" style="display: flex; gap: 10px; align-items: center;"><?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="50" height="41">
+<path d="M0 0 C3.70093553 1.74260277 7.20674292 3.83320408 10.75 5.875 C12.20599609 6.68904297 12.20599609 6.68904297 13.69140625 7.51953125 C14.61308594 8.04675781 15.53476562 8.57398438 16.484375 9.1171875 C17.32709961 9.59784668 18.16982422 10.07850586 19.03808594 10.57373047 C21 12 21 12 22 15 C18.535 16.98 18.535 16.98 15 19 C15 22.96 15 26.92 15 31 C12.46917897 32.54193728 9.92794722 34.05800484 7.375 35.5625 C6.66214844 36.00013672 5.94929688 36.43777344 5.21484375 36.88867188 C1.94050979 38.79619671 -0.22361681 39.99207772 -4.0625 40.03125 C-7.78296632 38.72512884 -11.00844163 36.97219447 -14.375 34.9375 C-15.01566406 34.56044922 -15.65632812 34.18339844 -16.31640625 33.79492188 C-17.88254066 32.87160383 -19.44198034 31.93694607 -21 31 C-21 27.04 -21 23.08 -21 19 C-21.66 18.67 -22.32 18.34 -23 18 C-23.33 22.29 -23.66 26.58 -24 31 C-25.32 30.67 -26.64 30.34 -28 30 C-29.35665025 14.95960591 -29.35665025 14.95960591 -26.48828125 10.81640625 C-24.07710963 9.24312791 -21.63904675 8.15325635 -19 7 C-17.81023054 6.30073175 -16.63103786 5.58326777 -15.4609375 4.8515625 C-14.22419808 4.08815314 -12.98721926 3.32513147 -11.75 2.5625 C-11.16009277 2.19503662 -10.57018555 1.82757324 -9.96240234 1.44897461 C-6.10371455 -0.80092713 -4.24194976 -1.22336499 0 0 Z M-10.625 9.5 C-11.23601563 9.83386719 -11.84703125 10.16773438 -12.4765625 10.51171875 C-13.98641801 11.33742098 -15.49347848 12.16823037 -17 13 C-13.44608026 15.96926381 -9.81482005 18.42318536 -5.8125 20.75 C-4.76707031 21.36359375 -3.72164062 21.9771875 -2.64453125 22.609375 C-0.20294935 24.15514103 -0.20294935 24.15514103 2 24 C0.68 25.32 -0.64 26.64 -2 28 C-6.49797113 26.31326082 -10.72886302 24.18326108 -15 22 C-15.39198722 24.3574433 -15.39198722 24.3574433 -15 27 C-13.00174974 28.95642071 -13.00174974 28.95642071 -10.3125 30.375 C-9.44238281 30.89835937 -8.57226562 31.42171875 -7.67578125 31.9609375 C-4.50287517 33.1930441 -3.19753956 33.06753299 0 32 C2.47243227 30.83935432 2.47243227 30.83935432 4.8125 29.4375 C5.99779297 28.75494141 5.99779297 28.75494141 7.20703125 28.05859375 C7.79871094 27.70925781 8.39039062 27.35992188 9 27 C9 25.35 9 23.7 9 22 C8.45601562 21.89816406 7.91203125 21.79632813 7.3515625 21.69140625 C4.41788663 20.82884707 2.02968263 19.45088377 -0.625 17.9375 C-4.10923764 15.73910643 -4.10923764 15.73910643 -8 15 C-6.68 13.68 -5.36 12.36 -4 11 C-1.22008044 12.03254155 1.05857502 13.04100251 3.5 14.75 C5.98886107 16.34749483 5.98886107 16.34749483 8.8125 15.1875 C9.534375 14.795625 10.25625 14.40375 11 14 C8.23612808 11.84821844 5.43466931 10.01629579 2.375 8.3125 C1.59898438 7.87550781 0.82296875 7.43851563 0.0234375 6.98828125 C-4.14846989 4.95065081 -6.91953132 7.44932396 -10.625 9.5 Z " fill="#FFFFFF" transform="translate(28,1)"/>
+</svg><h2>AralShare</h2></span>
             </div>
             <div class="header-right">
-                <div class="room-badge">🏠 <span id="roomDisplay">lobby</span></div>
+                <!--<div class="room-badge">🏠 <span id="roomDisplay">lobby</span></div>-->
                 <div class="peer-count" id="peerCount">👥 0/30</div>
                 <button class="file-storage-btn" id="fileStorageBtn">📁 Files</button>
                 <button class="reaction-btn" id="reactionToggleBtn">😊 React</button>
@@ -599,15 +611,16 @@
         <div class="content-area">
             <div class="sidebar" id="sidebar">
                 <div class="workspace-header">
-                    <div class="workspace-name">SnoW Mesh Network</div>
+                    <div class="workspace-name" id="roomDisplay">SnoW Mesh Network</div>
                     <div class="workspace-status">
                         <span class="status-indicator"></span>
                         <span id="connectionStatus">Initializing...</span>
                     </div>
-                    <div class="limit-warning" id="limitWarning">❄️ <span id="currentConnections">0</span>/30 participants</div>
-                    <div style="font-size: 10px; margin-top: 8px; background:#2b2d31; padding:5px; border-radius:6px; word-break:break-all;">
+                    <div class="limit-warning" id="limitWarning">
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> <span id="currentConnections">0</span><span>/30 participants</span></div>
+                    <div style="font-size: 11.5px; margin-top: 8px; background:#2b2d31; padding:5px; border-radius:6px; word-break:break-all;">
                         <strong>ID:</strong> <span id="myPeerId">connecting...</span>
-                        <button id="copyPeerIdBtn" style="background:var(--accent); border:none; border-radius:4px; padding:2px 6px; margin-left:6px; cursor:pointer;">Copy</button>
+                        <button id="copyPeerIdBtn" style="background:var(--accent); border:none; border-radius:4px; padding:2px 6px; margin-left:6px; cursor:pointer; display: block; width: 95%; margin-top: 8px;">Copy</button>
                     </div>
                 </div>
                 <div class="users-section">
@@ -619,9 +632,9 @@
                     <ul id="peerList" style="list-style:none;"></ul>
                 </div>
                 <div class="connect-section">
-                    <input type="text" id="roomInput" class="peer-id-input" placeholder="Room name" value="snow-demo">
-                    <button id="connectRoomBtn" class="connect-btn">❄️ Join SnoW Room</button>
-                    <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Or enter Peer ID to connect" style="margin-top:8px;">
+                    <input style="display: none;" type="text" id="roomInput" class="peer-id-input" placeholder="Room name" value="snow-demo">
+                    <button style="display: none;" id="connectRoomBtn" class="connect-btn">❄️ Join SnoW Room</button>
+                    <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Enter Peer ID here to connect" style="margin-top:8px;">
                     <button id="connectPeerBtn" class="connect-btn">🔗 Connect to Peer</button>
                 </div>
             </div>
@@ -633,9 +646,11 @@
                         <video id="mainVideo" class="main-video-element" autoplay playsinline muted></video>
                         <div class="main-video-label" id="mainVideoLabel">Your Camera</div>
                         <div class="video-placeholder" id="videoPlaceholder" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#1e1f22,#111214); z-index:5;">
-                            <div style="font-size: 40px;">❄️</div>
+                            <div style="font-size: 40px;">                                
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                            </div>
                             <button id="enableCameraBtn" style="background:var(--accent); border:none; padding:10px 24px; border-radius:30px; color:white; cursor:pointer; margin-top:12px;">Enable Camera</button>
-                            <p style="margin-top:8px; font-size:11px;">Join the SnoW conference</p>
+                            <p style="margin-top:8px; font-size:11px;">Join AralShare Class</p>
                         </div>
                         <div class="video-controls" id="videoControls" style="display:none;">
                             <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
@@ -652,7 +667,7 @@
                     </div>
 
                     <div class="thumbnails-area">
-                        <div class="thumbnails-header">📹 Active Videos</div>
+                        <div class="thumbnails-header" style="display: none;">📹 Active Videos</div>
                         <div class="thumbnails-scroll" id="thumbnailsScroll"></div>
                     </div>
                 </div>
@@ -737,7 +752,7 @@
         const peerCountSpan = document.getElementById('peerCount');
         const peerCountSidebar = document.getElementById('peerCountSidebar');
         const currentConnectionsSpan = document.getElementById('currentConnections');
-        const roomDisplay = document.getElementById('roomDisplay');
+        const roomDisplay = document.getElementById('roomDisplay');       
         const mobileRoomName = document.getElementById('mobileRoomName');
         const myPeerIdSpan = document.getElementById('myPeerId');
         const connectionStatusSpan = document.getElementById('connectionStatus');
@@ -746,8 +761,8 @@
         const reactionBar = document.getElementById('reactionBar');
         const reactionToggleBtn = document.getElementById('reactionToggleBtn');
         
-        currentUsernameSpan.textContent = username;
-        roomDisplay.textContent = roomName;
+        currentUsernameSpan.textContent = username;       
+         roomDisplay.textContent = roomName;
         if (mobileRoomName) mobileRoomName.textContent = roomName;
         
         // ==================== Helper Functions ====================
