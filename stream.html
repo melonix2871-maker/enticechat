@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>EnticeChat Live · Stable Stream Receiver</title>
+  <title>EnticeChat Live · WebRTC Mesh P2P</title>
 
-  <!-- VDO.Ninja SDK (latest stable) -->
-  <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
+  <!-- webConnect.js - Auto WebRTC Mesh, no signaling server needed! -->
+  <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
 
   <style>
     * {
@@ -84,22 +84,41 @@
       transition: all 0.2s;
     }
 
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
     .video-wrapper {
       position: relative;
       background: #000000;
       border-radius: 28px;
       overflow: hidden;
       box-shadow: 0 20px 35px -10px rgba(0,0,0,0.6);
-      margin: 20px 0;
       border: 1px solid rgba(255,215,0,0.3);
     }
 
-    video {
+    .video-wrapper video {
       width: 100%;
-      max-height: 70vh;
       background: #0a0a0a;
       display: block;
       border-radius: 24px;
+      transform: scaleX(1);
+    }
+
+    .video-label {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      backdrop-filter: blur(4px);
+      z-index: 10;
     }
 
     .button-group {
@@ -177,6 +196,26 @@
       background: #a03a3a;
     }
 
+    .peers-list {
+      margin: 15px auto;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 40px;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .peer-badge {
+      background: #2c3e50;
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-family: monospace;
+      font-size: 0.7rem;
+    }
+
     .footer-note {
       font-size: 0.75rem;
       color: #6c7a89;
@@ -188,6 +227,7 @@
     @media (max-width: 680px) {
       button { padding: 10px 22px; font-size: 0.9rem; }
       .info-card { flex-direction: column; gap: 12px; }
+      .video-grid { grid-template-columns: 1fr; }
     }
 
     .live-pulse {
@@ -210,21 +250,25 @@
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">WebRTC direct streaming · Fixed all SDK errors</div>
+  <div class="sub">WebRTC Mesh P2P · No Server Required · Works on GitHub Pages</div>
 
   <div class="info-card">
-    <span>📡 Room ID:</span>
-    <span class="room-badge" id="roomIdDisplay">enticechat-oi0pcuhk</span>
+    <span>🔗 Channel:</span>
+    <span class="room-badge" id="channelDisplay">enticechat-live</span>
     <span id="status">⚡ Choose your role</span>
   </div>
 
-  <div class="video-wrapper">
-    <video id="video" autoplay playsinline controls></video>
+  <div class="video-grid" id="videoGrid">
+    <div class="video-wrapper" id="localVideoWrapper" style="display: none;">
+      <video id="localVideo" autoplay playsinline muted></video>
+      <div class="video-label">📹 You (Broadcaster)</div>
+    </div>
+    <div id="remoteVideosContainer"></div>
   </div>
 
   <div class="button-group">
-    <button id="broadcasterBtn" class="broadcaster">🎥 Go LIVE (Broadcast)</button>
-    <button id="viewerBtn" class="viewer">👁️ Watch Stream (Viewer)</button>
+    <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
+    <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
   </div>
 
   <div class="control-bar" id="controlBar" style="display: none;">
@@ -233,31 +277,40 @@
     <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
   </div>
 
+  <div class="peers-list" id="peersList">
+    <span style="opacity:0.7;">👥 Connected peers: </span><span id="peerCount">0</span>
+  </div>
+
   <div class="footer-note">
-    🔒 VDO.Ninja P2P · Broadcaster shares camera+mic | Viewers auto-receive stream<br>
-    <span style="color:#6fcf97;">✅ Fixed: No more 'then' errors - safe method checking for all SDK calls</span>
+    🔒 <strong>webConnect.js</strong> powers this · Auto WebRTC mesh using public torrent trackers & nostr relays<br>
+    ✅ <strong>Zero configuration!</strong> Works on GitHub Pages, Netlify, any static host. No signaling server needed.<br>
+    📡 Share the same <strong>Channel name</strong> to connect. All peers see each other automatically.
   </div>
 </div>
 
 <script>
   // ======================= CONFIGURATION =======================
-  const ROOM = "enticechat-oi0pcuhk";
-  let vdo = null;
+  const CHANNEL = "enticechat-live";  // Change this for different rooms
+  let webConnect = null;
   let localStream = null;
   let isBroadcasting = false;
-  let isViewerActive = false;
-  let reconnectInterval = null;
-  let streamReceivedFlag = false;
-
-  const videoElement = document.getElementById('video');
+  let myConnectId = null;
+  let activeRemoteStreams = new Map(); // store remote streams by connectId
+  
+  // DOM elements
   const statusSpan = document.getElementById('status');
-  const broadcasterBtn = document.getElementById('broadcasterBtn');
-  const viewerBtn = document.getElementById('viewerBtn');
+  const startBroadcastBtn = document.getElementById('startBroadcastBtn');
+  const joinViewerBtn = document.getElementById('joinViewerBtn');
   const controlBar = document.getElementById('controlBar');
   const stopBroadcastBtn = document.getElementById('stopBroadcastBtn');
   const muteMicBtn = document.getElementById('muteMicBtn');
   const toggleCamBtn = document.getElementById('toggleCamBtn');
-
+  const localVideoWrapper = document.getElementById('localVideoWrapper');
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideosContainer = document.getElementById('remoteVideosContainer');
+  const peerCountSpan = document.getElementById('peerCount');
+  const channelDisplay = document.getElementById('channelDisplay');
+  
   // Helper: update status
   function setStatusMessage(message, isError = false, isLive = false) {
     if (isLive) {
@@ -267,111 +320,155 @@
     }
     if (isError) {
       statusSpan.style.background = "#4a1a1a";
-      statusSpan.style.border = "1px solid #ff6666";
     } else {
       statusSpan.style.background = "#0f172a";
-      statusSpan.style.border = "none";
-    }
-  }
-
-  // Safe method caller to avoid undefined errors
-  async function safeCall(obj, methodName, ...args) {
-    if (obj && typeof obj[methodName] === 'function') {
-      try {
-        return await obj[methodName](...args);
-      } catch (e) {
-        console.warn(`safeCall: ${methodName} failed`, e);
-        return null;
-      }
-    }
-    console.log(`safeCall: ${methodName} not available`);
-    return null;
-  }
-
-  // Full cleanup
-  async function fullCleanup() {
-    if (reconnectInterval) {
-      clearInterval(reconnectInterval);
-      reconnectInterval = null;
-    }
-    
-    if (localStream) {
-      localStream.getTracks().forEach(track => {
-        track.stop();
-      });
-      localStream = null;
-    }
-    
-    if (vdo) {
-      try {
-        if (isBroadcasting) {
-          await safeCall(vdo, 'unpublish', "main");
-        }
-        await safeCall(vdo, 'leaveRoom');
-        await safeCall(vdo, 'disconnect');
-      } catch(e) { console.warn("cleanup err:", e); }
-      vdo = null;
-    }
-    
-    // Only clear video if we're not in a state where we want to keep it
-    if (videoElement.srcObject && (!isBroadcasting || localStream !== videoElement.srcObject)) {
-      videoElement.srcObject = null;
-    }
-    
-    isBroadcasting = false;
-    isViewerActive = false;
-    streamReceivedFlag = false;
-    controlBar.style.display = "none";
-    
-    if (muteMicBtn) muteMicBtn.innerHTML = "🎤 Mute Mic";
-    if (toggleCamBtn) toggleCamBtn.innerHTML = "📷 Pause Camera";
-  }
-
-  // ==================== BROADCASTER LOGIC ====================
-  async function startBroadcaster() {
-    await fullCleanup();
-    
-    setStatusMessage("🎙️ Requesting camera & microphone...");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      });
-      
-      localStream = stream;
-      videoElement.srcObject = stream;
-      videoElement.muted = true;
-      
-      // Initialize SDK
-      vdo = new VDONinjaSDK({ salt: "vdo.ninja", debug: false });
-      
-      setStatusMessage("🟡 Connecting to network...");
-      await safeCall(vdo, 'connect');
-      await safeCall(vdo, 'joinRoom', { room: ROOM });
-      
-      setStatusMessage("🔴 Publishing stream...", false, true);
-      await safeCall(vdo, 'publish', stream, { 
-        streamID: "main", 
-        videoBitrate: 2000, 
-        audioBitrate: 128
-      });
-      
-      isBroadcasting = true;
-      isViewerActive = false;
-      setStatusMessage("🔴 YOU ARE LIVE · Viewers can watch now", false, true);
-      controlBar.style.display = "flex";
-      
-      updateBroadcasterControlsUI();
-      
-    } catch (err) {
-      console.error("Broadcaster error:", err);
-      setStatusMessage(`❌ Broadcast failed: ${err.message.slice(0, 80)}`, true);
-      await fullCleanup();
     }
   }
   
-  function updateBroadcasterControlsUI() {
-    if (!isBroadcasting || !localStream) return;
+  // Update connected peers count display
+  function updatePeersDisplay(connections) {
+    const count = connections ? connections.length : 0;
+    peerCountSpan.innerText = count;
+  }
+  
+  // Create or update remote video element for a peer
+  function updateRemoteVideo(connectId, stream, metadata) {
+    let videoWrapper = document.getElementById(`remote_${connectId}`);
+    if (!videoWrapper && stream) {
+      // Create new video element for this peer
+      videoWrapper = document.createElement('div');
+      videoWrapper.className = 'video-wrapper';
+      videoWrapper.id = `remote_${connectId}`;
+      const videoEl = document.createElement('video');
+      videoEl.id = `video_${connectId}`;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.controls = true;
+      const label = document.createElement('div');
+      label.className = 'video-label';
+      label.innerText = `👤 Peer: ${connectId.slice(0, 8)}`;
+      videoWrapper.appendChild(videoEl);
+      videoWrapper.appendChild(label);
+      remoteVideosContainer.appendChild(videoWrapper);
+    }
+    
+    if (stream && videoWrapper) {
+      const videoEl = document.getElementById(`video_${connectId}`);
+      if (videoEl && videoEl.srcObject !== stream) {
+        videoEl.srcObject = stream;
+        videoEl.play().catch(e => console.log("autoplay blocked", e));
+      }
+      activeRemoteStreams.set(connectId, stream);
+    } else if (!stream && videoWrapper) {
+      // Remove video element when stream ends
+      videoWrapper.remove();
+      activeRemoteStreams.delete(connectId);
+    }
+  }
+  
+  // Remove all remote videos (cleanup)
+  function clearAllRemoteVideos() {
+    remoteVideosContainer.innerHTML = '';
+    activeRemoteStreams.clear();
+  }
+  
+  // ==================== BROADCASTER LOGIC ====================
+  async function startBroadcaster() {
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Already broadcasting!", false);
+      return;
+    }
+    
+    // Cleanup previous state
+    if (webConnect) {
+      webConnect.Disconnect();
+      webConnect = null;
+    }
+    clearAllRemoteVideos();
+    
+    setStatusMessage("🎙️ Requesting camera & microphone...");
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+      
+      localStream = stream;
+      localVideo.srcObject = stream;
+      localVideoWrapper.style.display = "block";
+      
+      // Initialize webConnect.js with channel name
+      setStatusMessage("🟡 Connecting to P2P mesh network...");
+      
+      webConnect = webconnect({
+        appName: "EnticeChat",
+        channelName: CHANNEL
+        // No signaling server needed! Uses public torrent trackers & nostr relays
+      });
+      
+      // Get my connection ID
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        console.log("My Connect ID:", myConnectId);
+        setStatusMessage("🔴 Broadcasting LIVE to channel", false, true);
+        isBroadcasting = true;
+        controlBar.style.display = "flex";
+        updateBroadcasterUI();
+      });
+      
+      // When a new peer connects, send them our stream
+      webConnect.onConnect(async (attribute) => {
+        console.log("✅ New peer connected:", attribute.connectId);
+        setStatusMessage(`📡 Peer joined: ${attribute.connectId.slice(0, 8)}...`, false);
+        
+        // Send our local stream to the newly connected peer
+        if (localStream && isBroadcasting) {
+          webConnect.openStreaming(localStream, { 
+            connectId: attribute.connectId,
+            metadata: { name: "Live Broadcast", type: "video" }
+          });
+          console.log("📤 Sent stream to new peer");
+        }
+        
+        // Update peer count display
+        webConnect.getConnection((connAttr) => {
+          updatePeersDisplay(connAttr.connection);
+        });
+      });
+      
+      // When a peer disconnects
+      webConnect.onDisconnect((attribute) => {
+        console.log("👋 Peer disconnected:", attribute.connectId);
+        // Remove their video if any
+        updateRemoteVideo(attribute.connectId, null);
+        webConnect.getConnection((connAttr) => {
+          updatePeersDisplay(connAttr.connection);
+        });
+      });
+      
+      // Listen for incoming streams (from viewers who might also broadcast? but we just show them)
+      webConnect.onStreaming((stream, attribute) => {
+        console.log("📺 Received stream from:", attribute.connectId, attribute.metadata);
+        // Show remote video (if viewer is also sending, but we treat as viewer stream)
+        updateRemoteVideo(attribute.connectId, stream, attribute.metadata);
+        setStatusMessage(`✅ Receiving stream from peer`, false, true);
+      });
+      
+      // Update peer list periodically
+      webConnect.getConnection((connAttr) => {
+        updatePeersDisplay(connAttr.connection);
+      });
+      
+    } catch (err) {
+      console.error("Broadcaster error:", err);
+      setStatusMessage(`❌ Failed: ${err.message.slice(0, 80)}`, true);
+      await stopBroadcasting();
+    }
+  }
+  
+  function updateBroadcasterUI() {
+    if (!localStream) return;
     const audioTrack = localStream.getAudioTracks()[0];
     if (audioTrack) {
       muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
@@ -383,14 +480,23 @@
   }
   
   async function stopBroadcasting() {
-    if (!isBroadcasting) return;
-    setStatusMessage("🛑 Stopping broadcast...");
-    try {
-      await safeCall(vdo, 'unpublish', "main");
-    } catch(e) { console.warn("unpublish error", e); }
-    await fullCleanup();
-    videoElement.srcObject = null;
-    setStatusMessage("⏹️ Broadcast ended · choose role again");
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
+    localVideo.srcObject = null;
+    localVideoWrapper.style.display = "none";
+    
+    if (webConnect) {
+      webConnect.Disconnect();
+      webConnect = null;
+    }
+    
+    clearAllRemoteVideos();
+    isBroadcasting = false;
+    controlBar.style.display = "none";
+    setStatusMessage("⏹️ Broadcast ended");
+    peerCountSpan.innerText = "0";
   }
   
   function toggleMute() {
@@ -399,7 +505,7 @@
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
       muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
-      setStatusMessage(`🔴 LIVE ${audioTrack.enabled ? "🎙️ Mic active" : "🔇 Mic muted"}`, false, true);
+      setStatusMessage(`🔴 ${audioTrack.enabled ? "Mic active" : "Mic muted"}`, false, true);
     }
   }
   
@@ -409,149 +515,106 @@
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
       toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
-      setStatusMessage(`🔴 LIVE ${videoTrack.enabled ? "📹 Camera on" : "📷 Camera paused"}`, false, true);
+      setStatusMessage(`🔴 ${videoTrack.enabled ? "Camera on" : "Camera paused"}`, false, true);
     }
   }
   
-  // ==================== VIEWER LOGIC - COMPLETELY FIXED (no .then on undefined) ====================
+  // ==================== VIEWER LOGIC ====================
   async function startViewer() {
-    await fullCleanup();
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Stop broadcasting first to switch to viewer mode", false);
+      return;
+    }
     
-    setStatusMessage("👁️ Joining room as viewer...");
-    isViewerActive = true;
-    streamReceivedFlag = false;
-    controlBar.style.display = "none";
+    // Cleanup
+    if (webConnect) {
+      webConnect.Disconnect();
+      webConnect = null;
+    }
+    clearAllRemoteVideos();
+    localVideoWrapper.style.display = "none";
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+    
+    setStatusMessage("👁️ Joining as viewer...");
     
     try {
-      // Initialize SDK
-      vdo = new VDONinjaSDK({ salt: "vdo.ninja", debug: false });
+      webConnect = webconnect({
+        appName: "EnticeChat",
+        channelName: CHANNEL
+      });
       
-      // Connect and join room
-      await safeCall(vdo, 'connect');
-      await safeCall(vdo, 'joinRoom', { room: ROOM });
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        console.log("Viewer ID:", myConnectId);
+        setStatusMessage("👁️ Connected · Waiting for broadcaster...");
+      });
       
-      setStatusMessage("📡 Waiting for broadcaster to go LIVE...");
+      // When peers connect, they might send streams
+      webConnect.onConnect(async (attribute) => {
+        console.log("📡 Peer connected:", attribute.connectId);
+        setStatusMessage(`📡 Broadcaster/peer joined, receiving stream...`);
+        // Request any stream? Actually broadcaster will automatically send via openStreaming
+        // We just wait for onStreaming event
+      });
       
-      // ===== CORRECT WAY: Use SDK events (no manual requestStream needed) =====
-      // The VDO.Ninja SDK automatically handles incoming streams when a publisher is present.
-      // We just need to listen for the 'stream' event.
+      // Receive stream from broadcaster
+      webConnect.onStreaming((stream, attribute) => {
+        console.log("🎬 Received broadcast stream from:", attribute.connectId);
+        updateRemoteVideo(attribute.connectId, stream, attribute.metadata);
+        setStatusMessage("✅ LIVE · Watching broadcast", false, true);
+      });
       
-      // Event: when a remote stream is received
-      if (vdo && typeof vdo.on === 'function') {
-        vdo.on("stream", (remoteStream, streamId, peerId) => {
-          console.log("✅ Viewer received stream:", streamId, peerId);
-          if (remoteStream && !streamReceivedFlag) {
-            streamReceivedFlag = true;
-            if (videoElement.srcObject !== remoteStream) {
-              videoElement.srcObject = remoteStream;
-              videoElement.muted = false;
-              setStatusMessage("✅ LIVE · Watching broadcast", false, true);
-            }
-          }
-        });
-        
-        // Alternative event name for some SDK versions
-        vdo.on("remoteStream", (remoteStream, streamId) => {
-          console.log("📺 remoteStream event:", streamId);
-          if (remoteStream && !streamReceivedFlag) {
-            streamReceivedFlag = true;
-            videoElement.srcObject = remoteStream;
-            setStatusMessage("✅ LIVE · Stream connected", false, true);
-          }
-        });
-        
-        // When a peer joins (broadcaster appears)
-        vdo.on("peerJoined", (peerInfo) => {
-          console.log("👤 Broadcaster joined:", peerInfo);
-          setStatusMessage("📡 Broadcaster detected! Connecting...");
-        });
-        
-        // When a peer leaves
-        vdo.on("peerLeft", (peerInfo) => {
-          console.log("👋 Broadcaster left");
-          if (streamReceivedFlag) {
-            streamReceivedFlag = false;
-            videoElement.srcObject = null;
-            setStatusMessage("📡 Broadcaster stopped streaming. Waiting for them to come back...");
-          }
-        });
-      }
-      
-      // Simple heartbeat to check if stream is still alive
-      reconnectInterval = setInterval(() => {
-        if (isViewerActive && vdo) {
-          // Check if we lost stream but broadcaster might still be there
-          if (!videoElement.srcObject && streamReceivedFlag === false) {
-            if (document.visibilityState === "visible") {
-              console.log("Viewer: no stream, staying connected");
-              // Don't spam status, only update if it's been a while
-              const currentStatus = statusSpan.innerHTML;
-              if (currentStatus.includes("LIVE")) {
-                setStatusMessage("📡 Reconnecting to stream...");
-              }
-            }
-          }
+      webConnect.onDisconnect((attribute) => {
+        console.log("Peer disconnected:", attribute.connectId);
+        updateRemoteVideo(attribute.connectId, null);
+        if (activeRemoteStreams.size === 0) {
+          setStatusMessage("📡 No active broadcast. Waiting for broadcaster...");
         }
-      }, 8000);
+      });
       
-      // Optional: check for existing streams after a delay using safe method only
-      setTimeout(async () => {
-        if (isViewerActive && vdo && !streamReceivedFlag) {
-          // Some SDK versions might have a getStreams method - safely check and use if available
-          if (typeof vdo.getStreams === 'function') {
-            try {
-              const streams = await vdo.getStreams();
-              if (streams && Object.keys(streams).length > 0) {
-                console.log("Found existing streams via getStreams:", streams);
-                for (let id in streams) {
-                  if (streams[id] && !streamReceivedFlag) {
-                    videoElement.srcObject = streams[id];
-                    streamReceivedFlag = true;
-                    setStatusMessage("✅ LIVE · Stream acquired", false, true);
-                    break;
-                  }
-                }
-              }
-            } catch(e) { console.log("getStreams not available or failed", e); }
-          }
-          
-          // If still no stream after 5 seconds, just show waiting message
-          if (!streamReceivedFlag) {
-            setStatusMessage("⏳ No broadcaster yet. Start a broadcast or wait for host.", false);
-          }
+      // Update peer count
+      webConnect.getConnection((connAttr) => {
+        updatePeersDisplay(connAttr.connection);
+      });
+      
+      // Also periodically check for streams if needed (webConnect handles automatically)
+      setTimeout(() => {
+        if (webConnect && activeRemoteStreams.size === 0) {
+          setStatusMessage("⏳ No broadcaster yet. Start a broadcast or wait.", false);
         }
-      }, 3000);
+      }, 4000);
       
     } catch (err) {
       console.error("Viewer error:", err);
       setStatusMessage(`❌ Viewer error: ${err.message.slice(0, 80)}`, true);
-      await fullCleanup();
-      isViewerActive = false;
     }
   }
   
-  // ==================== AUTO MODE & EVENT HANDLERS ====================
-  function autoHandleUrlParams() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has("view")) {
-      setTimeout(() => startViewer(), 100);
+  async function stopViewer() {
+    if (webConnect) {
+      webConnect.Disconnect();
+      webConnect = null;
     }
-    if (urlParams.has("broadcast")) {
-      setTimeout(() => startBroadcaster(), 100);
-    }
+    clearAllRemoteVideos();
+    setStatusMessage("👋 Left the channel");
+    peerCountSpan.innerText = "0";
   }
   
-  broadcasterBtn.addEventListener('click', () => {
+  // ==================== EVENT HANDLERS ====================
+  startBroadcastBtn.addEventListener('click', () => {
     if (isBroadcasting) {
-      setStatusMessage("⚠️ Already broadcasting! Press Stop to switch.", false);
-      return;
+      stopBroadcasting();
+    } else {
+      startBroadcaster();
     }
-    startBroadcaster();
   });
   
-  viewerBtn.addEventListener('click', () => {
+  joinViewerBtn.addEventListener('click', () => {
     if (isBroadcasting) {
-      setStatusMessage("⚠️ Stop broadcasting first or open new tab to watch", false);
+      setStatusMessage("⚠️ Stop broadcasting first to become viewer", false);
       return;
     }
     startViewer();
@@ -561,58 +624,52 @@
     stopBroadcastBtn.addEventListener('click', () => {
       if (isBroadcasting) {
         stopBroadcasting();
-      } else if (isViewerActive) {
-        fullCleanup();
-        videoElement.srcObject = null;
-        setStatusMessage("👋 Left the stream room");
-        isViewerActive = false;
+      } else {
+        stopViewer();
       }
     });
   }
   
-  if (muteMicBtn) muteMicBtn.addEventListener('click', toggleMute);
-  if (toggleCamBtn) toggleCamBtn.addEventListener('click', toggleCamera);
+  muteMicBtn.addEventListener('click', toggleMute);
+  toggleCamBtn.addEventListener('click', toggleCamera);
   
-  // Page unload cleanup
+  // Channel name display and copy
+  channelDisplay.innerText = CHANNEL;
+  channelDisplay.addEventListener('click', () => {
+    navigator.clipboard.writeText(CHANNEL);
+    setStatusMessage("📋 Channel name copied!", false);
+    setTimeout(() => {
+      if (isBroadcasting) setStatusMessage("🔴 Broadcasting LIVE", false, true);
+      else setStatusMessage("⚡ Choose your role", false);
+    }, 1500);
+  });
+  
+  // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
     if (localStream) {
       localStream.getTracks().forEach(t => t.stop());
     }
-    if (vdo) {
-      try {
-        if (vdo.leaveRoom) vdo.leaveRoom();
-        if (vdo.disconnect) vdo.disconnect();
-      } catch(e) {}
+    if (webConnect) {
+      webConnect.Disconnect();
     }
-    if (reconnectInterval) clearInterval(reconnectInterval);
-  });
-  
-  // Display room ID and make it copyable
-  const roomSpan = document.getElementById('roomIdDisplay');
-  roomSpan.innerText = ROOM;
-  roomSpan.addEventListener('click', () => {
-    navigator.clipboard.writeText(ROOM);
-    const originalText = statusSpan.innerHTML;
-    setStatusMessage("📋 Room ID copied to clipboard!", false);
-    setTimeout(() => {
-      if (isBroadcasting) setStatusMessage("🔴 YOU ARE LIVE", false, true);
-      else if (isViewerActive && streamReceivedFlag) setStatusMessage("✅ LIVE · Watching broadcast", false, true);
-      else if (isViewerActive) setStatusMessage("👁️ Waiting for broadcaster...", false);
-      else setStatusMessage("⚡ Choose your role", false);
-    }, 2000);
   });
   
   // Check browser compatibility
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     setStatusMessage("⚠️ Browser not supported: No camera/mic access", true);
-    broadcasterBtn.disabled = true;
+    startBroadcastBtn.disabled = true;
   }
   
-  autoHandleUrlParams();
+  // Auto-start from URL params? Optional
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has("broadcast")) {
+    setTimeout(() => startBroadcaster(), 500);
+  } else if (urlParams.has("view")) {
+    setTimeout(() => startViewer(), 500);
+  }
   
-  console.log("✅ EnticeChat Live - All errors fixed");
-  console.log("✅ No more 'requestStream' or '.then on undefined' errors");
-  console.log("✅ Viewer mode uses SDK events - safe method checking everywhere");
+  console.log("✅ EnticeChat Live with webConnect.js");
+  console.log("✅ Zero-config WebRTC mesh - works on GitHub Pages!");
 </script>
 </body>
 </html>
