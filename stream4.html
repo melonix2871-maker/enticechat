@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>EnticeChat Live · Paged Relay Tree</title>
+  <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
+      background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
+      color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    h1 {
+      font-weight: 700;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #FFB347, #FF6B6B);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .sub {
+      color: #aaa;
+      margin-top: -8px;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .video-section {
+      flex: 3;
+      min-width: 300px;
+    }
+
+    .chat-section {
+      flex: 1.15;
+      min-width: 290px;
+      background: rgba(10, 15, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      border: 1px solid rgba(255,215,0,0.18);
+      display: flex;
+      flex-direction: column;
+      height: 72vh;
+      overflow: hidden;
+    }
+
+    .info-card {
+      background: rgba(20, 25, 45, 0.86);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      padding: 14px 18px;
+      margin: 0 0 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .pill, #status, .room-badge {
+      background: #0f172a;
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .room-badge {
+      font-family: monospace;
+      color: #ffd966;
+      cursor: pointer;
+      user-select: all;
+    }
+
+    .room-badge:hover { background: #162238; }
+
+    .section-card {
+      background: rgba(20, 25, 45, 0.84);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 24px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      color: #ffd966;
+      font-weight: 700;
+    }
+
+    .video-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255,215,0,0.26);
+      box-shadow: 0 18px 35px -14px rgba(0,0,0,0.65);
+    }
+
+    .video-wrapper video {
+      width: 100%;
+      display: block;
+      background: #090909;
+      border-radius: 24px;
+    }
+
+    .video-label {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.72);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    button {
+      padding: 11px 22px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      color: white;
+      background: #2b3b4f;
+      transition: transform .15s ease, opacity .15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .broadcaster { background: linear-gradient(95deg, #E63E2E, #C0392B); }
+    .viewer { background: linear-gradient(95deg, #1F6392, #0E4A6E); }
+    .danger-btn { background: #7f2a2a; }
+    .small-btn {
+      padding: 8px 16px;
+      font-size: .82rem;
+      background: #2a2f3f;
+    }
+
+    .relay-btn.active { background: linear-gradient(95deg, #0e8f5b, #0a6b45); }
+    .page-btn.active { background: linear-gradient(95deg, #7c3aed, #5b21b6); }
+
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .stats-grid, .tree-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card, .tree-item {
+      background: rgba(0,0,0,0.24);
+      border-radius: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .stat-card strong, .tree-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.76rem;
+      color: #fff;
+    }
+
+    .pages-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .page-chip {
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .page-chip.active {
+      background: linear-gradient(95deg, #7c3aed, #5b21b6);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .chat-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      font-weight: 700;
+      background: rgba(0,0,0,0.22);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn .2s ease;
+    }
+
+    .message.own { align-items: flex-end; }
+
+    .message-bubble {
+      max-width: 88%;
+      padding: 9px 14px;
+      border-radius: 18px;
+      background: rgba(30, 40, 60, .92);
+      word-wrap: break-word;
+    }
+
+    .message.own .message-bubble {
+      background: linear-gradient(135deg, #E63E2E, #C0392B);
+    }
+
+    .message-name {
+      font-size: .7rem;
+      opacity: .72;
+      margin-bottom: 4px;
+      margin-left: 10px;
+    }
+
+    .message.own .message-name {
+      text-align: right;
+      margin-right: 10px;
+      margin-left: 0;
+    }
+
+    .message-text {
+      font-size: .9rem;
+      line-height: 1.4;
+    }
+
+    .message-time {
+      font-size: .62rem;
+      opacity: .5;
+      margin-top: 4px;
+      margin-left: 10px;
+    }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 40px;
+      background: rgba(20, 30, 45, 0.9);
+      color: white;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .chat-input:focus {
+      border: 1px solid #ffb347;
+    }
+
+    .send-btn {
+      padding: 10px 18px;
+      background: #ffb347;
+      color: #1a1a2e;
+      border-radius: 40px;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      font-size: 0.72rem;
+      color: #6c7a89;
+      margin-top: 22px;
+      text-align: center;
+      border-top: 1px solid #222;
+      padding-top: 20px;
+      line-height: 1.55;
+    }
+
+    code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    .live-pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #e74c3c;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 1.2s infinite;
+      vertical-align: middle;
+    }
+
+    .hint {
+      font-size: 0.78rem;
+      color: #aeb9c8;
+      line-height: 1.45;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1.2); }
+    }
+
+    @media (max-width: 768px) {
+      .main-layout { flex-direction: column; }
+      .chat-section { height: 42vh; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎙️ EnticeChat Live</h1>
+  <div class="sub">Paged Relay Tree · Clustered Viewer Pages · Single Stream Forwarding</div>
+
+  <div class="info-card">
+    <span>🔗 Channel:</span>
+    <span class="room-badge" id="channelDisplay">enticechat-live</span>
+    <span id="status">⚡ Choose your role</span>
+    <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
+    <span class="pill">📄 My Page: <span id="pageStat">-</span></span>
+    <span class="pill">🌳 Level: <span id="depthStat">0</span></span>
+    <span class="pill">🔁 Children: <span id="childCountStat">0</span></span>
+    <span class="pill">🧭 Role: <span id="nodeRoleStat">none</span></span>
+  </div>
+
+  <div class="main-layout">
+    <div class="video-section">
+      <div class="button-row">
+        <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
+        <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
+      </div>
+
+      <div class="control-bar" id="controlBar" style="display:none;">
+        <button id="stopBtn" class="small-btn danger-btn">🔴 Stop / Leave</button>
+        <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
+        <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
+        <button id="relayOptInBtn" class="small-btn relay-btn active">🔁 Relay: On</button>
+        <button id="pageSwitchBtn" class="small-btn page-btn">📄 Switch Page</button>
+      </div>
+
+      <div class="video-grid">
+        <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="video-label" id="localVideoLabel">📹 You</div>
+        </div>
+
+        <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
+          <video id="mainRemoteVideo" autoplay playsinline controls></video>
+          <div class="video-label" id="mainRemoteLabel">🎙️ Live</div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">Node / Relay Status</div>
+        <div class="tree-grid">
+          <div class="tree-item"><strong>Your Connect ID</strong><span id="myIdView">—</span></div>
+          <div class="tree-item"><strong>Assigned Parent</strong><span id="myParentView">—</span></div>
+          <div class="tree-item"><strong>Current Source</strong><span id="mySourceView">—</span></div>
+          <div class="tree-item"><strong>Origin ID</strong><span id="originIdView">—</span></div>
+          <div class="tree-item"><strong>Relay Eligible</strong><span id="relayEligibleView">—</span></div>
+          <div class="tree-item"><strong>Relay Enabled</strong><span id="relayEnabledView">—</span></div>
+          <div class="tree-item"><strong>Children IDs</strong><span id="myChildrenView">—</span></div>
+          <div class="tree-item"><strong>Known Pages</strong><span id="knownPagesView">—</span></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">Page Registry</div>
+        <div class="hint">
+          Viewers are grouped into pages. Each page tries to keep its own relay roots and children so the stream fanout stays clustered instead of chaotic.
+        </div>
+        <div class="pages-wrap" id="pagesWrap"></div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">Page Details</div>
+        <div class="stats-grid">
+          <div class="stat-card"><strong>Selected Page</strong><span id="selectedPageView">-</span></div>
+          <div class="stat-card"><strong>Nodes In Selected Page</strong><span id="selectedPageCountView">0</span></div>
+          <div class="stat-card"><strong>Relay Nodes In Page</strong><span id="selectedPageRelaysView">0</span></div>
+          <div class="stat-card"><strong>Root Nodes In Page</strong><span id="selectedPageRootsView">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-section">
+      <div class="chat-header">💬 Live Chat <span id="chatRoleBadge"></span></div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="message">
+          <div class="message-bubble" style="background:#2c3e50;">
+            ✨ Welcome! This build uses page-based relay clustering.
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500" />
+        <button id="sendChatBtn" class="send-btn">📤 Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <strong>Paged relay mode</strong>: viewers are assigned to pages, and the origin tries to seed only relay roots per page. Relays then forward within that page tree.<br>
+    URL params: <code>?broadcast&name=Host</code> or <code>?view&name=Viewer1</code>
+  </div>
+</div>
+
+<script>
+  const CHANNEL = "enticechat-live";
+
+  const PAGE_SIZE_TARGET = 12;
+  const MAX_PAGE_ROOTS = 2;
+  const MAX_ORIGIN_CHILDREN = 4;
+  const MAX_RELAY_CHILDREN = 3;
+  const MAX_TREE_DEPTH = 3;
+  const ASSIGNMENT_RETRY_MS = 2500;
+  const PEER_INFO_INTERVAL_MS = 5000;
+  const CHAT_TTL_MS = 5 * 60 * 1000;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  let myName = urlParams.get("name") || `User_${Math.floor(Math.random() * 1000)}`;
+  let myRole = null;
+  let webConnect = null;
+  let localStream = null;
+  let receivedLiveStream = null;
+  let isBroadcasting = false;
+  let myConnectId = null;
+
+  let originId = null;
+  let assignedParentId = null;
+  let liveSourcePeerId = null;
+  let myTreeLevel = 0;
+  let myPage = null;
+  let selectedPage = 1;
+  let childPeerIds = new Set();
+  let relayEnabled = true;
+  let relayEligible = detectRelayEligibility();
+  let peerRegistry = new Map();
+  let pageRegistry = new Map();
+  let seenMessageIds = new Set();
+  let chatMessageTimestamps = new Map();
+
+  const statusSpan = document.getElementById("status");
+  const startBroadcastBtn = document.getElementById("startBroadcastBtn");
+  const joinViewerBtn = document.getElementById("joinViewerBtn");
+  const controlBar = document.getElementById("controlBar");
+  const stopBtn = document.getElementById("stopBtn");
+  const muteMicBtn = document.getElementById("muteMicBtn");
+  const toggleCamBtn = document.getElementById("toggleCamBtn");
+  const relayOptInBtn = document.getElementById("relayOptInBtn");
+  const pageSwitchBtn = document.getElementById("pageSwitchBtn");
+
+  const localVideoWrapper = document.getElementById("localVideoWrapper");
+  const localVideo = document.getElementById("localVideo");
+  const localVideoLabel = document.getElementById("localVideoLabel");
+  const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
+  const mainRemoteVideo = document.getElementById("mainRemoteVideo");
+  const mainRemoteLabel = document.getElementById("mainRemoteLabel");
+
+  const peerCountSpan = document.getElementById("peerCount");
+  const pageStat = document.getElementById("pageStat");
+  const depthStat = document.getElementById("depthStat");
+  const childCountStat = document.getElementById("childCountStat");
+  const nodeRoleStat = document.getElementById("nodeRoleStat");
+
+  const myIdView = document.getElementById("myIdView");
+  const myParentView = document.getElementById("myParentView");
+  const mySourceView = document.getElementById("mySourceView");
+  const originIdView = document.getElementById("originIdView");
+  const relayEligibleView = document.getElementById("relayEligibleView");
+  const relayEnabledView = document.getElementById("relayEnabledView");
+  const myChildrenView = document.getElementById("myChildrenView");
+  const knownPagesView = document.getElementById("knownPagesView");
+
+  const selectedPageView = document.getElementById("selectedPageView");
+  const selectedPageCountView = document.getElementById("selectedPageCountView");
+  const selectedPageRelaysView = document.getElementById("selectedPageRelaysView");
+  const selectedPageRootsView = document.getElementById("selectedPageRootsView");
+  const pagesWrap = document.getElementById("pagesWrap");
+
+  const channelDisplay = document.getElementById("channelDisplay");
+  const chatMessages = document.getElementById("chatMessages");
+  const chatInput = document.getElementById("chatInput");
+  const sendChatBtn = document.getElementById("sendChatBtn");
+  const chatRoleBadge = document.getElementById("chatRoleBadge");
+
+  function detectRelayEligibility() {
+    const ua = navigator.userAgent || "";
+    const mobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+    const cores = navigator.hardwareConcurrency || 2;
+    return !mobile && cores >= 4;
+  }
+
+  function shortId(id) {
+    return id ? `${id.slice(0, 8)}…` : "—";
+  }
+
+  function getTime() {
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function nowId() {
+    return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === "&") return "&amp;";
+      if (m === "<") return "&lt;";
+      if (m === ">") return "&gt;";
+      return m;
+    });
+  }
+
+  function setStatusMessage(message, isError = false, isLive = false) {
+    if (isLive) {
+      statusSpan.innerHTML = `<span class="live-pulse"></span>${message}`;
+    } else {
+      statusSpan.innerHTML = message;
+    }
+    statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
+  }
+
+  function addMessageToUI(senderName, message, isOwn = false) {
+    const div = document.createElement("div");
+    div.className = `message ${isOwn ? "own" : ""}`;
+    div.innerHTML = `
+      <div class="message-name">${escapeHtml(senderName)}</div>
+      <div class="message-bubble"><div class="message-text">${escapeHtml(message)}</div></div>
+      <div class="message-time">${getTime()}</div>
+    `;
+    chatMessages.appendChild(div);
+    div.scrollIntoView({ behavior: "smooth", block: "end" });
+    while (chatMessages.children.length > 200) {
+      chatMessages.removeChild(chatMessages.firstChild);
+    }
+  }
+
+  function rememberMessageId(id) {
+    seenMessageIds.add(id);
+    chatMessageTimestamps.set(id, Date.now());
+    if (chatMessageTimestamps.size > 800) {
+      const threshold = Date.now() - CHAT_TTL_MS;
+      for (const [mid, ts] of chatMessageTimestamps.entries()) {
+        if (ts < threshold) {
+          chatMessageTimestamps.delete(mid);
+          seenMessageIds.delete(mid);
+        }
+      }
+    }
+  }
+
+  function safeSend(payload, targetId = null) {
+    if (!webConnect) return;
+    try {
+      webConnect.Send(JSON.stringify(payload), { connectId: targetId });
+    } catch (err) {
+      console.warn("Send failed", err);
+    }
+  }
+
+  function getConnectedPeerCount() {
+    if (!webConnect || typeof webConnect.getConnection !== "function") return;
+    webConnect.getConnection((connAttr) => {
+      peerCountSpan.innerText = connAttr.connection?.length || 0;
+    });
+  }
+
+  function updateRoleBadge() {
+    const roleText = myRole ? myRole.toUpperCase() : "NONE";
+    chatRoleBadge.innerHTML = `· ${roleText}`;
+    nodeRoleStat.innerText = myRole || "none";
+  }
+
+  function updateStats() {
+    pageStat.innerText = myPage ?? "-";
+    depthStat.innerText = String(myTreeLevel || 0);
+    childCountStat.innerText = String(childPeerIds.size);
+    myIdView.innerText = myConnectId ? shortId(myConnectId) : "—";
+    myParentView.innerText = assignedParentId ? shortId(assignedParentId) : "—";
+    mySourceView.innerText = liveSourcePeerId ? shortId(liveSourcePeerId) : "—";
+    originIdView.innerText = originId ? shortId(originId) : "—";
+    relayEligibleView.innerText = relayEligible ? "Yes" : "No";
+    relayEnabledView.innerText = relayEnabled ? "Yes" : "No";
+    myChildrenView.innerText = childPeerIds.size ? Array.from(childPeerIds).map(shortId).join(", ") : "—";
+    knownPagesView.innerText = pageRegistry.size ? Array.from(pageRegistry.keys()).sort((a,b)=>a-b).join(", ") : "—";
+    relayOptInBtn.classList.toggle("active", relayEnabled);
+    relayOptInBtn.innerHTML = relayEnabled ? "🔁 Relay: On" : "🔁 Relay: Off";
+    renderPages();
+  }
+
+  function ensurePage(pageNo) {
+    if (!pageRegistry.has(pageNo)) {
+      pageRegistry.set(pageNo, { page: pageNo, memberIds: [], rootIds: [] });
+    }
+    return pageRegistry.get(pageNo);
+  }
+
+  function rebuildPageRegistryFromPeers() {
+    pageRegistry.clear();
+    for (const peer of peerRegistry.values()) {
+      if (!peer.page) continue;
+      const page = ensurePage(peer.page);
+      if (!page.memberIds.includes(peer.connectId)) page.memberIds.push(peer.connectId);
+      if (peer.isPageRoot && !page.rootIds.includes(peer.connectId)) page.rootIds.push(peer.connectId);
+    }
+  }
+
+  function renderPages() {
+    rebuildPageRegistryFromPeers();
+
+    pagesWrap.innerHTML = "";
+    const pageNumbers = Array.from(pageRegistry.keys()).sort((a,b) => a - b);
+    if (!pageNumbers.length) {
+      selectedPageView.innerText = "-";
+      selectedPageCountView.innerText = "0";
+      selectedPageRelaysView.innerText = "0";
+      selectedPageRootsView.innerText = "0";
+      return;
+    }
+
+    if (!pageRegistry.has(selectedPage)) {
+      selectedPage = pageNumbers[0];
+    }
+
+    for (const pageNo of pageNumbers) {
+      const page = pageRegistry.get(pageNo);
+      const chip = document.createElement("div");
+      chip.className = `page-chip ${selectedPage === pageNo ? "active" : ""}`;
+      const relayCount = page.memberIds.filter(id => {
+        const p = peerRegistry.get(id);
+        return p && p.role === "relay";
+      }).length;
+      chip.textContent = `Page ${pageNo} · ${page.memberIds.length} nodes · ${relayCount} relays`;
+      chip.addEventListener("click", () => {
+        selectedPage = pageNo;
+        renderPages();
+      });
+      pagesWrap.appendChild(chip);
+    }
+
+    const selected = pageRegistry.get(selectedPage);
+    const members = selected ? selected.memberIds.map(id => peerRegistry.get(id)).filter(Boolean) : [];
+    const relays = members.filter(p => p.role === "relay").length;
+    const roots = members.filter(p => p.isPageRoot).length;
+
+    selectedPageView.innerText = selectedPage;
+    selectedPageCountView.innerText = members.length;
+    selectedPageRelaysView.innerText = relays;
+    selectedPageRootsView.innerText = roots;
+  }
+
+  function buildPeerInfo() {
+    return {
+      type: "peerInfo",
+      connectId: myConnectId,
+      name: myName,
+      role: myRole,
+      relayEligible,
+      relayEnabled,
+      page: myPage,
+      treeLevel: myTreeLevel,
+      assignedParentId,
+      childCount: childPeerIds.size,
+      hasLiveStream: !!(localStream || receivedLiveStream),
+      originId,
+      isOrigin: myRole === "origin",
+      isPageRoot: isPageRoot(myConnectId)
+    };
+  }
+
+  function announcePeerInfo(targetId = null) {
+    safeSend(buildPeerInfo(), targetId);
+  }
+
+  function ensurePeerRecord(info) {
+    if (!info || !info.connectId) return null;
+
+    const peer = peerRegistry.get(info.connectId) || {
+      connectId: info.connectId,
+      name: info.name || "Unknown",
+      role: info.role || "viewer",
+      relayEligible: !!info.relayEligible,
+      relayEnabled: !!info.relayEnabled,
+      treeLevel: Number.isFinite(info.treeLevel) ? info.treeLevel : 0,
+      assignedParentId: info.assignedParentId || null,
+      hasLiveStream: !!info.hasLiveStream,
+      page: info.page || null,
+      children: [],
+      isPageRoot: !!info.isPageRoot
+    };
+
+    peer.name = info.name ?? peer.name;
+    peer.role = info.role ?? peer.role;
+    peer.relayEligible = !!info.relayEligible;
+    peer.relayEnabled = !!info.relayEnabled;
+    peer.treeLevel = Number.isFinite(info.treeLevel) ? info.treeLevel : peer.treeLevel;
+    peer.assignedParentId = info.assignedParentId ?? peer.assignedParentId;
+    peer.hasLiveStream = !!info.hasLiveStream;
+    peer.page = info.page ?? peer.page;
+    peer.isPageRoot = !!info.isPageRoot;
+    if (!Array.isArray(peer.children)) peer.children = [];
+    peerRegistry.set(info.connectId, peer);
+    return peer;
+  }
+
+  function isPageRoot(peerId) {
+    const peer = peerRegistry.get(peerId);
+    return !!(peer && peer.isPageRoot);
+  }
+
+  function selectPageForNewViewer() {
+    const pages = Array.from(pageRegistry.values()).sort((a,b) => a.page - b.page);
+    for (const p of pages) {
+      if (p.memberIds.length < PAGE_SIZE_TARGET) {
+        return p.page;
+      }
+    }
+    const nextPage = pages.length ? Math.max(...pages.map(p => p.page)) + 1 : 1;
+    ensurePage(nextPage);
+    return nextPage;
+  }
+
+  function pageMembers(pageNo) {
+    return Array.from(peerRegistry.values()).filter(p => p.page === pageNo);
+  }
+
+  function pageRoots(pageNo) {
+    return pageMembers(pageNo).filter(p => p.isPageRoot);
+  }
+
+  function relayCandidatesInPage(pageNo) {
+    return pageMembers(pageNo)
+      .filter(p =>
+        (p.role === "relay" || p.role === "origin") &&
+        p.hasLiveStream &&
+        p.treeLevel < MAX_TREE_DEPTH &&
+        (p.role === "origin" || (p.relayEligible && p.relayEnabled))
+      )
+      .sort((a,b) => {
+        if (a.isPageRoot !== b.isPageRoot) return a.isPageRoot ? -1 : 1;
+        return (a.treeLevel || 0) - (b.treeLevel || 0);
+      });
+  }
+
+  function effectiveMaxChildren(peer) {
+    if (!peer) return 0;
+    return peer.role === "origin" ? MAX_ORIGIN_CHILDREN : MAX_RELAY_CHILDREN;
+  }
+
+  function canAcceptChild(peer, childPage) {
+    if (!peer) return false;
+    if (peer.treeLevel >= MAX_TREE_DEPTH) return false;
+    if (peer.role === "relay" && (!peer.relayEligible || !peer.relayEnabled)) return false;
+    if (!peer.hasLiveStream) return false;
+    if (peer.page !== childPage) return false;
+    const count = Array.isArray(peer.children) ? peer.children.length : 0;
+    return count < effectiveMaxChildren(peer);
+  }
+
+  function addChildToParent(parentId, childId) {
+    const parent = peerRegistry.get(parentId);
+    if (!parent) return;
+    if (!Array.isArray(parent.children)) parent.children = [];
+    if (!parent.children.includes(childId)) parent.children.push(childId);
+    if (parentId === myConnectId) {
+      childPeerIds.add(childId);
+    }
+  }
+
+  function removeChildFromParent(parentId, childId) {
+    const parent = peerRegistry.get(parentId);
+    if (!parent || !Array.isArray(parent.children)) return;
+    parent.children = parent.children.filter(id => id !== childId);
+    if (parentId === myConnectId) {
+      childPeerIds.delete(childId);
+    }
+  }
+
+  function ensurePageRoots(pageNo) {
+    if (myRole !== "origin") return;
+    const page = ensurePage(pageNo);
+    const members = pageMembers(pageNo);
+    let roots = members.filter(p => p.isPageRoot);
+
+    if (!roots.length && pageNo === 1) {
+      const originPeer = peerRegistry.get(myConnectId);
+      if (originPeer) {
+        originPeer.page = 1;
+        originPeer.isPageRoot = true;
+        if (!page.memberIds.includes(myConnectId)) page.memberIds.push(myConnectId);
+        if (!page.rootIds.includes(myConnectId)) page.rootIds.push(myConnectId);
+        roots = [originPeer];
+      }
+    }
+
+    if (roots.length >= MAX_PAGE_ROOTS) return;
+
+    const promotable = members
+      .filter(p =>
+        p.connectId !== myConnectId &&
+        !p.isPageRoot &&
+        p.relayEligible &&
+        p.relayEnabled &&
+        (p.role === "relay" || p.role === "viewer")
+      )
+      .sort((a,b) => (a.treeLevel || 0) - (b.treeLevel || 0));
+
+    while (roots.length < MAX_PAGE_ROOTS && promotable.length) {
+      const picked = promotable.shift();
+      picked.isPageRoot = true;
+      picked.role = picked.hasLiveStream ? "relay" : picked.role;
+      if (!page.rootIds.includes(picked.connectId)) page.rootIds.push(picked.connectId);
+      roots.push(picked);
+      safeSend({
+        type: "pageRootPromoted",
+        peerId: picked.connectId,
+        page: pageNo,
+        originId: myConnectId
+      }, picked.connectId);
+    }
+  }
+
+  function pickParentInPage(pageNo) {
+    const candidates = relayCandidatesInPage(pageNo);
+    return candidates.find(p => canAcceptChild(p, pageNo)) || null;
+  }
+
+  function assignViewerToPageTree(viewerId) {
+    if (myRole !== "origin") return;
+    const viewer = peerRegistry.get(viewerId);
+    if (!viewer || viewer.role === "origin") return;
+    if (viewer.assignedParentId) return;
+
+    if (!viewer.page) viewer.page = selectPageForNewViewer();
+    ensurePage(viewer.page);
+
+    const page = ensurePage(viewer.page);
+    if (!page.memberIds.includes(viewer.connectId)) page.memberIds.push(viewer.connectId);
+
+    ensurePageRoots(viewer.page);
+
+    let parent = pickParentInPage(viewer.page);
+
+    if (!parent && viewer.page !== 1) {
+      const pageRootsList = pageRoots(viewer.page);
+      if (!pageRootsList.length) {
+        const originPeer = peerRegistry.get(myConnectId);
+        if (originPeer) {
+          const rootCount = originPeer.children.length;
+          if (rootCount < MAX_ORIGIN_CHILDREN) {
+            viewer.isPageRoot = true;
+            parent = originPeer;
+          }
+        }
+      }
+    }
+
+    if (!parent && viewer.page === 1) {
+      parent = peerRegistry.get(myConnectId);
+    }
+
+    if (!parent) return;
+
+    viewer.assignedParentId = parent.connectId;
+    viewer.treeLevel = (parent.treeLevel || 0) + 1;
+    if (viewer.isPageRoot && !page.rootIds.includes(viewer.connectId)) page.rootIds.push(viewer.connectId);
+
+    addChildToParent(parent.connectId, viewer.connectId);
+
+    safeSend({
+      type: "assignParent",
+      childId: viewer.connectId,
+      parentId: parent.connectId,
+      parentName: parent.name,
+      parentRole: parent.role,
+      parentPage: parent.page,
+      childPage: viewer.page,
+      childLevel: viewer.treeLevel,
+      originId: myConnectId,
+      isPageRoot: !!viewer.isPageRoot
+    }, viewer.connectId);
+
+    safeSend({
+      type: "childAssigned",
+      parentId: parent.connectId,
+      childId: viewer.connectId,
+      childName: viewer.name,
+      childLevel: viewer.treeLevel,
+      childPage: viewer.page,
+      isPageRoot: !!viewer.isPageRoot
+    }, parent.connectId);
+
+    broadcastPageState();
+  }
+
+  function broadcastPageState() {
+    if (myRole !== "origin") return;
+    const peers = Array.from(peerRegistry.values()).map(p => ({
+      connectId: p.connectId,
+      name: p.name,
+      role: p.role,
+      relayEligible: !!p.relayEligible,
+      relayEnabled: !!p.relayEnabled,
+      treeLevel: p.treeLevel || 0,
+      assignedParentId: p.assignedParentId || null,
+      hasLiveStream: !!p.hasLiveStream,
+      page: p.page || null,
+      isPageRoot: !!p.isPageRoot,
+      children: Array.isArray(p.children) ? p.children : []
+    }));
+
+    safeSend({
+      type: "pageState",
+      originId: myConnectId,
+      peers
+    }, null);
+  }
+
+  async function startStreamingToChild(childId) {
+    const sourceStream = localStream || receivedLiveStream;
+    if (!sourceStream || !webConnect || !childId) return;
+    try {
+      webConnect.openStreaming(sourceStream, {
+        connectId: childId,
+        metadata: {
+          name: myName,
+          role: myRole,
+          sourceId: myConnectId,
+          originId: originId || myConnectId,
+          treeLevel: myTreeLevel,
+          page: myPage
+        }
+      });
+    } catch (err) {
+      console.warn("openStreaming failed", err);
+    }
+  }
+
+  async function forwardToAssignedChildren() {
+    const sourceStream = localStream || receivedLiveStream;
+    if (!sourceStream) return;
+    for (const childId of childPeerIds) {
+      await startStreamingToChild(childId);
+    }
+  }
+
+  function showRemoteStream(stream, labelText) {
+    if (!stream) return;
+    if (mainRemoteVideo.srcObject !== stream) {
+      mainRemoteVideo.srcObject = stream;
+      mainRemoteVideo.play().catch(() => {});
+    }
+    mainRemoteLabel.innerText = labelText || "🎙️ Live";
+    mainRemoteWrapper.style.display = "block";
+  }
+
+  function clearRemoteStream() {
+    mainRemoteVideo.srcObject = null;
+    mainRemoteWrapper.style.display = "none";
+  }
+
+  function updateLocalVideoLabel() {
+    if (myRole === "origin") {
+      localVideoLabel.innerText = `🎙️ ${myName} (Origin)`;
+    } else if (myRole === "relay") {
+      localVideoLabel.innerText = `🔁 ${myName} (Relay)`;
+    } else {
+      localVideoLabel.innerText = `📹 ${myName}`;
+    }
+  }
+
+  function requestAssignmentRetry() {
+    if (!webConnect || !myConnectId || myRole === "origin") return;
+    if (assignedParentId) return;
+
+    setTimeout(() => {
+      if (!assignedParentId && webConnect) {
+        announcePeerInfo();
+        safeSend({
+          type: "assignmentRequest",
+          connectId: myConnectId,
+          name: myName,
+          relayEligible,
+          relayEnabled,
+          role: myRole,
+          preferredPage: myPage
+        }, originId || null);
+      }
+    }, ASSIGNMENT_RETRY_MS);
+  }
+
+  function handleIncomingChat(parsed) {
+    if (!parsed.messageId || seenMessageIds.has(parsed.messageId)) return;
+    rememberMessageId(parsed.messageId);
+    addMessageToUI(parsed.senderName || "Unknown", parsed.message || "", false);
+  }
+
+  function handlePeerInfo(parsed) {
+    if (!parsed.connectId) return;
+
+    if (parsed.isOrigin) {
+      originId = parsed.connectId;
+    } else if (parsed.originId && !originId) {
+      originId = parsed.originId;
+    }
+
+    const peer = ensurePeerRecord(parsed);
+    if (myRole === "origin" && peer && peer.connectId !== myConnectId && !peer.assignedParentId) {
+      assignViewerToPageTree(peer.connectId);
+    }
+
+    updateStats();
+  }
+
+  function handleAssignmentRequest(parsed) {
+    if (myRole !== "origin") return;
+    const peer = ensurePeerRecord({
+      connectId: parsed.connectId,
+      name: parsed.name || "Unknown",
+      role: parsed.role || "viewer",
+      relayEligible: !!parsed.relayEligible,
+      relayEnabled: !!parsed.relayEnabled,
+      treeLevel: 0,
+      assignedParentId: null,
+      hasLiveStream: false,
+      page: parsed.preferredPage || null,
+      isPageRoot: false
+    });
+    if (peer && !peer.assignedParentId) {
+      assignViewerToPageTree(peer.connectId);
+    }
+  }
+
+  function handleAssignParent(parsed) {
+    if (parsed.childId !== myConnectId) return;
+    assignedParentId = parsed.parentId || null;
+    originId = parsed.originId || originId;
+    myTreeLevel = Number.isFinite(parsed.childLevel) ? parsed.childLevel : 1;
+    myPage = parsed.childPage ?? myPage;
+    const self = ensurePeerRecord({
+      connectId: myConnectId,
+      name: myName,
+      role: myRole,
+      relayEligible,
+      relayEnabled,
+      treeLevel: myTreeLevel,
+      assignedParentId,
+      hasLiveStream: !!(localStream || receivedLiveStream),
+      page: myPage,
+      isPageRoot: !!parsed.isPageRoot
+    });
+    if (self) self.isPageRoot = !!parsed.isPageRoot;
+    updateStats();
+
+    addMessageToUI("System", `Assigned to page ${myPage}, parent ${parsed.parentName || shortId(parsed.parentId)}.`, false);
+
+    safeSend({
+      type: "childAck",
+      childId: myConnectId,
+      parentId: assignedParentId,
+      childLevel: myTreeLevel,
+      childPage: myPage,
+      relayEligible,
+      relayEnabled,
+      role: myRole,
+      isPageRoot: !!parsed.isPageRoot
+    }, assignedParentId);
+  }
+
+  function handleChildAssigned(parsed) {
+    if (parsed.parentId !== myConnectId) return;
+    childPeerIds.add(parsed.childId);
+    const child = peerRegistry.get(parsed.childId);
+    if (child) child.page = parsed.childPage ?? child.page;
+    updateStats();
+    forwardToAssignedChildren();
+  }
+
+  function handleChildAck(parsed) {
+    if (parsed.parentId !== myConnectId) return;
+    childPeerIds.add(parsed.childId);
+    const child = ensurePeerRecord({
+      connectId: parsed.childId,
+      role: parsed.role || "viewer",
+      relayEligible: !!parsed.relayEligible,
+      relayEnabled: !!parsed.relayEnabled,
+      treeLevel: parsed.childLevel || 1,
+      assignedParentId: myConnectId,
+      hasLiveStream: false,
+      page: parsed.childPage || null,
+      isPageRoot: !!parsed.isPageRoot
+    });
+    if (child) addChildToParent(myConnectId, parsed.childId);
+    updateStats();
+    forwardToAssignedChildren();
+    if (myRole === "origin") broadcastPageState();
+  }
+
+  function handlePageState(parsed) {
+    if (!parsed.originId) return;
+    originId = parsed.originId;
+    peerRegistry.clear();
+
+    if (Array.isArray(parsed.peers)) {
+      for (const p of parsed.peers) {
+        ensurePeerRecord(p);
+      }
+    }
+
+    const mine = peerRegistry.get(myConnectId);
+    if (mine) {
+      myPage = mine.page ?? myPage;
+      assignedParentId = mine.assignedParentId ?? assignedParentId;
+      myTreeLevel = Number.isFinite(mine.treeLevel) ? mine.treeLevel : myTreeLevel;
+    }
+
+    updateStats();
+  }
+
+  function handlePageRootPromoted(parsed) {
+    if (parsed.peerId !== myConnectId) return;
+    const self = ensurePeerRecord({
+      connectId: myConnectId,
+      name: myName,
+      role: myRole,
+      relayEligible,
+      relayEnabled,
+      treeLevel: myTreeLevel,
+      assignedParentId,
+      hasLiveStream: !!(localStream || receivedLiveStream),
+      page: myPage,
+      isPageRoot: true
+    });
+    if (self) self.isPageRoot = true;
+    updateStats();
+    addMessageToUI("System", `You were promoted as a root relay for page ${parsed.page}.`, false);
+  }
+
+  async function startOrigin() {
+    await stopEverything();
+
+    myRole = "origin";
+    updateRoleBadge();
+    controlBar.style.display = "flex";
+    setStatusMessage("🎙️ Requesting camera & microphone...");
+
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24 } },
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+
+      localVideo.srcObject = localStream;
+      localVideoWrapper.style.display = "block";
+      updateLocalVideoLabel();
+
+      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        originId = myConnectId;
+        myPage = 1;
+        myTreeLevel = 0;
+        isBroadcasting = true;
+
+        ensurePeerRecord({
+          connectId: myConnectId,
+          name: myName,
+          role: "origin",
+          relayEligible: true,
+          relayEnabled: true,
+          treeLevel: 0,
+          assignedParentId: null,
+          hasLiveStream: true,
+          page: 1,
+          isPageRoot: true
+        });
+
+        ensurePage(1);
+        updateStats();
+        setStatusMessage("🔴 Origin LIVE", false, true);
+        announcePeerInfo();
+        broadcastPageState();
+      });
+
+      webConnect.onConnect((attribute) => {
+        getConnectedPeerCount();
+        announcePeerInfo(attribute.connectId);
+      });
+
+      webConnect.onReceive((data) => {
+        try {
+          const parsed = JSON.parse(data);
+          switch (parsed.type) {
+            case "chat": handleIncomingChat(parsed); break;
+            case "peerInfo": handlePeerInfo(parsed); break;
+            case "assignmentRequest": handleAssignmentRequest(parsed); break;
+            case "childAck": handleChildAck(parsed); break;
+            case "relayPrefUpdate":
+              ensurePeerRecord(parsed);
+              broadcastPageState();
+              break;
+            case "pageChangeRequest":
+              if (parsed.connectId) {
+                const peer = peerRegistry.get(parsed.connectId);
+                if (peer) {
+                  if (peer.assignedParentId) removeChildFromParent(peer.assignedParentId, peer.connectId);
+                  peer.assignedParentId = null;
+                  peer.treeLevel = 0;
+                  peer.page = parsed.requestedPage;
+                  peer.isPageRoot = false;
+                  assignViewerToPageTree(peer.connectId);
+                }
+              }
+              break;
+          }
+        } catch (e) {}
+      });
+
+      webConnect.onDisconnect((attribute) => {
+        const peerId = attribute.connectId;
+        const lost = peerRegistry.get(peerId);
+        if (lost) {
+          if (lost.assignedParentId) removeChildFromParent(lost.assignedParentId, peerId);
+          for (const peer of peerRegistry.values()) {
+            if (peer.assignedParentId === peerId) {
+              peer.assignedParentId = null;
+              peer.treeLevel = 0;
+              peer.isPageRoot = false;
+              assignViewerToPageTree(peer.connectId);
+            }
+            removeChildFromParent(peer.connectId, peerId);
+          }
+        }
+        peerRegistry.delete(peerId);
+        broadcastPageState();
+        updateStats();
+        getConnectedPeerCount();
+      });
+
+      addMessageToUI("System", `You are LIVE as "${myName}" and acting as the origin.`, false);
+
+    } catch (err) {
+      setStatusMessage(`❌ Failed: ${err.message.slice(0, 90)}`, true);
+      await stopEverything();
+    }
+  }
+
+  function updateOriginControls() {
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    const videoTrack = localStream.getVideoTracks()[0];
+    muteMicBtn.innerHTML = audioTrack && audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+    toggleCamBtn.innerHTML = videoTrack && videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+  }
+
+  function toggleMute() {
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+    audioTrack.enabled = !audioTrack.enabled;
+    updateOriginControls();
+    setStatusMessage(audioTrack.enabled ? "🔴 Mic active" : "🔴 Mic muted", false, true);
+  }
+
+  function toggleCamera() {
+    if (!localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+    videoTrack.enabled = !videoTrack.enabled;
+    updateOriginControls();
+    setStatusMessage(videoTrack.enabled ? "🔴 Camera on" : "🔴 Camera paused", false, true);
+  }
+
+  async function startViewer() {
+    await stopEverything();
+
+    myRole = "viewer";
+    updateRoleBadge();
+    controlBar.style.display = "flex";
+    setStatusMessage("👁️ Joining as viewer...");
+
+    try {
+      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        updateStats();
+        announcePeerInfo();
+        requestAssignmentRetry();
+      });
+
+      webConnect.onConnect((attribute) => {
+        getConnectedPeerCount();
+        announcePeerInfo(attribute.connectId);
+        if (originId) {
+          safeSend({
+            type: "assignmentRequest",
+            connectId: myConnectId,
+            name: myName,
+            relayEligible,
+            relayEnabled,
+            role: myRole,
+            preferredPage: myPage
+          }, originId);
+        }
+      });
+
+      webConnect.onReceive((data, attribute) => {
+        try {
+          const parsed = JSON.parse(data);
+          switch (parsed.type) {
+            case "chat": handleIncomingChat(parsed); break;
+            case "peerInfo": handlePeerInfo(parsed); break;
+            case "assignParent": handleAssignParent(parsed); break;
+            case "childAssigned": handleChildAssigned(parsed); break;
+            case "pageState": handlePageState(parsed); break;
+            case "pageRootPromoted": handlePageRootPromoted(parsed); break;
+          }
+        } catch (e) {}
+      });
+
+      webConnect.onStreaming((stream, attribute) => {
+        receivedLiveStream = stream;
+        liveSourcePeerId = attribute.connectId || null;
+        showRemoteStream(stream, `🎙️ Live via ${shortId(liveSourcePeerId)} · Page ${myPage || "-"}`);
+        setStatusMessage("✅ LIVE · Receiving stream", false, true);
+
+        if (relayEligible && relayEnabled) {
+          myRole = "relay";
+          updateRoleBadge();
+          const self = ensurePeerRecord({
+            connectId: myConnectId,
+            name: myName,
+            role: "relay",
+            relayEligible,
+            relayEnabled,
+            treeLevel: myTreeLevel,
+            assignedParentId,
+            hasLiveStream: true,
+            page: myPage,
+            isPageRoot: isPageRoot(myConnectId)
+          });
+          if (self) self.hasLiveStream = true;
+          announcePeerInfo();
+          forwardToAssignedChildren();
+        } else {
+          const self = ensurePeerRecord({
+            connectId: myConnectId,
+            name: myName,
+            role: "viewer",
+            relayEligible,
+            relayEnabled,
+            treeLevel: myTreeLevel,
+            assignedParentId,
+            hasLiveStream: true,
+            page: myPage,
+            isPageRoot: false
+          });
+          if (self) self.hasLiveStream = true;
+        }
+        updateStats();
+      });
+
+      webConnect.onDisconnect((attribute) => {
+        const peerId = attribute.connectId;
+        getConnectedPeerCount();
+
+        if (peerId === assignedParentId || peerId === liveSourcePeerId) {
+          receivedLiveStream = null;
+          liveSourcePeerId = null;
+          assignedParentId = null;
+          myTreeLevel = 0;
+          childPeerIds.clear();
+          clearRemoteStream();
+
+          if (myRole !== "origin") {
+            myRole = relayEnabled && relayEligible ? "viewer" : "viewer";
+            updateRoleBadge();
+          }
+
+          setStatusMessage("📡 Parent/source left. Waiting for reassignment...");
+          addMessageToUI("System", "Parent relay disconnected. Requesting new assignment...", false);
+
+          if (originId) {
+            safeSend({
+              type: "assignmentRequest",
+              connectId: myConnectId,
+              name: myName,
+              relayEligible,
+              relayEnabled,
+              role: myRole,
+              preferredPage: myPage
+            }, originId);
+          } else {
+            requestAssignmentRetry();
+          }
+        }
+
+        if (childPeerIds.has(peerId)) {
+          childPeerIds.delete(peerId);
+          updateStats();
+        }
+      });
+
+      addMessageToUI("System", `You joined as "${myName}". Waiting for page assignment...`, false);
+
+    } catch (err) {
+      setStatusMessage(`❌ Viewer error: ${err.message.slice(0, 90)}`, true);
+    }
+  }
+
+  async function stopEverything() {
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+
+    receivedLiveStream = null;
+    localVideo.srcObject = null;
+    mainRemoteVideo.srcObject = null;
+    localVideoWrapper.style.display = "none";
+    mainRemoteWrapper.style.display = "none";
+
+    if (webConnect) {
+      try { webConnect.Disconnect(); } catch (err) {}
+      webConnect = null;
+    }
+
+    isBroadcasting = false;
+    myRole = null;
+    myConnectId = null;
+    originId = null;
+    assignedParentId = null;
+    liveSourcePeerId = null;
+    myTreeLevel = 0;
+    myPage = null;
+    childPeerIds.clear();
+    peerRegistry.clear();
+    pageRegistry.clear();
+    updateRoleBadge();
+    updateStats();
+    peerCountSpan.innerText = "0";
+    controlBar.style.display = "none";
+    setStatusMessage("⚡ Choose your role");
+  }
+
+  function sendChatMessage(message) {
+    const clean = (message || "").trim();
+    if (!clean || !webConnect) return;
+    const messageId = nowId();
+    rememberMessageId(messageId);
+    safeSend({
+      type: "chat",
+      messageId,
+      senderName: myName,
+      senderId: myConnectId,
+      senderRole: myRole,
+      message: clean,
+      timestamp: Date.now()
+    }, null);
+    addMessageToUI(myName, clean, true);
+    chatInput.value = "";
+  }
+
+  setInterval(() => {
+    if (!webConnect || !myConnectId || !myRole) return;
+    announcePeerInfo();
+    if (myRole === "origin") {
+      const self = peerRegistry.get(myConnectId);
+      if (self) {
+        self.hasLiveStream = !!localStream;
+        self.page = 1;
+        self.isPageRoot = true;
+        self.children = Array.from(childPeerIds);
+      }
+      broadcastPageState();
+    }
+  }, PEER_INFO_INTERVAL_MS);
+
+  startBroadcastBtn.addEventListener("click", () => {
+    if (isBroadcasting) stopEverything();
+    else startOrigin();
+  });
+
+  joinViewerBtn.addEventListener("click", () => {
+    if (isBroadcasting) setStatusMessage("⚠️ Stop broadcasting first", false);
+    else startViewer();
+  });
+
+  stopBtn.addEventListener("click", () => stopEverything());
+  muteMicBtn.addEventListener("click", toggleMute);
+  toggleCamBtn.addEventListener("click", toggleCamera);
+
+  relayOptInBtn.addEventListener("click", () => {
+    relayEnabled = !relayEnabled;
+    if (!relayEnabled && myRole === "relay") {
+      myRole = "viewer";
+      updateRoleBadge();
+    }
+    safeSend({
+      type: "relayPrefUpdate",
+      connectId: myConnectId,
+      name: myName,
+      role: myRole,
+      relayEligible,
+      relayEnabled,
+      treeLevel: myTreeLevel,
+      assignedParentId,
+      page: myPage,
+      hasLiveStream: !!(localStream || receivedLiveStream),
+      isPageRoot: isPageRoot(myConnectId)
+    }, originId || null);
+    updateStats();
+  });
+
+  pageSwitchBtn.addEventListener("click", () => {
+    if (!originId || !myConnectId || myRole === "origin") return;
+    const pageNumbers = Array.from(pageRegistry.keys()).sort((a,b) => a - b);
+    let nextPage = pageNumbers.length ? Math.max(...pageNumbers) + 1 : ((myPage || 1) + 1);
+    if (myPage && pageRegistry.has(myPage + 1)) nextPage = myPage + 1;
+
+    addMessageToUI("System", `Requested move to page ${nextPage}.`, false);
+
+    safeSend({
+      type: "pageChangeRequest",
+      connectId: myConnectId,
+      requestedPage: nextPage
+    }, originId);
+  });
+
+  sendChatBtn.addEventListener("click", () => sendChatMessage(chatInput.value));
+  chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChatMessage(chatInput.value);
+  });
+
+  channelDisplay.innerText = CHANNEL;
+  channelDisplay.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(CHANNEL);
+      setStatusMessage("📋 Channel copied!", false);
+    } catch (err) {
+      setStatusMessage("⚠️ Could not copy channel", true);
+    }
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (webConnect) {
+      try { webConnect.Disconnect(); } catch (err) {}
+    }
+  });
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setStatusMessage("⚠️ Browser not supported for broadcasting", true);
+    startBroadcastBtn.disabled = true;
+  }
+
+  updateRoleBadge();
+  updateStats();
+  updateOriginControls();
+
+  if (urlParams.has("broadcast")) {
+    setTimeout(() => startOrigin(), 400);
+  } else if (urlParams.has("view")) {
+    setTimeout(() => startViewer(), 400);
+  }
+
+  console.log("✅ EnticeChat Paged Relay Tree Ready");
+</script>
+</body>
+</html>
