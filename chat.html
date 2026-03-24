@@ -26,6 +26,13 @@
             height: 100vh;
             overflow: hidden;           
         }
+         #leaveRoomBtn:hover {
+        background: #dc2626;
+        transform: scale(1.02);
+    }
+    #leaveRoomBtn:active {
+        transform: scale(0.98);
+    }
         
         /* Join Form Overlay */
         .join-overlay {
@@ -57,7 +64,7 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .join-card .logo-icon { font-size: 48px; margin-bottom: 16px; }
+        .join-card .logo-icon { font-size: 48px; margin-bottom: 0px; }
         .join-card h2 {
             font-size: 24px;
             margin-bottom: 8px;
@@ -371,7 +378,7 @@
         .video-controls {
             position: absolute;
             bottom: 16px;
-            left: 16px;
+            right: 16px;
             background: rgba(0,0,0,0.7);
             padding: 6px 12px;
             border-radius: 40px;
@@ -765,9 +772,12 @@
     <!-- Join Form Overlay -->
     <div id="joinOverlay" class="join-overlay">
         <div class="join-card">
-            <div class="logo-icon">📚</div>
+            <div class="logo-icon"><?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="50" height="41">
+<path d="M0 0 C3.70093553 1.74260277 7.20674292 3.83320408 10.75 5.875 C12.20599609 6.68904297 12.20599609 6.68904297 13.69140625 7.51953125 C14.61308594 8.04675781 15.53476562 8.57398438 16.484375 9.1171875 C17.32709961 9.59784668 18.16982422 10.07850586 19.03808594 10.57373047 C21 12 21 12 22 15 C18.535 16.98 18.535 16.98 15 19 C15 22.96 15 26.92 15 31 C12.46917897 32.54193728 9.92794722 34.05800484 7.375 35.5625 C6.66214844 36.00013672 5.94929688 36.43777344 5.21484375 36.88867188 C1.94050979 38.79619671 -0.22361681 39.99207772 -4.0625 40.03125 C-7.78296632 38.72512884 -11.00844163 36.97219447 -14.375 34.9375 C-15.01566406 34.56044922 -15.65632812 34.18339844 -16.31640625 33.79492188 C-17.88254066 32.87160383 -19.44198034 31.93694607 -21 31 C-21 27.04 -21 23.08 -21 19 C-21.66 18.67 -22.32 18.34 -23 18 C-23.33 22.29 -23.66 26.58 -24 31 C-25.32 30.67 -26.64 30.34 -28 30 C-29.35665025 14.95960591 -29.35665025 14.95960591 -26.48828125 10.81640625 C-24.07710963 9.24312791 -21.63904675 8.15325635 -19 7 C-17.81023054 6.30073175 -16.63103786 5.58326777 -15.4609375 4.8515625 C-14.22419808 4.08815314 -12.98721926 3.32513147 -11.75 2.5625 C-11.16009277 2.19503662 -10.57018555 1.82757324 -9.96240234 1.44897461 C-6.10371455 -0.80092713 -4.24194976 -1.22336499 0 0 Z M-10.625 9.5 C-11.23601563 9.83386719 -11.84703125 10.16773438 -12.4765625 10.51171875 C-13.98641801 11.33742098 -15.49347848 12.16823037 -17 13 C-13.44608026 15.96926381 -9.81482005 18.42318536 -5.8125 20.75 C-4.76707031 21.36359375 -3.72164062 21.9771875 -2.64453125 22.609375 C-0.20294935 24.15514103 -0.20294935 24.15514103 2 24 C0.68 25.32 -0.64 26.64 -2 28 C-6.49797113 26.31326082 -10.72886302 24.18326108 -15 22 C-15.39198722 24.3574433 -15.39198722 24.3574433 -15 27 C-13.00174974 28.95642071 -13.00174974 28.95642071 -10.3125 30.375 C-9.44238281 30.89835937 -8.57226562 31.42171875 -7.67578125 31.9609375 C-4.50287517 33.1930441 -3.19753956 33.06753299 0 32 C2.47243227 30.83935432 2.47243227 30.83935432 4.8125 29.4375 C5.99779297 28.75494141 5.99779297 28.75494141 7.20703125 28.05859375 C7.79871094 27.70925781 8.39039062 27.35992188 9 27 C9 25.35 9 23.7 9 22 C8.45601562 21.89816406 7.91203125 21.79632813 7.3515625 21.69140625 C4.41788663 20.82884707 2.02968263 19.45088377 -0.625 17.9375 C-4.10923764 15.73910643 -4.10923764 15.73910643 -8 15 C-6.68 13.68 -5.36 12.36 -4 11 C-1.22008044 12.03254155 1.05857502 13.04100251 3.5 14.75 C5.98886107 16.34749483 5.98886107 16.34749483 8.8125 15.1875 C9.534375 14.795625 10.25625 14.40375 11 14 C8.23612808 11.84821844 5.43466931 10.01629579 2.375 8.3125 C1.59898438 7.87550781 0.82296875 7.43851563 0.0234375 6.98828125 C-4.14846989 4.95065081 -6.91953132 7.44932396 -10.625 9.5 Z " fill="#FFFFFF" transform="translate(28,1)"/>
+</svg></div>
             <h2>AralShare</h2>
-            <p>Join a virtual classroom<br>Peer-to-peer video conferencing</p>
+            <p>Join a virtual classroom</p>
             <div class="join-input-group">
                 <label>Room Name</label>
                 <input type="text" id="joinRoomInput" class="join-input" placeholder="e.g., Math101, ScienceClass" value="">
@@ -782,12 +792,7 @@
                 <input type="checkbox" id="joinTeacherCheckbox">
                 <label>Join as Teacher (can screen share)</label>
             </div>
-            <button id="joinBtn" class="join-btn">🎓 Join Classroom</button>
-            <div class="example">
-                <strong>Examples:</strong><br>
-                <code>?room=Math101&username=John</code> - Student<br>
-                <code>?room=Math101&username=MsSmith&teacher=1</code> - Teacher with screen share
-            </div>
+            <button id="joinBtn" class="join-btn">🎓 Join Classroom</button>            
         </div>
     </div>
 
@@ -803,7 +808,7 @@
                 <div class="peer-count" id="peerCount">👥 0/30</div>
                 <button class="screen-share-header-btn" id="screenShareHeaderBtn" style="display: none;">🖥️ Share Screen</button>
                 <button class="file-storage-btn" id="fileStorageBtn">📁 Files</button>
-                <button class="reaction-btn" id="reactionToggleBtn">😊 React</button>
+               
             </div>
         </div>
 
@@ -829,7 +834,7 @@
                     <div class="limit-warning" id="limitWarning">
 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> <span id="currentConnections">0</span><span>/30 participants</span></div>
                     <div style="font-size: 11.5px; margin-top: 8px; background:#2b2d31; padding:5px; border-radius:6px; word-break:break-all;">
-                        <strong>ID:</strong> <span id="myPeerId">connecting...</span>
+                        <strong>Peer ID:</strong> <br/><span id="myPeerId">connecting...</span>
                         <button id="copyPeerIdBtn" style="background:var(--accent); border:none; border-radius:4px; padding:2px 6px; margin-left:6px; cursor:pointer; display: block; width: 95%; margin-top: 8px;">Copy</button>
                     </div>
                 </div>
@@ -846,6 +851,7 @@
                     <button style="display: none;" id="connectRoomBtn" class="connect-btn">Join Room</button>
                     <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Enter Peer ID here to connect" style="margin-top:8px;">
                     <button id="connectPeerBtn" class="connect-btn">🔗 Connect to Peer</button>
+                    <button id="leaveRoomBtn" style="width:100%; background:#ef4444; border:none; border-radius:8px; padding:12px; color:white; font-weight:bold; cursor:pointer; margin-top:12px;">🚪 Leave Room</button>
                 </div>
             </div>
 
@@ -892,6 +898,7 @@
                         <div class="message-input-wrapper">
                             <textarea class="message-input" id="messageInput" placeholder="Type a message... (Enter to send)" rows="1"></textarea>
                             <button class="send-btn" id="sendBtn">Send</button>
+                             <button class="reaction-btn" id="reactionToggleBtn">😊 React</button>
                         </div>
                     </div>
                 </div>
@@ -1875,5 +1882,15 @@
             setTimeout(() => joinRoom(), 500);
         }
     </script>
+   <script>
+document.getElementById('leaveRoomBtn')?.addEventListener('click', () => {
+    if (confirm('Leave room?')) {
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (screenShareStream) screenShareStream.getTracks().forEach(t => t.stop());
+        if (peer) peer.destroy();
+        window.location.href = '/class';
+    }
+});
+</script>
 </body>
 </html>
