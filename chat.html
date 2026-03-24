@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewfit=cover">
     <title>AralShare Virtual Classroom</title>
     <style>
         :root {
@@ -27,8 +27,8 @@
             overflow: hidden;           
         }
         
-        /* No Room Error Overlay */
-        .no-room-overlay {
+        /* Join Form Overlay */
+        .join-overlay {
             position: fixed;
             top: 0;
             left: 0;
@@ -42,44 +42,127 @@
             justify-content: center;
             font-family: system-ui, -apple-system, sans-serif;
         }
-        .no-room-card {
+        .join-card {
             background: var(--sidebar-bg);
-            border-radius: 24px;
+            border-radius: 28px;
             padding: 40px;
             text-align: center;
-            max-width: 400px;
+            max-width: 450px;
+            width: 90%;
             margin: 20px;
             border: 1px solid var(--border);
             box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: fadeInUp 0.4s ease;
         }
-        .no-room-card .error-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .no-room-card h2 {
+        .join-card .logo-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .join-card h2 {
             font-size: 24px;
-            margin-bottom: 12px;
-            color: var(--danger);
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
         }
-        .no-room-card p {
+        .join-card p {
             color: var(--text-muted);
             margin-bottom: 24px;
-            line-height: 1.5;
+            font-size: 14px;
         }
-        .no-room-card code {
-            background: #2b2d31;
-            padding: 8px 12px;
-            border-radius: 8px;
-            display: inline-block;
-            font-family: monospace;
+        .join-input-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        .join-input-group label {
+            display: block;
             font-size: 12px;
-            color: var(--accent);
+            margin-bottom: 6px;
+            color: var(--text-muted);
         }
-        .no-room-card .example {
+        .join-input {
+            width: 100%;
+            background: #2b2d31;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .join-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(88,101,242,0.2);
+        }
+        .join-input.error {
+            border-color: var(--danger);
+        }
+        .error-message {
+            color: var(--danger);
+            font-size: 11px;
+            margin-top: 4px;
+            display: none;
+        }
+        .teacher-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .teacher-checkbox input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+        .teacher-checkbox label {
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text);
+        }
+        .join-btn {
+            width: 100%;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .join-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.02);
+        }
+        .example {
             margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid var(--border);
-            font-size: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .example code {
+            background: #2b2d31;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            font-family: monospace;
+            font-size: 10px;
         }
         
         .teacher-badge {
@@ -620,6 +703,8 @@
             .reaction-emoji { width: 36px; height: 36px; font-size: 18px; }
             .chat-tab { padding: 4px 10px; font-size: 10px; }
             .header-right .screen-share-header-btn span { display: none; }
+            .join-card { padding: 30px 24px; }
+            .join-card h2 { font-size: 20px; }
         }
         .top-bar {
             display: none;
@@ -663,24 +748,41 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <!-- No Room Error Overlay (initially hidden) -->
-    <div id="noRoomOverlay" class="no-room-overlay" style="display: none;">
-        <div class="no-room-card">
-            <div class="error-icon">❌</div>
-            <h2>Room Not Found</h2>
-            <p>Please provide a valid room name and username to join the virtual classroom.</p>
-            <code>?room=classroom1&username=StudentName</code>
+    <!-- Join Form Overlay (shown when no room/username params) -->
+    <div id="joinOverlay" class="join-overlay">
+        <div class="join-card">
+            <div class="logo-icon">📚</div>
+            <h2>AralShare</h2>
+            <p>Join a virtual classroom<br>Peer-to-peer video conferencing</p>
+            
+            <div class="join-input-group">
+                <label>Room Name</label>
+                <input type="text" id="joinRoomInput" class="join-input" placeholder="e.g., Math101, ScienceClass" value="">
+                <div class="error-message" id="roomError">Please enter a room name</div>
+            </div>
+            
+            <div class="join-input-group">
+                <label>Your Name</label>
+                <input type="text" id="joinUsernameInput" class="join-input" placeholder="e.g., John Doe" value="">
+                <div class="error-message" id="usernameError">Please enter your name</div>
+            </div>
+            
+            <div class="teacher-checkbox">
+                <input type="checkbox" id="joinTeacherCheckbox">
+                <label>Join as Teacher (can screen share)</label>
+            </div>
+            
+            <button id="joinBtn" class="join-btn">🎓 Join Classroom</button>
+            
             <div class="example">
-                <strong>Example URL:</strong><br>
-                <code>https://aralshare.com/?room=Math101&username=JohnDoe</code>
-                <br><br>
-                <strong>Teacher URL (with screen share):</strong><br>
-                <code>https://aralshare.com/?room=Math101&username=Teacher&teacher=1</code>
+                <strong>Examples:</strong><br>
+                <code>?room=Math101&username=John</code> - Student<br>
+                <code>?room=Math101&username=MsSmith&teacher=1</code> - Teacher with screen share
             </div>
         </div>
     </div>
 
-    <div class="app-container" id="appContainer">
+    <div class="app-container" id="appContainer" style="display: none;">
         <div class="main-header">
             <div class="logo-area">                
                 <span class="logo-text" style="display: flex; gap: 10px; align-items: center;"><?xml version="1.0" encoding="UTF-8"?>
@@ -731,8 +833,8 @@
                     <ul id="peerList" style="list-style:none;"></ul>
                 </div>
                 <div class="connect-section">
-                    <input style="display: none;" type="text" id="roomInput" class="peer-id-input" placeholder="Room name" value="snow-demo">
-                    <button style="display: none;" id="connectRoomBtn" class="connect-btn">❄️ Join SnoW Room</button>
+                    <input style="display: none;" type="text" id="roomInput" class="peer-id-input" placeholder="Room name" value="">
+                    <button style="display: none;" id="connectRoomBtn" class="connect-btn">Join Room</button>
                     <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Enter Peer ID here to connect" style="margin-top:8px;">
                     <button id="connectPeerBtn" class="connect-btn">🔗 Connect to Peer</button>
                 </div>
@@ -776,7 +878,7 @@
                     <div class="chat-tabs-container">
                         <button class="nav-arrow" id="scrollTabsLeft">◀</button>
                         <div class="chat-tabs-scroll" id="chatTabsScroll">
-                            <div class="chat-tab active" data-chat-type="global" data-peer-id="">💬 Conference Chat</div>
+                            <div class="chat-tab active" data-chat-type="global" data-peer-id="">💬 Class Chat</div>
                         </div>
                         <button class="nav-arrow" id="scrollTabsRight">▶</button>
                     </div>
@@ -813,32 +915,91 @@
     <script>
         // ==================== CHECK ROOM AND USERNAME ====================
         const urlParams = new URLSearchParams(window.location.search);
-        const roomName = urlParams.get('room');
-        const username = urlParams.get('username');
-        const isTeacher = urlParams.get('teacher') === '1';
+        let roomName = urlParams.get('room');
+        let username = urlParams.get('username');
+        let isTeacher = urlParams.get('teacher') === '1';
         
-        // If room or username is missing, show error overlay and stop execution
-        if (!roomName || !username) {
-            document.getElementById('noRoomOverlay').style.display = 'flex';
-            document.getElementById('appContainer').style.display = 'none';
-            throw new Error('Missing room or username parameter');
+        const joinOverlay = document.getElementById('joinOverlay');
+        const appContainer = document.getElementById('appContainer');
+        const joinBtn = document.getElementById('joinBtn');
+        const joinRoomInput = document.getElementById('joinRoomInput');
+        const joinUsernameInput = document.getElementById('joinUsernameInput');
+        const joinTeacherCheckbox = document.getElementById('joinTeacherCheckbox');
+        const roomError = document.getElementById('roomError');
+        const usernameError = document.getElementById('usernameError');
+        
+        // Function to validate and join
+        function validateAndJoin() {
+            let isValid = true;
+            const roomValue = joinRoomInput.value.trim();
+            const usernameValue = joinUsernameInput.value.trim();
+            
+            // Reset errors
+            roomError.style.display = 'none';
+            usernameError.style.display = 'none';
+            joinRoomInput.classList.remove('error');
+            joinUsernameInput.classList.remove('error');
+            
+            // Validate room
+            if (!roomValue) {
+                roomError.style.display = 'block';
+                joinRoomInput.classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate username
+            if (!usernameValue) {
+                usernameError.style.display = 'block';
+                joinUsernameInput.classList.add('error');
+                isValid = false;
+            }
+            
+            if (isValid) {
+                // Set parameters
+                roomName = roomValue;
+                username = usernameValue;
+                isTeacher = joinTeacherCheckbox.checked;
+                
+                // Update URL
+                const newUrl = `${window.location.pathname}?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}${isTeacher ? '&teacher=1' : ''}`;
+                window.history.replaceState({}, '', newUrl);
+                
+                // Hide overlay and show app
+                joinOverlay.style.display = 'none';
+                appContainer.style.display = 'flex';
+                
+                // Initialize the app
+                initApp();
+            }
         }
         
-        // Hide error overlay and show app
-        document.getElementById('noRoomOverlay').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'flex';
+        // Handle join button click
+        joinBtn.addEventListener('click', validateAndJoin);
         
-        // ==================== CONFIG ====================
-        const MAX_PARTICIPANTS = 30;
+        // Handle Enter key
+        joinRoomInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') validateAndJoin(); });
+        joinUsernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') validateAndJoin(); });
         
-        window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}${isTeacher ? '&teacher=1' : ''}`);
+        // If both room and username exist, hide overlay and show app directly
+        if (roomName && username) {
+            joinOverlay.style.display = 'none';
+            appContainer.style.display = 'flex';
+            // Set input values for reference
+            if (joinRoomInput) joinRoomInput.value = roomName;
+            if (joinUsernameInput) joinUsernameInput.value = username;
+            if (joinTeacherCheckbox) joinTeacherCheckbox.checked = isTeacher;
+            
+            // Initialize the app
+            initApp();
+        } else {
+            // Show overlay with potential prefilled values from URL if any
+            if (roomName) joinRoomInput.value = roomName;
+            if (username) joinUsernameInput.value = username;
+            joinOverlay.style.display = 'flex';
+            appContainer.style.display = 'none';
+        }
         
-        // ==================== TEACHER SCREEN SHARE STATE ====================
-        let screenShareStream = null;
-        let isScreenSharing = false;
-        let originalVideoTrack = null;
-        
-        // ==================== STATE ====================
+        // ==================== APP INITIALIZATION ====================
         let peer = null;
         let localStream = null;
         let connections = new Map();
@@ -846,6 +1007,11 @@
         let isAudioEnabled = true;
         let isVideoEnabled = true;
         let currentMainVideo = { type: 'local', peerId: null, label: 'Your Camera' };
+        
+        // Screen sharing
+        let screenShareStream = null;
+        let isScreenSharing = false;
+        let originalVideoTrack = null;
         
         // Chat State
         let activeChat = 'global';
@@ -883,16 +1049,16 @@
         const screenShareHeaderBtn = document.getElementById('screenShareHeaderBtn');
         
         // Set room and username display
-        roomNameSpan.textContent = roomName;
-        roomDisplaySpan.textContent = `📚 ${roomName}`;
-        currentUsernameSpan.textContent = username;
-        if (mobileRoomName) mobileRoomName.textContent = roomName;
-        
-        // Show teacher badge and screen share button if user is teacher
-        if (isTeacher) {
-            teacherBadge.style.display = 'inline-block';
-            screenShareHeaderBtn.style.display = 'flex';
-            addSystemMessage('👨‍🏫 You are the Teacher! You can share your screen with the class.');
+        function updateDisplay() {
+            roomNameSpan.textContent = roomName;
+            roomDisplaySpan.textContent = `📚 ${roomName}`;
+            currentUsernameSpan.textContent = username;
+            if (mobileRoomName) mobileRoomName.textContent = roomName;
+            
+            if (isTeacher) {
+                teacherBadge.style.display = 'inline-block';
+                screenShareHeaderBtn.style.display = 'flex';
+            }
         }
         
         // ==================== SCREEN SHARE FUNCTION ====================
@@ -909,17 +1075,14 @@
             
             if (!isScreenSharing) {
                 try {
-                    // Get screen share stream
                     screenShareStream = await navigator.mediaDevices.getDisplayMedia({
                         video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: 30 },
                         audio: true
                     });
                     
-                    // Store original video track
                     const videoTrack = localStream.getVideoTracks()[0];
                     originalVideoTrack = videoTrack;
                     
-                    // Replace video track with screen share
                     const newVideoTrack = screenShareStream.getVideoTracks()[0];
                     localStream.removeTrack(videoTrack);
                     localStream.addTrack(newVideoTrack);
@@ -929,12 +1092,10 @@
                     screenShareHeaderBtn.innerHTML = '🖥️ Stop Sharing';
                     addSystemMessage('🖥️ You are now sharing your screen!');
                     
-                    // Update main video if it's showing local
                     if (currentMainVideo.type === 'local') {
                         setMainVideo('local', localStream, 'Screen Share');
                     }
                     
-                    // Update all existing connections with new stream
                     for (let [peerId, data] of connections) {
                         if (data.call && data.call.peerConnection) {
                             const senders = data.call.peerConnection.getSenders();
@@ -945,14 +1106,13 @@
                         }
                     }
                     
-                    // Handle screen share stop
                     screenShareStream.getVideoTracks()[0].onended = () => {
                         stopScreenShare();
                     };
                     
                 } catch (err) {
                     console.error('Screen share error:', err);
-                    addSystemMessage('❌ Failed to share screen. Please allow permission.');
+                    addSystemMessage('❌ Failed to share screen.');
                 }
             } else {
                 stopScreenShare();
@@ -962,13 +1122,11 @@
         async function stopScreenShare() {
             if (!isScreenSharing) return;
             
-            // Restore original camera track
             if (originalVideoTrack && localStream) {
                 const screenTrack = localStream.getVideoTracks()[0];
                 localStream.removeTrack(screenTrack);
                 localStream.addTrack(originalVideoTrack);
                 
-                // Update all existing connections
                 for (let [peerId, data] of connections) {
                     if (data.call && data.call.peerConnection) {
                         const senders = data.call.peerConnection.getSenders();
@@ -980,7 +1138,6 @@
                 }
             }
             
-            // Stop screen share stream
             if (screenShareStream) {
                 screenShareStream.getTracks().forEach(track => track.stop());
                 screenShareStream = null;
@@ -991,7 +1148,6 @@
             screenShareHeaderBtn.classList.remove('active');
             screenShareHeaderBtn.innerHTML = '🖥️ Share Screen';
             
-            // Update main video label
             if (currentMainVideo.type === 'local') {
                 setMainVideo('local', localStream, 'Your Camera');
             }
@@ -999,7 +1155,7 @@
             addSystemMessage('🖥️ Screen sharing stopped.');
         }
         
-        // ==================== Helper Functions (from original) ====================
+        // ==================== Helper Functions ====================
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
@@ -1039,8 +1195,8 @@
         function updateConnectionCounter() {
             const count = connections.size;
             currentConnectionsSpan.textContent = count;
-            peerCountSpan.textContent = `👥 ${count}/${MAX_PARTICIPANTS}`;
-            peerCountSidebar.textContent = `${count}/${MAX_PARTICIPANTS}`;
+            peerCountSpan.textContent = `👥 ${count}/30`;
+            peerCountSidebar.textContent = `${count}/30`;
         }
         
         // ==================== Chat Tab Management ====================
@@ -1522,7 +1678,7 @@
         function connectToPeer(targetPeerId) {
             if (connections.has(targetPeerId)) { addSystemMessage(`Already connected to ${targetPeerId}`); return; }
             if (targetPeerId === peer.id) { addSystemMessage(`Cannot connect to yourself`); return; }
-            if (connections.size >= MAX_PARTICIPANTS) { addSystemMessage(`⚠️ Max participants (${MAX_PARTICIPANTS}) reached`); return; }
+            if (connections.size >= 30) { addSystemMessage(`⚠️ Max participants (30) reached`); return; }
             
             addSystemMessage(`Connecting to ${targetPeerId}...`);
             const conn = peer.connect(targetPeerId);
@@ -1585,7 +1741,7 @@
         
         function handleIncomingConnection(conn) {
             const peerId = conn.peer;
-            if (connections.size >= MAX_PARTICIPANTS) {
+            if (connections.size >= 30) {
                 addSystemMessage(`⚠️ Room full. Cannot accept connection from ${peerId}`);
                 conn.close();
                 return;
@@ -1697,7 +1853,7 @@
                 connectionStatusSpan.textContent = 'Connected';
                 myPeerIdSpan.textContent = id;
                 addSystemMessage(`✅ Connected! Your ID: ${id}`);
-                addSystemMessage(`📚 Welcome to ${roomName} classroom! Max: ${MAX_PARTICIPANTS} participants`);
+                addSystemMessage(`📚 Welcome to ${roomName} classroom! Max: 30 participants`);
                 if (isTeacher) {
                     addSystemMessage('👨‍🏫 You are the Teacher. Use the "Share Screen" button to present to the class.');
                 }
@@ -1722,66 +1878,63 @@
         }
         
         // ==================== Event Listeners ====================
-        document.getElementById('enableCameraBtn')?.addEventListener('click', enableCamera);
-        document.getElementById('toggleAudioBtn')?.addEventListener('click', toggleAudio);
-        document.getElementById('toggleVideoBtn')?.addEventListener('click', toggleVideo);
-        document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
-        document.getElementById('connectRoomBtn')?.addEventListener('click', joinRoom);
-        document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
-            const targetId = document.getElementById('peerIdInput').value.trim();
-            if (targetId) connectToPeer(targetId);
-        });
-        document.getElementById('copyPeerIdBtn')?.addEventListener('click', copyPeerId);
-        document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
-        screenShareHeaderBtn?.addEventListener('click', toggleScreenShare);
-        messageInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-        
-        // Reaction toggle
-        reactionToggleBtn?.addEventListener('click', () => {
-            const isVisible = reactionBar.style.display === 'flex';
-            reactionBar.style.display = isVisible ? 'none' : 'flex';
-        });
-        document.querySelectorAll('.reaction-emoji').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const emoji = btn.getAttribute('data-reaction');
-                sendReaction(emoji);
-                reactionBar.style.display = 'none';
+        function initApp() {
+            updateDisplay();
+            
+            document.getElementById('enableCameraBtn')?.addEventListener('click', enableCamera);
+            document.getElementById('toggleAudioBtn')?.addEventListener('click', toggleAudio);
+            document.getElementById('toggleVideoBtn')?.addEventListener('click', toggleVideo);
+            document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
+            document.getElementById('connectRoomBtn')?.addEventListener('click', joinRoom);
+            document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
+                const targetId = document.getElementById('peerIdInput').value.trim();
+                if (targetId) connectToPeer(targetId);
             });
-        });
-        
-        // Tab scrolling
-        document.getElementById('scrollTabsLeft')?.addEventListener('click', () => scrollTabs(-1));
-        document.getElementById('scrollTabsRight')?.addEventListener('click', () => scrollTabs(1));
-        
-        // File cabinet modal
-        const fileModal = document.getElementById('fileCabinetModal');
-        const fileStorageBtn = document.getElementById('fileStorageBtn');
-        const closeCabinetBtn = document.getElementById('closeCabinetBtn');
-        const uploadFileBtn = document.getElementById('uploadFileBtn');
-        const fileInputEl = document.getElementById('fileInput');
-        
-        fileStorageBtn?.addEventListener('click', () => fileModal.classList.add('active'));
-        closeCabinetBtn?.addEventListener('click', () => fileModal.classList.remove('active'));
-        fileModal?.addEventListener('click', (e) => { if (e.target === fileModal) fileModal.classList.remove('active'); });
-        uploadFileBtn?.addEventListener('click', () => fileInputEl.click());
-        fileInputEl?.addEventListener('change', (e) => {
-            Array.from(e.target.files).forEach(file => uploadFile(file));
-            fileInputEl.value = '';
-        });
-        
-        // Mobile sidebar
-        const hamburgerBtn = document.getElementById('hamburgerBtn');
-        const sidebarEl = document.getElementById('sidebar');
-        const sidebarOverlayEl = document.getElementById('sidebarOverlay');
-        function openSidebar() { sidebarEl.classList.add('open'); sidebarOverlayEl.classList.add('active'); }
-        function closeSidebar() { sidebarEl.classList.remove('open'); sidebarOverlayEl.classList.remove('active'); }
-        hamburgerBtn?.addEventListener('click', openSidebar);
-        sidebarOverlayEl?.addEventListener('click', closeSidebar);
-        
-        // ==================== INIT ====================
-        function init() {
+            document.getElementById('copyPeerIdBtn')?.addEventListener('click', copyPeerId);
+            document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
+            screenShareHeaderBtn?.addEventListener('click', toggleScreenShare);
+            messageInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+            
+            reactionToggleBtn?.addEventListener('click', () => {
+                const isVisible = reactionBar.style.display === 'flex';
+                reactionBar.style.display = isVisible ? 'none' : 'flex';
+            });
+            document.querySelectorAll('.reaction-emoji').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const emoji = btn.getAttribute('data-reaction');
+                    sendReaction(emoji);
+                    reactionBar.style.display = 'none';
+                });
+            });
+            
+            document.getElementById('scrollTabsLeft')?.addEventListener('click', () => scrollTabs(-1));
+            document.getElementById('scrollTabsRight')?.addEventListener('click', () => scrollTabs(1));
+            
+            const fileModal = document.getElementById('fileCabinetModal');
+            const fileStorageBtn = document.getElementById('fileStorageBtn');
+            const closeCabinetBtn = document.getElementById('closeCabinetBtn');
+            const uploadFileBtn = document.getElementById('uploadFileBtn');
+            const fileInputEl = document.getElementById('fileInput');
+            
+            fileStorageBtn?.addEventListener('click', () => fileModal.classList.add('active'));
+            closeCabinetBtn?.addEventListener('click', () => fileModal.classList.remove('active'));
+            fileModal?.addEventListener('click', (e) => { if (e.target === fileModal) fileModal.classList.remove('active'); });
+            uploadFileBtn?.addEventListener('click', () => fileInputEl.click());
+            fileInputEl?.addEventListener('change', (e) => {
+                Array.from(e.target.files).forEach(file => uploadFile(file));
+                fileInputEl.value = '';
+            });
+            
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const sidebarEl = document.getElementById('sidebar');
+            const sidebarOverlayEl = document.getElementById('sidebarOverlay');
+            function openSidebar() { sidebarEl.classList.add('open'); sidebarOverlayEl.classList.add('active'); }
+            function closeSidebar() { sidebarEl.classList.remove('open'); sidebarOverlayEl.classList.remove('active'); }
+            hamburgerBtn?.addEventListener('click', openSidebar);
+            sidebarOverlayEl?.addEventListener('click', closeSidebar);
+            
             addSystemMessage(`📚 Welcome to ${roomName} classroom, ${escapeHtml(username)}!`);
-            addSystemMessage(`📊 Max ${MAX_PARTICIPANTS} participants`);
+            addSystemMessage(`📊 Max 30 participants`);
             addSystemMessage(`📹 Enable camera to share video | Click thumbnails to switch main view`);
             addSystemMessage(`😊 Click the reaction button (😊) to send emoji reactions!`);
             addSystemMessage(`💬 Click DM on any participant to start private chat`);
@@ -1792,8 +1945,6 @@
             
             setTimeout(() => joinRoom(), 500);
         }
-        
-        init();
     </script>
 </body>
 </html>
