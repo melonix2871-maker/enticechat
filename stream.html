@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>EnticeChat Live · Trystero P2P Mesh</title>
   
-  <!-- Trystero - Serverless WebRTC matchmaking -->
+  <!-- Load Trystero from jsDelivr CDN (works on GitHub Pages!) -->
   <script type="importmap">
     {
       "imports": {
-        "trystero": "https://unpkg.com/trystero@0.19.0/dist/trystero.min.js"
+        "trystero": "https://cdn.jsdelivr.net/npm/trystero@0.23.0/dist/trystero.mjs"
       }
     }
   </script>
@@ -76,8 +76,19 @@
       overflow: hidden;
       border: 1px solid rgba(255,215,0,0.3);
       margin-bottom: 20px;
+      position: relative;
     }
     video { width: 100%; display: block; background: #0a0a0a; }
+    .video-label {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      z-index: 10;
+    }
     .button-group { display: flex; gap: 20px; justify-content: center; margin: 20px 0; }
     button {
       padding: 12px 28px;
@@ -122,9 +133,9 @@
       outline: none;
     }
     .send-btn { padding: 10px 20px; background: #ffb347; color: #1a1a2e; border-radius: 40px; }
-    .peers-list { margin: 10px auto; padding: 8px 16px; background: rgba(0,0,0,0.3); border-radius: 40px; display: inline-flex; gap: 12px; }
+    .peers-list { margin: 10px auto; padding: 8px 16px; background: rgba(0,0,0,0.3); border-radius: 40px; display: inline-flex; gap: 12px; font-size: 0.75rem; }
     .footer-note { font-size: 0.7rem; color: #6c7a89; margin-top: 25px; text-align: center; border-top: 1px solid #222; padding-top: 20px; }
-    .live-pulse { display: inline-block; width: 10px; height: 10px; background: #e74c3c; border-radius: 50%; margin-right: 8px; animation: pulse 1.2s infinite; }
+    .live-pulse { display: inline-block; width: 10px; height: 10px; background: #e74c3c; border-radius: 50%; margin-right: 8px; animation: pulse 1.2s infinite; vertical-align: middle; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
     @media (max-width: 768px) { .main-layout { flex-direction: column; } .chat-section { height: 40vh; } }
@@ -146,7 +157,7 @@
     <div class="video-section">
       <div class="video-wrapper" id="localVideoWrapper" style="display: none;">
         <video id="localVideo" autoplay playsinline muted></video>
-        <div class="video-label" id="localVideoLabel">📹 You (Broadcaster)</div>
+        <div class="video-label">📹 You (Broadcaster)</div>
       </div>
       <div id="remoteVideosContainer"></div>
 
@@ -167,7 +178,7 @@
         💬 Live Chat <span id="chatRoleBadge"></span>
       </div>
       <div class="chat-messages" id="chatMessages">
-        <div class="message"><div class="message-bubble" style="background:#2c3e50;">✨ Welcome! Trystero P2P mesh active.</div></div>
+        <div class="message"><div class="message-bubble" style="background:#2c3e50;">✨ Trystero P2P active! Start a broadcast.</div></div>
       </div>
       <div class="chat-input-area">
         <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500">
@@ -178,18 +189,18 @@
 
   <div class="footer-note">
     🔒 <strong>Trystero</strong> · P2P WebRTC with BitTorrent discovery · No server required<br>
-    📡 Peers discover each other via public torrent trackers · Messages route through mesh network<br>
+    📡 Peers discover each other via public torrent trackers<br>
     💬 Use URL params: <code>?broadcast&name=YourName</code> or <code>?view&name=YourName</code>
   </div>
 </div>
 
 <script type="module">
-  // Import Trystero with BitTorrent strategy (works on GitHub Pages!)
-  import { joinRoom, selfId } from 'https://unpkg.com/trystero@0.19.0/dist/trystero.min.js';
+  // CORRECT IMPORT from jsDelivr CDN
+  import { joinRoom, selfId } from 'https://cdn.jsdelivr.net/npm/trystero@0.23.0/dist/trystero.mjs';
   
   // ======================= CONFIGURATION =======================
   const ROOM_ID = "enticechat-live";
-  const APP_ID = "enticechat-2024";  // Unique identifier for your app
+  const APP_ID = "enticechat-2025";
   
   // Get name from URL param
   const urlParams = new URLSearchParams(window.location.search);
@@ -200,8 +211,8 @@
   let localStream = null;
   let isBroadcasting = false;
   let activeRemoteStreams = new Map();
-  let peerNameMap = new Map();  // Store peer names
-  let peerElements = new Map();  // Store video elements for each peer
+  let peerNameMap = new Map();
+  let remoteVideoElements = new Map();
   
   // DOM elements
   const statusSpan = document.getElementById('status');
@@ -213,7 +224,6 @@
   const toggleCamBtn = document.getElementById('toggleCamBtn');
   const localVideoWrapper = document.getElementById('localVideoWrapper');
   const localVideo = document.getElementById('localVideo');
-  const localVideoLabel = document.getElementById('localVideoLabel');
   const remoteVideosContainer = document.getElementById('remoteVideosContainer');
   const peerCountSpan = document.getElementById('peerCount');
   const roomDisplay = document.getElementById('roomDisplay');
@@ -222,7 +232,6 @@
   const sendChatBtn = document.getElementById('sendChatBtn');
   const chatRoleBadge = document.getElementById('chatRoleBadge');
   
-  // Helper functions
   function getTime() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
   
   function addMessageToUI(senderName, message, isOwn = false) {
@@ -254,7 +263,7 @@
     }
   }
   
-  // Create video element for a remote peer
+  // Create video element for remote peer
   function createRemoteVideo(peerId, stream) {
     let wrapper = document.getElementById(`remote_${peerId}`);
     if (!wrapper) {
@@ -269,11 +278,11 @@
       const label = document.createElement('div');
       label.className = 'video-label';
       label.id = `label_${peerId}`;
-      label.innerText = `👤 ${peerNameMap.get(peerId) || 'Viewer'}`;
+      label.innerText = `👤 ${peerNameMap.get(peerId) || 'Broadcaster'}`;
       wrapper.appendChild(videoEl);
       wrapper.appendChild(label);
       remoteVideosContainer.appendChild(wrapper);
-      peerElements.set(peerId, videoEl);
+      remoteVideoElements.set(peerId, videoEl);
     }
     
     const videoEl = document.getElementById(`video_${peerId}`);
@@ -287,94 +296,102 @@
     const wrapper = document.getElementById(`remote_${peerId}`);
     if (wrapper) wrapper.remove();
     activeRemoteStreams.delete(peerId);
-    peerElements.delete(peerId);
+    remoteVideoElements.delete(peerId);
   }
   
   function clearAllRemoteVideos() {
     remoteVideosContainer.innerHTML = '';
     activeRemoteStreams.clear();
-    peerElements.clear();
+    remoteVideoElements.clear();
   }
   
   // ==================== TRYSTERO SETUP ====================
   async function initTrystero() {
-    // Join the room using BitTorrent strategy (no server needed!)
-    room = joinRoom({ appId: APP_ID }, ROOM_ID);
-    
-    // Handle peer joins
-    room.onPeerJoin(peerId => {
-      console.log(`Peer joined: ${peerId}`);
-      addMessageToUI("System", `A new viewer joined the room`, false);
+    try {
+      // Join room with BitTorrent strategy (no server needed!)
+      room = joinRoom({ appId: APP_ID }, ROOM_ID);
+      
+      // Handle peer joins
+      room.onPeerJoin(peerId => {
+        console.log(`✅ Peer joined: ${peerId}`);
+        addMessageToUI("System", `A new viewer joined`, false);
+        updatePeerCount();
+        
+        // If we're broadcaster, send stream to new peer
+        if (isBroadcasting && localStream) {
+          console.log(`📤 Sending stream to new peer: ${peerId}`);
+          room.addStream(localStream, peerId);
+        }
+        
+        // Send our name to new peer
+        if (myName) {
+          const [sendName] = room.makeAction('name');
+          sendName(myName, peerId);
+        }
+      });
+      
+      // Handle peer leaves
+      room.onPeerLeave(peerId => {
+        console.log(`👋 Peer left: ${peerId}`);
+        removeRemoteVideo(peerId);
+        updatePeerCount();
+        addMessageToUI("System", `A viewer left`, false);
+      });
+      
+      // Handle incoming media streams
+      room.onPeerStream((stream, peerId) => {
+        console.log(`📺 Received stream from: ${peerId}`);
+        createRemoteVideo(peerId, stream);
+        setStatusMessage(`✅ LIVE · Watching broadcast`, false, true);
+      });
+      
+      // Set up chat action
+      const [sendChat, receiveChat] = room.makeAction('chat');
+      
+      receiveChat((data, peerId) => {
+        const senderName = data.name || peerId.slice(0, 8);
+        addMessageToUI(senderName, data.message, false);
+      });
+      
+      // Set up name sharing
+      const [sendName, receiveName] = room.makeAction('name');
+      
+      receiveName((name, peerId) => {
+        peerNameMap.set(peerId, name);
+        const label = document.getElementById(`label_${peerId}`);
+        if (label) label.innerText = `👤 ${name}`;
+      });
+      
+      // Send our name to existing peers
+      setTimeout(() => {
+        if (room && myName) {
+          const peers = room.getPeers();
+          peers.forEach(peerId => sendName(myName, peerId));
+        }
+      }, 1000);
+      
+      // Expose chat function globally
+      window.sendChatMessage = (message) => {
+        if (!room || !message.trim()) return;
+        sendChat({ name: myName, message: message.trim() });
+        addMessageToUI(myName, message.trim(), true);
+      };
+      
+      console.log(`✅ Trystero initialized. My peer ID: ${selfId}`);
+      setStatusMessage("Network ready. Choose your role.", false);
       updatePeerCount();
       
-      // If we're the broadcaster, send our stream to the new peer
-      if (isBroadcasting && localStream) {
-        room.addStream(localStream, peerId);
-      }
-      
-      // Send our name to the new peer
-      if (sendName && myName) {
-        sendName(myName, peerId);
-      }
-    });
-    
-    // Handle peer leaves
-    room.onPeerLeave(peerId => {
-      console.log(`Peer left: ${peerId}`);
-      removeRemoteVideo(peerId);
-      updatePeerCount();
-      addMessageToUI("System", `A viewer left the room`, false);
-    });
-    
-    // Handle incoming media streams
-    room.onPeerStream((stream, peerId) => {
-      console.log(`Received stream from: ${peerId}`);
-      createRemoteVideo(peerId, stream);
-      setStatusMessage(`✅ LIVE · Watching broadcast`, false, true);
-    });
-    
-    // Set up chat action
-    const [sendChat, receiveChat] = room.makeAction('chat');
-    
-    receiveChat((data, peerId) => {
-      const senderName = data.name || peerId.slice(0, 8);
-      addMessageToUI(senderName, data.message, false);
-    });
-    
-    // Set up name sharing action
-    const [sendName, receiveName] = room.makeAction('name');
-    
-    receiveName((name, peerId) => {
-      peerNameMap.set(peerId, name);
-      // Update video label if exists
-      const label = document.getElementById(`label_${peerId}`);
-      if (label) label.innerText = `👤 ${name}`;
-    });
-    
-    // Expose chat function globally
-    window.sendChatMessage = (message) => {
-      if (!room) return;
-      sendChat({ name: myName, message: message.trim() });
-      addMessageToUI(myName, message.trim(), true);
-    };
-    
-    // Send our name to all existing peers
-    setTimeout(() => {
-      if (room && myName) {
-        const peers = room.getPeers();
-        peers.forEach(peerId => sendName(myName, peerId));
-      }
-    }, 1000);
-    
-    console.log(`Trystero initialized. My peer ID: ${selfId}`);
-    setStatusMessage("Network ready. Choose your role.", false);
-    updatePeerCount();
+    } catch (err) {
+      console.error("Trystero init error:", err);
+      setStatusMessage(`❌ Connection error: ${err.message}`, true);
+    }
   }
   
   // ==================== BROADCASTER LOGIC ====================
   async function startBroadcaster() {
     if (isBroadcasting) return;
     if (!room) await initTrystero();
+    if (!room) { setStatusMessage("❌ Network not ready", true); return; }
     
     clearAllRemoteVideos();
     myRole = 'broadcaster';
@@ -390,16 +407,16 @@
       localStream = stream;
       localVideo.srcObject = stream;
       localVideoWrapper.style.display = "block";
-      localVideoLabel.innerText = `🎙️ ${myName} (Broadcaster)`;
       isBroadcasting = true;
       controlBar.style.display = "flex";
       updateBroadcasterUI();
       
-      // Broadcast stream to all peers in room
+      // Broadcast stream to ALL peers in room
+      console.log("📤 Broadcasting stream to room...");
       room.addStream(localStream);
       
       setStatusMessage("🔴 Broadcasting LIVE", false, true);
-      addMessageToUI("System", `You are now LIVE as "${myName}". Viewers can join!`, false);
+      addMessageToUI("System", `You are now LIVE as "${myName}"`, false);
       
     } catch (err) {
       console.error("Broadcaster error:", err);
@@ -451,6 +468,7 @@
     if (isBroadcasting) { setStatusMessage("⚠️ Stop broadcasting first", false); return; }
     
     if (!room) await initTrystero();
+    if (!room) { setStatusMessage("❌ Network not ready", true); return; }
     
     clearAllRemoteVideos();
     localVideoWrapper.style.display = "none";
@@ -471,9 +489,21 @@
   }
   
   // ==================== EVENT HANDLERS ====================
-  startBroadcastBtn.addEventListener('click', () => { if (isBroadcasting) stopBroadcasting(); else startBroadcaster(); });
-  joinViewerBtn.addEventListener('click', () => { if (isBroadcasting) setStatusMessage("⚠️ Stop broadcasting first"); else startViewer(); });
-  stopBroadcastBtn.addEventListener('click', () => { if (isBroadcasting) stopBroadcasting(); else stopViewer(); });
+  startBroadcastBtn.addEventListener('click', () => { 
+    if (isBroadcasting) stopBroadcasting(); 
+    else startBroadcaster(); 
+  });
+  
+  joinViewerBtn.addEventListener('click', () => { 
+    if (isBroadcasting) setStatusMessage("⚠️ Stop broadcasting first", false); 
+    else startViewer(); 
+  });
+  
+  stopBroadcastBtn.addEventListener('click', () => { 
+    if (isBroadcasting) stopBroadcasting(); 
+    else stopViewer(); 
+  });
+  
   muteMicBtn.addEventListener('click', toggleMute);
   toggleCamBtn.addEventListener('click', toggleCamera);
   
@@ -483,19 +513,30 @@
       chatInput.value = '';
     }
   });
-  chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatBtn.click(); });
+  
+  chatInput.addEventListener('keypress', (e) => { 
+    if (e.key === 'Enter') sendChatBtn.click(); 
+  });
   
   roomDisplay.innerText = ROOM_ID;
-  roomDisplay.addEventListener('click', () => { navigator.clipboard.writeText(ROOM_ID); setStatusMessage("📋 Room ID copied!"); });
+  roomDisplay.addEventListener('click', () => { 
+    navigator.clipboard.writeText(ROOM_ID); 
+    setStatusMessage("📋 Room ID copied!"); 
+  });
   
-  window.addEventListener('beforeunload', () => { if (localStream) localStream.getTracks().forEach(t => t.stop()); if (room) room.leave(); });
+  window.addEventListener('beforeunload', () => { 
+    if (localStream) localStream.getTracks().forEach(t => t.stop()); 
+    if (room) room.leave(); 
+  });
   
   if (!navigator.mediaDevices?.getUserMedia) setStatusMessage("⚠️ Browser not supported", true);
+  
+  // Auto-start from URL params
   if (urlParams.has("broadcast")) setTimeout(() => startBroadcaster(), 500);
   else if (urlParams.has("view")) setTimeout(() => startViewer(), 500);
   else initTrystero();
   
-  console.log("✅ EnticeChat Live with Trystero");
+  console.log("✅ EnticeChat Live with Trystero (jsDelivr CDN)");
 </script>
 </body>
 </html>
