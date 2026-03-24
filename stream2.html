@@ -1,29 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>EnticeChat Live · Marecchia P2P + WebRTC Mesh</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>EnticeChat Live · Relay Tree P2P Broadcast</title>
 
-  <!-- webConnect.js - Signaling & Chat -->
   <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
-  
-  <!-- HLS.js for video playback -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  
-  <!-- Marecchia - WASM P2P HLS Loader -->
-  <script type="importmap">
-    {
-      "imports": {
-        "marecchia": "https://cdn.skypack.dev/marecchia"
-      }
-    }
-  </script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
@@ -92,7 +77,7 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 24px;
+      gap: 16px;
       align-items: baseline;
       border: 1px solid rgba(255,255,255,0.15);
     }
@@ -109,11 +94,9 @@
       user-select: all;
     }
 
-    .room-badge:hover {
-      background: #2a3a4e;
-    }
+    .room-badge:hover { background: #2a3a4e; }
 
-    #status {
+    #status, .pill {
       background: #0f172a;
       padding: 6px 18px;
       border-radius: 60px;
@@ -156,19 +139,6 @@
       z-index: 10;
     }
 
-    .p2p-stats {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: rgba(0,0,0,0.7);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      font-family: monospace;
-      backdrop-filter: blur(4px);
-      z-index: 10;
-    }
-
     .button-group {
       display: flex;
       flex-wrap: wrap;
@@ -184,7 +154,7 @@
       border: none;
       border-radius: 60px;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
       display: inline-flex;
       align-items: center;
       gap: 10px;
@@ -192,17 +162,11 @@
       color: white;
     }
 
-    button:active {
-      transform: scale(0.96);
-    }
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .broadcaster {
-      background: linear-gradient(95deg, #E63E2E, #C0392B);
-    }
-
-    .viewer {
-      background: linear-gradient(95deg, #1F6392, #0E4A6E);
-    }
+    .broadcaster { background: linear-gradient(95deg, #E63E2E, #C0392B); }
+    .viewer { background: linear-gradient(95deg, #1F6392, #0E4A6E); }
 
     .control-bar {
       margin: 12px auto;
@@ -219,11 +183,52 @@
       gap: 6px;
     }
 
-    .danger-btn {
-      background: #7f2a2a;
+    .danger-btn { background: #7f2a2a; }
+    .relay-btn.active { background: linear-gradient(95deg, #0e8f5b, #0a6b45); }
+
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 0 auto 16px;
+      justify-content: center;
     }
 
-    /* Chat Styles */
+    .tree-panel {
+      background: rgba(20, 25, 45, 0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 14px 18px;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #cfd9e4;
+    }
+
+    .tree-panel h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      color: #ffd966;
+    }
+
+    .tree-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .tree-item {
+      background: rgba(0,0,0,0.25);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+
+    .tree-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #fff;
+      font-size: 0.78rem;
+    }
+
     .chat-header {
       padding: 16px 20px;
       border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -246,9 +251,7 @@
       animation: fadeIn 0.2s ease;
     }
 
-    .message.own {
-      align-items: flex-end;
-    }
+    .message.own { align-items: flex-end; }
 
     .message-bubble {
       max-width: 85%;
@@ -316,23 +319,14 @@
       border-radius: 40px;
     }
 
-    .peers-list {
-      margin: 10px auto;
-      padding: 8px 16px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 40px;
-      display: inline-flex;
-      gap: 12px;
-      font-size: 0.75rem;
-    }
-
     .footer-note {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       color: #6c7a89;
       margin-top: 25px;
       text-align: center;
       border-top: 1px solid #222;
       padding-top: 20px;
+      line-height: 1.55;
     }
 
     .live-pulse {
@@ -346,12 +340,10 @@
       vertical-align: middle;
     }
 
-    .wasm-badge {
-      background: #2d6a4f;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      margin-left: 8px;
+    code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 8px;
     }
 
     @keyframes fadeIn {
@@ -372,41 +364,73 @@
 </head>
 <body>
 <div class="container">
-  <h1>🎙️ EnticeChat Live <span class="wasm-badge">⚡ Marecchia P2P</span></h1>
-  <div class="sub">WASM-Powered P2P Streaming + WebRTC Mesh Chat · GitHub Pages Ready</div>
+  <h1>🎙️ EnticeChat Live</h1>
+  <div class="sub">Relay-Tree WebRTC Experiment · Chat + Viewer Forwarding · Zero-Server Style</div>
 
   <div class="info-card">
     <span>🔗 Channel:</span>
     <span class="room-badge" id="channelDisplay">enticechat-live</span>
     <span id="status">⚡ Choose your role</span>
-    <span class="peers-list" style="margin:0;">👥 Peers: <span id="peerCount">0</span></span>
-    <span class="peers-list" style="margin:0;">📡 P2P: <span id="p2pStats">Idle</span></span>
+    <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
+    <span class="pill">🌳 Tree Depth: <span id="depthStat">0</span></span>
+    <span class="pill">🔁 Children: <span id="childCountStat">0</span></span>
+    <span class="pill">🧭 Role: <span id="nodeRoleStat">none</span></span>
   </div>
 
   <div class="main-layout">
     <div class="video-section">
-      <div class="video-grid">
-        <div class="video-wrapper" id="localVideoWrapper" style="display: none;">
-          <video id="localVideo" autoplay playsinline muted></video>
-          <div class="video-label" id="localVideoLabel">📹 You (Broadcaster)</div>
-        </div>
-        <div class="video-wrapper" id="streamVideoWrapper" style="display: none;">
-          <video id="streamVideo" autoplay playsinline></video>
-          <div class="video-label" id="streamLabel">🎬 Live Stream</div>
-          <div class="p2p-stats" id="p2pLiveStats">🐌 Loading...</div>
-        </div>
-        <div id="remoteVideosContainer"></div>
-      </div>
-
-      <div class="button-group">
+      <div class="stats-row">
         <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
         <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
       </div>
 
-      <div class="control-bar" id="controlBar" style="display: none;">
-        <button id="stopBroadcastBtn" class="small-btn danger-btn">🔴 Stop</button>
+      <div class="control-bar" id="controlBar" style="display:none;">
+        <button id="stopBtn" class="small-btn danger-btn">🔴 Stop / Leave</button>
         <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
         <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
+        <button id="relayOptInBtn" class="small-btn relay-btn">🔁 Relay: Auto</button>
+      </div>
+
+      <div class="video-grid">
+        <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="video-label" id="localVideoLabel">📹 You</div>
+        </div>
+
+        <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
+          <video id="mainRemoteVideo" autoplay playsinline controls></video>
+          <div class="video-label" id="mainRemoteLabel">🎙️ Live</div>
+        </div>
+      </div>
+
+      <div class="tree-panel">
+        <h3>Relay Tree State</h3>
+        <div class="tree-grid">
+          <div class="tree-item">
+            <strong>Your Connect ID</strong>
+            <span id="myIdView">—</span>
+          </div>
+          <div class="tree-item">
+            <strong>Assigned Parent</strong>
+            <span id="myParentView">—</span>
+          </div>
+          <div class="tree-item">
+            <strong>Current Source</strong>
+            <span id="mySourceView">—</span>
+          </div>
+          <div class="tree-item">
+            <strong>Relay Eligible</strong>
+            <span id="relayEligibleView">—</span>
+          </div>
+          <div class="tree-item">
+            <strong>Relay Enabled</strong>
+            <span id="relayEnabledView">—</span>
+          </div>
+          <div class="tree-item">
+            <strong>Children IDs</strong>
+            <span id="myChildrenView">—</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -416,155 +440,128 @@
       </div>
       <div class="chat-messages" id="chatMessages">
         <div class="message">
-          <div class="message-bubble" style="background:#2c3e50;">✨ Welcome! Marecchia P2P enabled - viewers share video chunks!</div>
+          <div class="message-bubble" style="background:#2c3e50;">
+            ✨ Welcome! This version uses a relay-tree experiment for the live stream.
+          </div>
         </div>
       </div>
       <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500" />
         <button id="sendChatBtn" class="send-btn">📤 Send</button>
       </div>
     </div>
   </div>
 
   <div class="footer-note">
-    🔒 <strong>Marecchia (WASM) + webConnect.js</strong> · Hybrid P2P Streaming<br>
-    🚀 Viewers automatically share video segments via WebRTC data channels (WASM-powered)<br>
-    📡 Broadcaster uploads HLS stream once; P2P mesh distributes to all viewers
+    🔒 <strong>webConnect.js</strong> still handles peer connectivity / mesh-style data connectivity.<br>
+    🌳 Media forwarding is controlled as a relay tree on top of it: origin → relays → viewers.<br>
+    💬 URL params: <code>?broadcast&name=YourName</code> or <code>?view&name=YourName</code><br>
+    ⚠️ This is an experiment. It is better than direct one-to-many mesh, but it is not a production SFU.
   </div>
 </div>
 
-<script type="module">
-  // ======================= IMPORTS =======================
-  import { P2PLoader, createP2PEngine } from 'https://cdn.skypack.dev/marecchia';
-  
-  // ======================= CONFIGURATION =======================
+<script>
+  // ========================= CONFIG =========================
   const CHANNEL = "enticechat-live";
-  
-  // Get name from URL param
+
+  const MAX_ORIGIN_CHILDREN = 3;
+  const MAX_RELAY_CHILDREN = 2;
+  const MAX_TREE_DEPTH = 3;
+  const ASSIGNMENT_RETRY_MS = 2500;
+  const PEER_INFO_INTERVAL_MS = 7000;
+  const CHAT_TTL_MS = 5 * 60 * 1000;
+
+  // ========================= URL / IDENTITY =========================
   const urlParams = new URLSearchParams(window.location.search);
-  let myName = urlParams.get('name') || `User_${Math.floor(Math.random() * 1000)}`;
-  let myRole = null;
-  
+  let myName = urlParams.get("name") || `User_${Math.floor(Math.random() * 1000)}`;
+  let myRole = null; // origin | relay | viewer | null
   let webConnect = null;
   let localStream = null;
+  let receivedLiveStream = null;
   let isBroadcasting = false;
   let myConnectId = null;
-  let activeRemoteStreams = new Map();
-  
-  // Marecchia P2P engine
-  let marecchiaEngine = null;
-  let hls = null;
-  let currentStreamUrl = null;
-  let streamSegmenter = null;
-  
-  // DOM elements
-  const statusSpan = document.getElementById('status');
-  const startBroadcastBtn = document.getElementById('startBroadcastBtn');
-  const joinViewerBtn = document.getElementById('joinViewerBtn');
-  const controlBar = document.getElementById('controlBar');
-  const stopBroadcastBtn = document.getElementById('stopBroadcastBtn');
-  const muteMicBtn = document.getElementById('muteMicBtn');
-  const toggleCamBtn = document.getElementById('toggleCamBtn');
-  const localVideoWrapper = document.getElementById('localVideoWrapper');
-  const localVideo = document.getElementById('localVideo');
-  const localVideoLabel = document.getElementById('localVideoLabel');
-  const streamVideoWrapper = document.getElementById('streamVideoWrapper');
-  const streamVideo = document.getElementById('streamVideo');
-  const streamLabel = document.getElementById('streamLabel');
-  const p2pLiveStats = document.getElementById('p2pLiveStats');
-  const remoteVideosContainer = document.getElementById('remoteVideosContainer');
-  const peerCountSpan = document.getElementById('peerCount');
-  const p2pStatsSpan = document.getElementById('p2pStats');
-  const channelDisplay = document.getElementById('channelDisplay');
-  const chatMessages = document.getElementById('chatMessages');
-  const chatInput = document.getElementById('chatInput');
-  const sendChatBtn = document.getElementById('sendChatBtn');
-  const chatRoleBadge = document.getElementById('chatRoleBadge');
-  
-  // Helper: format time
+
+  // tree state
+  let originId = null;
+  let assignedParentId = null;
+  let liveSourcePeerId = null;
+  let myTreeLevel = 0;
+  let childPeerIds = new Set();
+  let relayEnabled = true;
+  let relayEligible = detectRelayEligibility();
+  let peerRegistry = new Map(); // mainly maintained by origin
+  let originKnown = false;
+
+  // messaging
+  const seenMessageIds = new Set();
+  const chatMessageTimestamps = new Map();
+
+  // ========================= DOM =========================
+  const statusSpan = document.getElementById("status");
+  const startBroadcastBtn = document.getElementById("startBroadcastBtn");
+  const joinViewerBtn = document.getElementById("joinViewerBtn");
+  const controlBar = document.getElementById("controlBar");
+  const stopBtn = document.getElementById("stopBtn");
+  const muteMicBtn = document.getElementById("muteMicBtn");
+  const toggleCamBtn = document.getElementById("toggleCamBtn");
+  const relayOptInBtn = document.getElementById("relayOptInBtn");
+
+  const localVideoWrapper = document.getElementById("localVideoWrapper");
+  const localVideo = document.getElementById("localVideo");
+  const localVideoLabel = document.getElementById("localVideoLabel");
+
+  const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
+  const mainRemoteVideo = document.getElementById("mainRemoteVideo");
+  const mainRemoteLabel = document.getElementById("mainRemoteLabel");
+
+  const peerCountSpan = document.getElementById("peerCount");
+  const depthStat = document.getElementById("depthStat");
+  const childCountStat = document.getElementById("childCountStat");
+  const nodeRoleStat = document.getElementById("nodeRoleStat");
+
+  const channelDisplay = document.getElementById("channelDisplay");
+  const chatMessages = document.getElementById("chatMessages");
+  const chatInput = document.getElementById("chatInput");
+  const sendChatBtn = document.getElementById("sendChatBtn");
+  const chatRoleBadge = document.getElementById("chatRoleBadge");
+
+  const myIdView = document.getElementById("myIdView");
+  const myParentView = document.getElementById("myParentView");
+  const mySourceView = document.getElementById("mySourceView");
+  const relayEligibleView = document.getElementById("relayEligibleView");
+  const relayEnabledView = document.getElementById("relayEnabledView");
+  const myChildrenView = document.getElementById("myChildrenView");
+
+  // ========================= HELPERS =========================
+  function detectRelayEligibility() {
+    const ua = navigator.userAgent || "";
+    const mobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+    const cores = navigator.hardwareConcurrency || 2;
+    return !mobile && cores >= 4;
+  }
+
+  function nowId() {
+    return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function shortId(id) {
+    return id ? `${id.slice(0, 8)}…` : "—";
+  }
+
   function getTime() {
-    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
-  
-  // Add message to chat UI
-  function addMessageToUI(senderName, message, isOwn = false) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${isOwn ? 'own' : ''}`;
-    messageDiv.innerHTML = `
-      <div class="message-name">${escapeHtml(senderName)}</div>
-      <div class="message-bubble">
-        <div class="message-text">${escapeHtml(message)}</div>
-      </div>
-      <div class="message-time">${getTime()}</div>
-    `;
-    chatMessages.appendChild(messageDiv);
-    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    
-    while (chatMessages.children.length > 200) {
-      chatMessages.removeChild(chatMessages.firstChild);
-    }
-  }
-  
+
   function escapeHtml(str) {
-    if (!str) return '';
+    if (!str) return "";
     return str.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
+      if (m === "&") return "&amp;";
+      if (m === "<") return "&lt;";
+      if (m === ">") return "&gt;";
       return m;
     });
   }
-  
-  // Send chat message via P2P
-  function sendChatMessage(message) {
-    if (!message.trim()) return;
-    if (!webConnect) {
-      addMessageToUI("System", "Not connected to any peers", false);
-      return;
-    }
-    
-    const chatData = {
-      type: 'chat',
-      senderName: myName,
-      message: message.trim(),
-      timestamp: Date.now(),
-      senderRole: myRole
-    };
-    
-    webConnect.Send(JSON.stringify(chatData), { connectId: null });
-    addMessageToUI(myName, message.trim(), true);
-    chatInput.value = '';
-  }
-  
-  // Handle incoming P2P data
-  function handleReceiveData(data, attribute) {
-    try {
-      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-      if (parsed.type === 'chat') {
-        addMessageToUI(parsed.senderName, parsed.message, false);
-      } else if (parsed.type === 'stream_url') {
-        // Broadcaster shares HLS stream URL
-        console.log("Received stream URL:", parsed.url);
-        if (myRole === 'viewer' && parsed.url) {
-          startMarecchiaViewer(parsed.url);
-        }
-      }
-    } catch (e) {
-      console.log("Non-JSON data received");
-    }
-  }
-  
-  function sendPeerInfo(targetId = null) {
-    if (!webConnect) return;
-    const info = {
-      type: 'peerInfo',
-      name: myName,
-      role: myRole,
-      connectId: myConnectId
-    };
-    webConnect.Send(JSON.stringify(info), { connectId: targetId });
-  }
-  
+
   function setStatusMessage(message, isError = false, isLive = false) {
     if (isLive) {
       statusSpan.innerHTML = `<span class="live-pulse"></span>${message}`;
@@ -573,457 +570,940 @@
     }
     statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
   }
-  
+
   function updatePeersDisplay(count) {
     peerCountSpan.innerText = count;
   }
-  
-  function updateRemoteVideo(connectId, stream, metadata) {
-    let videoWrapper = document.getElementById(`remote_${connectId}`);
-    if (!videoWrapper && stream) {
-      videoWrapper = document.createElement('div');
-      videoWrapper.className = 'video-wrapper';
-      videoWrapper.id = `remote_${connectId}`;
-      const videoEl = document.createElement('video');
-      videoEl.id = `video_${connectId}`;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-      const label = document.createElement('div');
-      label.className = 'video-label';
-      label.id = `label_${connectId}`;
-      label.innerText = `👤 Viewer`;
-      videoWrapper.appendChild(videoEl);
-      videoWrapper.appendChild(label);
-      remoteVideosContainer.appendChild(videoWrapper);
-    }
-    
-    if (stream && videoWrapper) {
-      const videoEl = document.getElementById(`video_${connectId}`);
-      if (videoEl && videoEl.srcObject !== stream) {
-        videoEl.srcObject = stream;
-        videoEl.play().catch(e => console.log("autoplay blocked"));
-      }
-      activeRemoteStreams.set(connectId, stream);
-    } else if (!stream && videoWrapper) {
-      videoWrapper.remove();
-      activeRemoteStreams.delete(connectId);
+
+  function updateRoleBadge() {
+    const roleText = myRole ? myRole.toUpperCase() : "NONE";
+    chatRoleBadge.innerHTML = `· ${roleText}`;
+    nodeRoleStat.innerText = myRole || "none";
+  }
+
+  function updateStats() {
+    depthStat.innerText = String(myTreeLevel || 0);
+    childCountStat.innerText = String(childPeerIds.size);
+    myIdView.innerText = myConnectId ? shortId(myConnectId) : "—";
+    myParentView.innerText = assignedParentId ? shortId(assignedParentId) : "—";
+    mySourceView.innerText = liveSourcePeerId ? shortId(liveSourcePeerId) : "—";
+    relayEligibleView.innerText = relayEligible ? "Yes" : "No";
+    relayEnabledView.innerText = relayEnabled ? "Yes" : "No";
+    myChildrenView.innerText = childPeerIds.size ? Array.from(childPeerIds).map(shortId).join(", ") : "—";
+    relayOptInBtn.classList.toggle("active", relayEnabled);
+    relayOptInBtn.innerHTML = relayEnabled ? "🔁 Relay: On" : "🔁 Relay: Off";
+  }
+
+  function addMessageToUI(senderName, message, isOwn = false) {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${isOwn ? "own" : ""}`;
+    messageDiv.innerHTML = `
+      <div class="message-name">${escapeHtml(senderName)}</div>
+      <div class="message-bubble">
+        <div class="message-text">${escapeHtml(message)}</div>
+      </div>
+      <div class="message-time">${getTime()}</div>
+    `;
+    chatMessages.appendChild(messageDiv);
+    messageDiv.scrollIntoView({ behavior: "smooth", block: "end" });
+
+    while (chatMessages.children.length > 200) {
+      chatMessages.removeChild(chatMessages.firstChild);
     }
   }
-  
-  function clearAllRemoteVideos() {
-    remoteVideosContainer.innerHTML = '';
-    activeRemoteStreams.clear();
-  }
-  
-  // ==================== MARECCHIA P2P BROADCASTER ====================
-  async function startMarecchiaBroadcaster(stream) {
-    try {
-      setStatusMessage("🎬 Initializing Marecchia P2P engine...");
-      
-      // Create MediaRecorder to segment stream for HLS
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=h264',
-        videoBitsPerSecond: 1500000
-      });
-      
-      const segments = [];
-      let segmentIndex = 0;
-      
-      // Simple HLS-like segment generation
-      mediaRecorder.ondataavailable = async (event) => {
-        if (event.data.size > 0) {
-          const segmentBlob = event.data;
-          const segmentUrl = URL.createObjectURL(segmentBlob);
-          
-          // Share segment URL with peers via webConnect
-          if (webConnect) {
-            const segmentInfo = {
-              type: 'segment',
-              index: segmentIndex++,
-              url: segmentUrl,
-              timestamp: Date.now()
-            };
-            webConnect.Send(JSON.stringify(segmentInfo), { connectId: null });
-          }
-          
-          // Update stats
-          p2pStatsSpan.innerHTML = `📡 Broadcasting segments`;
-          
-          // Clean up old URLs after 30 seconds
-          setTimeout(() => URL.revokeObjectURL(segmentUrl), 30000);
+
+  function rememberMessageId(messageId) {
+    seenMessageIds.add(messageId);
+    chatMessageTimestamps.set(messageId, Date.now());
+
+    if (chatMessageTimestamps.size > 800) {
+      const threshold = Date.now() - CHAT_TTL_MS;
+      for (const [id, ts] of chatMessageTimestamps.entries()) {
+        if (ts < threshold) {
+          chatMessageTimestamps.delete(id);
+          seenMessageIds.delete(id);
         }
-      };
-      
-      // Record in 5-second chunks
-      mediaRecorder.start(5000);
-      streamSegmenter = mediaRecorder;
-      
-      setStatusMessage("✅ Marecchia P2P active - viewers will share segments", false, true);
-      p2pStatsSpan.innerHTML = `🎬 Segmenting active`;
-      
-    } catch (err) {
-      console.error("Marecchia broadcaster error:", err);
-      setStatusMessage(`⚠️ P2P fallback: ${err.message}`, false);
-    }
-  }
-  
-  // ==================== MARECCHIA P2P VIEWER ====================
-  async function startMarecchiaViewer(streamUrl) {
-    try {
-      setStatusMessage("🌐 Starting Marecchia WASM P2P loader...");
-      p2pStatsSpan.innerHTML = "⚙️ Loading WASM...";
-      
-      // Show video container
-      streamVideoWrapper.style.display = "block";
-      streamLabel.innerText = `🎬 Live Stream (P2P)`;
-      
-      // Initialize HLS.js with Marecchia P2P loader
-      if (Hls.isSupported()) {
-        hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          // Custom loader with P2P support
-          loader: (config) => {
-            return new P2PLoader({
-              ...config,
-              trackerAnnounce: ['wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com'],
-              useP2P: true,
-              fallbackToCDN: true,
-              onPeerConnected: (count) => {
-                p2pStatsSpan.innerHTML = `🔄 ${count} peers sharing`;
-              },
-              onSegmentLoaded: (fromP2P) => {
-                p2pStatsSpan.innerHTML = fromP2P ? `📡 P2P: segment received` : `🌐 CDN fallback`;
-              }
-            });
-          }
-        });
-        
-        hls.loadSource(streamUrl);
-        hls.attachMedia(streamVideo);
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          setStatusMessage("✅ Watching with P2P acceleration", false, true);
-          p2pStatsSpan.innerHTML = `🚀 P2P active`;
-          streamVideo.play().catch(e => console.log("autoplay blocked"));
-        });
-        
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          console.warn("HLS Error:", data);
-          p2pStatsSpan.innerHTML = `⚠️ P2P fallback to CDN`;
-        });
-        
-      } else if (streamVideo.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS fallback (Safari)
-        streamVideo.src = streamUrl;
-        streamVideo.addEventListener('loadedmetadata', () => {
-          setStatusMessage("✅ Watching (native HLS)", false, true);
-          p2pStatsSpan.innerHTML = `📺 Native playback`;
-        });
-      } else {
-        throw new Error("HLS not supported in this browser");
       }
-      
-    } catch (err) {
-      console.error("Marecchia viewer error:", err);
-      setStatusMessage(`⚠️ P2P unavailable, using direct stream`, false);
-      p2pStatsSpan.innerHTML = `❌ P2P disabled`;
-      
-      // Fallback to direct video element
-      streamVideo.src = streamUrl;
-      streamVideo.play().catch(e => console.log("autoplay blocked"));
     }
   }
-  
-  function stopMarecchiaViewer() {
-    if (hls) {
-      hls.destroy();
-      hls = null;
-    }
-    if (streamVideo) {
-      streamVideo.pause();
-      streamVideo.srcObject = null;
-      streamVideo.src = '';
-    }
-    streamVideoWrapper.style.display = "none";
-    p2pStatsSpan.innerHTML = "Idle";
+
+  function alreadySeenMessage(messageId) {
+    return seenMessageIds.has(messageId);
   }
-  
-  // ==================== BROADCASTER LOGIC ====================
-  async function startBroadcaster() {
-    if (isBroadcasting) return;
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    stopMarecchiaViewer();
-    
-    myRole = 'broadcaster';
-    chatRoleBadge.innerHTML = '🎙️ Broadcaster';
-    
-    setStatusMessage("🎙️ Requesting camera & microphone...");
+
+  function safeSend(payload, targetId = null) {
+    if (!webConnect) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
+      webConnect.Send(JSON.stringify(payload), { connectId: targetId });
+    } catch (err) {
+      console.warn("Send failed", err);
+    }
+  }
+
+  function sendChatMessage(message) {
+    const clean = (message || "").trim();
+    if (!clean) return;
+
+    if (!webConnect) {
+      addMessageToUI("System", "Not connected to peers yet.");
+      return;
+    }
+
+    const messageId = nowId();
+    const payload = {
+      type: "chat",
+      messageId,
+      senderName: myName,
+      senderId: myConnectId,
+      senderRole: myRole,
+      message: clean,
+      timestamp: Date.now()
+    };
+
+    rememberMessageId(messageId);
+    safeSend(payload, null);
+    addMessageToUI(myName, clean, true);
+    chatInput.value = "";
+  }
+
+  function getConnectedPeerCount() {
+    if (!webConnect || typeof webConnect.getConnection !== "function") return;
+    webConnect.getConnection((connAttr) => {
+      updatePeersDisplay(connAttr.connection?.length || 0);
+    });
+  }
+
+  function resetTreeState() {
+    originId = null;
+    originKnown = false;
+    assignedParentId = null;
+    liveSourcePeerId = null;
+    myTreeLevel = 0;
+    childPeerIds.clear();
+    peerRegistry.clear();
+    receivedLiveStream = null;
+    mainRemoteVideo.srcObject = null;
+    mainRemoteWrapper.style.display = "none";
+    updateStats();
+  }
+
+  function resetAllState() {
+    resetTreeState();
+    isBroadcasting = false;
+    myRole = null;
+    updateRoleBadge();
+    setStatusMessage("⚡ Choose your role");
+  }
+
+  function buildPeerInfo() {
+    return {
+      type: "peerInfo",
+      connectId: myConnectId,
+      name: myName,
+      role: myRole,
+      relayEligible,
+      relayEnabled,
+      isOrigin: myRole === "origin",
+      treeLevel: myTreeLevel,
+      assignedParentId,
+      childCount: childPeerIds.size,
+      maxChildren: myRole === "origin" ? MAX_ORIGIN_CHILDREN : MAX_RELAY_CHILDREN,
+      hasLiveStream: !!(localStream || receivedLiveStream),
+      originId
+    };
+  }
+
+  function announcePeerInfo(targetId = null) {
+    safeSend(buildPeerInfo(), targetId);
+  }
+
+  function updateLocalVideoLabel() {
+    if (myRole === "origin") {
+      localVideoLabel.innerText = `🎙️ ${myName} (Origin)`;
+    } else if (myRole === "relay") {
+      localVideoLabel.innerText = `🔁 ${myName} (Relay Preview)`;
+    } else {
+      localVideoLabel.innerText = `📹 ${myName}`;
+    }
+  }
+
+  function showMainRemote(stream, labelText = "🎙️ Live") {
+    if (!stream) return;
+    if (mainRemoteVideo.srcObject !== stream) {
+      mainRemoteVideo.srcObject = stream;
+      mainRemoteVideo.play().catch(() => {});
+    }
+    mainRemoteLabel.innerText = labelText;
+    mainRemoteWrapper.style.display = "block";
+  }
+
+  function clearMainRemote() {
+    mainRemoteVideo.srcObject = null;
+    mainRemoteWrapper.style.display = "none";
+  }
+
+  function effectiveMaxChildrenForPeer(peer) {
+    if (!peer) return 0;
+    return peer.role === "origin" ? MAX_ORIGIN_CHILDREN : MAX_RELAY_CHILDREN;
+  }
+
+  function canPeerAcceptChildren(peer) {
+    if (!peer) return false;
+    if (!peer.connectId) return false;
+    if (peer.treeLevel >= MAX_TREE_DEPTH) return false;
+    if (peer.role !== "origin" && peer.role !== "relay") return false;
+    if (peer.role === "relay" && (!peer.relayEligible || !peer.relayEnabled)) return false;
+    if (!peer.hasLiveStream) return false;
+    const currentChildren = Array.isArray(peer.children) ? peer.children.length : 0;
+    return currentChildren < effectiveMaxChildrenForPeer(peer);
+  }
+
+  function ensurePeerRecord(info) {
+    if (!info || !info.connectId) return null;
+
+    const existing = peerRegistry.get(info.connectId) || {
+      connectId: info.connectId,
+      name: info.name || "Unknown",
+      role: info.role || "viewer",
+      relayEligible: !!info.relayEligible,
+      relayEnabled: !!info.relayEnabled,
+      treeLevel: Number.isFinite(info.treeLevel) ? info.treeLevel : 0,
+      assignedParentId: info.assignedParentId || null,
+      hasLiveStream: !!info.hasLiveStream,
+      children: []
+    };
+
+    existing.name = info.name ?? existing.name;
+    existing.role = info.role ?? existing.role;
+    existing.relayEligible = !!info.relayEligible;
+    existing.relayEnabled = !!info.relayEnabled;
+    existing.treeLevel = Number.isFinite(info.treeLevel) ? info.treeLevel : existing.treeLevel;
+    existing.assignedParentId = info.assignedParentId || null;
+    existing.hasLiveStream = !!info.hasLiveStream;
+
+    if (!Array.isArray(existing.children)) existing.children = [];
+    peerRegistry.set(info.connectId, existing);
+    return existing;
+  }
+
+  function getAvailableParentCandidate() {
+    const peers = Array.from(peerRegistry.values());
+
+    // Prefer origin first, then shallowest good relay.
+    peers.sort((a, b) => {
+      const aOrigin = a.role === "origin" ? -1 : 0;
+      const bOrigin = b.role === "origin" ? -1 : 0;
+      if (aOrigin !== bOrigin) return aOrigin - bOrigin;
+      return (a.treeLevel || 0) - (b.treeLevel || 0);
+    });
+
+    return peers.find(canPeerAcceptChildren) || null;
+  }
+
+  function addChildToParent(parentId, childId) {
+    const parent = peerRegistry.get(parentId);
+    if (!parent) return;
+    if (!Array.isArray(parent.children)) parent.children = [];
+    if (!parent.children.includes(childId)) {
+      parent.children.push(childId);
+    }
+  }
+
+  function removeChildFromParent(parentId, childId) {
+    const parent = peerRegistry.get(parentId);
+    if (!parent || !Array.isArray(parent.children)) return;
+    parent.children = parent.children.filter(id => id !== childId);
+  }
+
+  function assignViewerToParent(viewerId, preferredParentId = null) {
+    if (myRole !== "origin") return;
+    if (!viewerId || viewerId === myConnectId) return;
+
+    const viewer = peerRegistry.get(viewerId);
+    if (!viewer) return;
+    if (viewer.role === "origin") return;
+
+    if (viewer.assignedParentId) return;
+
+    let parent = null;
+    if (preferredParentId) {
+      const preferred = peerRegistry.get(preferredParentId);
+      if (canPeerAcceptChildren(preferred)) parent = preferred;
+    }
+    if (!parent) {
+      parent = getAvailableParentCandidate();
+    }
+    if (!parent) return;
+
+    viewer.assignedParentId = parent.connectId;
+    viewer.treeLevel = (parent.treeLevel || 0) + 1;
+
+    addChildToParent(parent.connectId, viewer.connectId);
+
+    safeSend({
+      type: "assignParent",
+      childId: viewer.connectId,
+      parentId: parent.connectId,
+      parentName: parent.name,
+      parentRole: parent.role,
+      parentLevel: parent.treeLevel || 0,
+      childLevel: viewer.treeLevel,
+      originId: myConnectId
+    }, viewer.connectId);
+
+    safeSend({
+      type: "childAssigned",
+      parentId: parent.connectId,
+      childId: viewer.connectId,
+      childName: viewer.name,
+      childLevel: viewer.treeLevel
+    }, parent.connectId);
+
+    broadcastTreeState();
+  }
+
+  function broadcastTreeState() {
+    if (myRole !== "origin") return;
+
+    const peers = Array.from(peerRegistry.values()).map(p => ({
+      connectId: p.connectId,
+      name: p.name,
+      role: p.role,
+      relayEligible: !!p.relayEligible,
+      relayEnabled: !!p.relayEnabled,
+      treeLevel: p.treeLevel || 0,
+      assignedParentId: p.assignedParentId || null,
+      hasLiveStream: !!p.hasLiveStream,
+      children: Array.isArray(p.children) ? p.children : []
+    }));
+
+    safeSend({
+      type: "treeState",
+      originId: myConnectId,
+      peers
+    }, null);
+  }
+
+  async function startStreamingToChild(childId) {
+    const sourceStream = localStream || receivedLiveStream;
+    if (!sourceStream || !webConnect || !childId) return;
+    try {
+      webConnect.openStreaming(sourceStream, {
+        connectId: childId,
+        metadata: {
+          name: myName,
+          role: myRole,
+          sourceId: myConnectId,
+          originId: originId || myConnectId,
+          treeLevel: myTreeLevel
+        }
+      });
+    } catch (err) {
+      console.warn("Failed to open child stream:", childId, err);
+    }
+  }
+
+  async function forwardToAssignedChildren() {
+    const sourceStream = localStream || receivedLiveStream;
+    if (!sourceStream) return;
+    if (!childPeerIds.size) return;
+
+    for (const childId of childPeerIds) {
+      await startStreamingToChild(childId);
+    }
+  }
+
+  function maybeBecomeRelay() {
+    if (myRole === "origin") return;
+    if (!relayEligible || !relayEnabled) {
+      if (myRole === "relay") {
+        myRole = "viewer";
+        updateRoleBadge();
+      }
+      return;
+    }
+
+    if (receivedLiveStream) {
+      myRole = "relay";
+      updateRoleBadge();
+      announcePeerInfo();
+      updateStats();
+    }
+  }
+
+  function requestAssignmentRetry() {
+    if (!webConnect || !myConnectId || myRole === "origin") return;
+    if (assignedParentId) return;
+
+    setTimeout(() => {
+      if (!assignedParentId && webConnect) {
+        announcePeerInfo();
+        safeSend({
+          type: "assignmentRequest",
+          connectId: myConnectId,
+          name: myName,
+          relayEligible,
+          relayEnabled,
+          role: myRole
+        }, originId || null);
+      }
+    }, ASSIGNMENT_RETRY_MS);
+  }
+
+  // ========================= MESSAGE HANDLING =========================
+  function handleIncomingChat(parsed) {
+    if (!parsed.messageId || alreadySeenMessage(parsed.messageId)) return;
+    rememberMessageId(parsed.messageId);
+    addMessageToUI(parsed.senderName || "Unknown", parsed.message || "", false);
+  }
+
+  function handlePeerInfo(parsed) {
+    if (!parsed.connectId) return;
+
+    if (parsed.isOrigin) {
+      originId = parsed.connectId;
+      originKnown = true;
+    } else if (parsed.originId && !originId) {
+      originId = parsed.originId;
+    }
+
+    if (myRole === "origin") {
+      const peer = ensurePeerRecord(parsed);
+      if (peer) {
+        if (!Array.isArray(peer.children)) peer.children = [];
+        if (peer.connectId !== myConnectId && peer.role !== "origin" && !peer.assignedParentId) {
+          assignViewerToParent(peer.connectId);
+        } else {
+          broadcastTreeState();
+        }
+      }
+    }
+
+    updateStats();
+  }
+
+  function handleAssignParent(parsed) {
+    if (parsed.childId !== myConnectId) return;
+
+    assignedParentId = parsed.parentId || null;
+    originId = parsed.originId || originId;
+    myTreeLevel = Number.isFinite(parsed.childLevel) ? parsed.childLevel : 1;
+    updateStats();
+
+    addMessageToUI("System", `Assigned to parent ${parsed.parentName || shortId(parsed.parentId)} at depth ${myTreeLevel}.`, false);
+
+    safeSend({
+      type: "childAck",
+      childId: myConnectId,
+      parentId: assignedParentId,
+      childLevel: myTreeLevel,
+      relayEligible,
+      relayEnabled,
+      role: myRole
+    }, assignedParentId);
+  }
+
+  function handleChildAssigned(parsed) {
+    if (parsed.parentId !== myConnectId) return;
+    childPeerIds.add(parsed.childId);
+    updateStats();
+    forwardToAssignedChildren();
+  }
+
+  function handleChildAck(parsed) {
+    if (parsed.parentId !== myConnectId) return;
+    childPeerIds.add(parsed.childId);
+    updateStats();
+    forwardToAssignedChildren();
+
+    if (myRole === "origin") {
+      const child = ensurePeerRecord({
+        connectId: parsed.childId,
+        role: parsed.role || "viewer",
+        treeLevel: parsed.childLevel || 1,
+        assignedParentId: myConnectId,
+        relayEligible: !!parsed.relayEligible,
+        relayEnabled: !!parsed.relayEnabled,
+        hasLiveStream: false
+      });
+      if (child) {
+        addChildToParent(myConnectId, parsed.childId);
+        broadcastTreeState();
+      }
+    }
+  }
+
+  function handleTreeState(parsed) {
+    if (!parsed.originId) return;
+    originId = parsed.originId;
+    originKnown = true;
+
+    if (Array.isArray(parsed.peers) && parsed.peers.length) {
+      // local view only
+      for (const p of parsed.peers) {
+        if (p.connectId === myConnectId) {
+          assignedParentId = p.assignedParentId || assignedParentId;
+          myTreeLevel = Number.isFinite(p.treeLevel) ? p.treeLevel : myTreeLevel;
+        }
+      }
+    }
+    updateStats();
+  }
+
+  function handleAssignmentRequest(parsed) {
+    if (myRole !== "origin") return;
+    const peer = ensurePeerRecord({
+      connectId: parsed.connectId,
+      name: parsed.name || "Unknown",
+      role: parsed.role || "viewer",
+      relayEligible: !!parsed.relayEligible,
+      relayEnabled: !!parsed.relayEnabled,
+      treeLevel: 0,
+      hasLiveStream: false
+    });
+    if (peer && !peer.assignedParentId) {
+      assignViewerToParent(peer.connectId);
+    }
+  }
+
+  function handleRelayPrefUpdate(parsed) {
+    if (myRole !== "origin") return;
+    const peer = ensurePeerRecord(parsed);
+    if (!peer) return;
+
+    if (peer.connectId !== myConnectId && !peer.assignedParentId) {
+      assignViewerToParent(peer.connectId);
+    }
+    broadcastTreeState();
+  }
+
+  function handleReceiveData(data, attribute) {
+    try {
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      if (!parsed || !parsed.type) return;
+
+      switch (parsed.type) {
+        case "chat":
+          handleIncomingChat(parsed);
+          break;
+        case "peerInfo":
+          handlePeerInfo(parsed);
+          break;
+        case "assignParent":
+          handleAssignParent(parsed);
+          break;
+        case "childAssigned":
+          handleChildAssigned(parsed);
+          break;
+        case "childAck":
+          handleChildAck(parsed);
+          break;
+        case "treeState":
+          handleTreeState(parsed);
+          break;
+        case "assignmentRequest":
+          handleAssignmentRequest(parsed);
+          break;
+        case "relayPrefUpdate":
+          handleRelayPrefUpdate(parsed);
+          break;
+      }
+    } catch (e) {
+      console.log("Non-JSON data received");
+    }
+  }
+
+  // ========================= ORIGIN MODE =========================
+  async function startOrigin() {
+    if (isBroadcasting) return;
+
+    await stopEverything();
+
+    myRole = "origin";
+    updateRoleBadge();
+    resetTreeState();
+    controlBar.style.display = "flex";
+
+    setStatusMessage("🎙️ Requesting camera & microphone...");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24 } },
         audio: { echoCancellation: true, noiseSuppression: true }
       });
-      
+
       localStream = stream;
       localVideo.srcObject = stream;
       localVideoWrapper.style.display = "block";
-      localVideoLabel.innerText = `🎙️ ${myName} (Broadcaster)`;
-      
-      setStatusMessage("🟡 Connecting to P2P mesh network...");
-      
+      updateLocalVideoLabel();
+
+      setStatusMessage("🟡 Connecting as origin...");
       webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
-      
+
       webConnect.getMyId((attr) => {
         myConnectId = attr.connectId;
-        setStatusMessage("🔴 Broadcasting LIVE", false, true);
+        originId = myConnectId;
+        originKnown = true;
+        myTreeLevel = 0;
         isBroadcasting = true;
-        controlBar.style.display = "flex";
-        updateBroadcasterUI();
-        
-        // Start Marecchia P2P segmenter
-        startMarecchiaBroadcaster(stream);
+
+        myIdView.innerText = shortId(myConnectId);
+        updateStats();
+        setStatusMessage("🔴 Origin LIVE", false, true);
+
+        peerRegistry.set(myConnectId, {
+          connectId: myConnectId,
+          name: myName,
+          role: "origin",
+          relayEligible: true,
+          relayEnabled: true,
+          treeLevel: 0,
+          assignedParentId: null,
+          hasLiveStream: true,
+          children: []
+        });
+
+        announcePeerInfo();
+        broadcastTreeState();
       });
-      
-      webConnect.onConnect(async (attribute) => {
-        console.log("✅ Peer connected:", attribute.connectId);
-        setStatusMessage(`📡 Peer joined`, false);
-        
-        if (localStream && isBroadcasting) {
-          webConnect.openStreaming(localStream, { 
-            connectId: attribute.connectId,
-            metadata: { name: myName, role: "broadcaster" }
-          });
-        }
-        
-        sendPeerInfo(attribute.connectId);
-        
-        webConnect.getConnection((connAttr) => {
-          updatePeersDisplay(connAttr.connection?.length || 0);
+
+      webConnect.onConnect((attribute) => {
+        getConnectedPeerCount();
+        setStatusMessage("📡 Peer connected", false);
+        announcePeerInfo(attribute.connectId);
+
+        const peerId = attribute.connectId;
+        ensurePeerRecord({
+          connectId: peerId,
+          name: "Connecting peer",
+          role: "viewer",
+          relayEligible: false,
+          relayEnabled: false,
+          treeLevel: 0,
+          assignedParentId: null,
+          hasLiveStream: false
+        });
+
+        requestAnimationFrame(() => {
+          assignViewerToParent(peerId);
+          broadcastTreeState();
         });
       });
-      
+
       webConnect.onDisconnect((attribute) => {
-        console.log("👋 Peer disconnected:", attribute.connectId);
-        updateRemoteVideo(attribute.connectId, null);
-        webConnect.getConnection((connAttr) => {
-          updatePeersDisplay(connAttr.connection?.length || 0);
-        });
-        addMessageToUI("System", `A viewer left the room`, false);
+        getConnectedPeerCount();
+        const peerId = attribute.connectId;
+
+        for (const peer of peerRegistry.values()) {
+          removeChildFromParent(peer.connectId, peerId);
+          if (peer.assignedParentId === peerId) {
+            peer.assignedParentId = null;
+            peer.treeLevel = 0;
+            assignViewerToParent(peer.connectId);
+          }
+        }
+        peerRegistry.delete(peerId);
+        broadcastTreeState();
+        addMessageToUI("System", "A peer left the room.", false);
       });
-      
-      webConnect.onStreaming((stream, attribute) => {
-        console.log("Received stream from:", attribute.connectId);
-      });
-      
+
       webConnect.onReceive((data, attribute) => {
         handleReceiveData(data, attribute);
       });
-      
-      webConnect.getConnection((connAttr) => {
-        updatePeersDisplay(connAttr.connection?.length || 0);
+
+      webConnect.onStreaming((stream, attribute) => {
+        console.log("Origin received unexpected stream from", attribute.connectId);
       });
-      
-      addMessageToUI("System", `You are now LIVE with Marecchia P2P! Viewers will share video chunks.`, false);
-      
+
+      addMessageToUI("System", `You are LIVE as "${myName}" and serving as the origin node.`, false);
+
     } catch (err) {
-      console.error("Broadcaster error:", err);
-      setStatusMessage(`❌ Failed: ${err.message.slice(0, 80)}`, true);
-      await stopBroadcasting();
+      console.error("Origin error:", err);
+      setStatusMessage(`❌ Failed: ${err.message.slice(0, 90)}`, true);
+      await stopEverything();
     }
   }
-  
-  function updateBroadcasterUI() {
+
+  function updateOriginControls() {
     if (!localStream) return;
     const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
     const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+    muteMicBtn.innerHTML = audioTrack && audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+    toggleCamBtn.innerHTML = videoTrack && videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
   }
-  
-  async function stopBroadcasting() {
-    if (streamSegmenter) {
-      streamSegmenter.stop();
-      streamSegmenter = null;
+
+  function toggleMute() {
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+    audioTrack.enabled = !audioTrack.enabled;
+    updateOriginControls();
+    setStatusMessage(audioTrack.enabled ? "🔴 Mic active" : "🔴 Mic muted", false, true);
+  }
+
+  function toggleCamera() {
+    if (!localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+    videoTrack.enabled = !videoTrack.enabled;
+    updateOriginControls();
+    setStatusMessage(videoTrack.enabled ? "🔴 Camera on" : "🔴 Camera paused", false, true);
+  }
+
+  // ========================= VIEWER / RELAY MODE =========================
+  async function startViewer() {
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Stop broadcasting first", false);
+      return;
     }
-    
+
+    await stopEverything();
+
+    myRole = "viewer";
+    updateRoleBadge();
+    resetTreeState();
+    controlBar.style.display = "flex";
+    setStatusMessage("👁️ Joining as viewer...");
+
+    try {
+      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        myIdView.innerText = shortId(myConnectId);
+        updateStats();
+        announcePeerInfo();
+        setStatusMessage("👁️ Connected. Waiting for origin assignment...");
+        requestAssignmentRetry();
+      });
+
+      webConnect.onConnect((attribute) => {
+        getConnectedPeerCount();
+        announcePeerInfo(attribute.connectId);
+
+        if (originId) {
+          safeSend({
+            type: "assignmentRequest",
+            connectId: myConnectId,
+            name: myName,
+            relayEligible,
+            relayEnabled,
+            role: myRole
+          }, originId);
+        } else {
+          requestAssignmentRetry();
+        }
+      });
+
+      webConnect.onReceive((data, attribute) => {
+        handleReceiveData(data, attribute);
+      });
+
+      webConnect.onStreaming((stream, attribute) => {
+        receivedLiveStream = stream;
+        liveSourcePeerId = attribute.connectId || null;
+
+        showMainRemote(stream, `🎙️ Live via ${shortId(liveSourcePeerId)}`);
+        setStatusMessage("✅ LIVE · Receiving stream", false, true);
+
+        if (assignedParentId && attribute.connectId !== assignedParentId) {
+          console.warn("Received stream from non-assigned parent", attribute.connectId);
+        }
+
+        maybeBecomeRelay();
+        updateStats();
+        announcePeerInfo();
+
+        if (relayEligible && relayEnabled) {
+          forwardToAssignedChildren();
+          addMessageToUI("System", "You are relay-capable and can forward the stream to assigned viewers.", false);
+        } else {
+          addMessageToUI("System", "You are receiving the live stream as a viewer.", false);
+        }
+      });
+
+      webConnect.onDisconnect((attribute) => {
+        getConnectedPeerCount();
+
+        const peerId = attribute.connectId;
+
+        if (peerId === assignedParentId || peerId === liveSourcePeerId) {
+          receivedLiveStream = null;
+          liveSourcePeerId = null;
+          assignedParentId = null;
+          myTreeLevel = 0;
+          clearMainRemote();
+          childPeerIds.clear();
+
+          if (myRole !== "origin") {
+            myRole = "viewer";
+            updateRoleBadge();
+          }
+
+          updateStats();
+          setStatusMessage("📡 Parent/source left. Waiting for reassignment...");
+          addMessageToUI("System", "Parent relay disconnected. Requesting new assignment...", false);
+
+          if (originId) {
+            safeSend({
+              type: "assignmentRequest",
+              connectId: myConnectId,
+              name: myName,
+              relayEligible,
+              relayEnabled,
+              role: myRole
+            }, originId);
+          } else {
+            requestAssignmentRetry();
+          }
+        }
+
+        if (childPeerIds.has(peerId)) {
+          childPeerIds.delete(peerId);
+          updateStats();
+        }
+      });
+
+      addMessageToUI("System", `You joined as "${myName}". Waiting for live stream...`, false);
+
+    } catch (err) {
+      console.error("Viewer error:", err);
+      setStatusMessage(`❌ Viewer error: ${err.message.slice(0, 90)}`, true);
+    }
+  }
+
+  // ========================= STOP / RESET =========================
+  async function stopEverything() {
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       localStream = null;
     }
+
+    receivedLiveStream = null;
     localVideo.srcObject = null;
+    mainRemoteVideo.srcObject = null;
+
     localVideoWrapper.style.display = "none";
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    isBroadcasting = false;
+    mainRemoteWrapper.style.display = "none";
+
+    if (webConnect) {
+      try {
+        webConnect.Disconnect();
+      } catch (err) {}
+      webConnect = null;
+    }
+
     controlBar.style.display = "none";
-    setStatusMessage("⏹️ Broadcast ended");
     peerCountSpan.innerText = "0";
-    p2pStatsSpan.innerHTML = "Idle";
-    myRole = null;
-    chatRoleBadge.innerHTML = '';
+    resetAllState();
+    updateStats();
   }
-  
-  function toggleMute() {
-    if (!isBroadcasting || !localStream) return;
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+
+  // ========================= PERIODIC TASKS =========================
+  setInterval(() => {
+    if (!webConnect || !myConnectId || !myRole) return;
+    announcePeerInfo();
+
+    if (myRole === "origin") {
+      const self = peerRegistry.get(myConnectId);
+      if (self) {
+        self.hasLiveStream = !!localStream;
+        self.children = Array.from(childPeerIds);
+      }
+      broadcastTreeState();
     }
-  }
-  
-  function toggleCamera() {
-    if (!isBroadcasting || !localStream) return;
-    const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
-    }
-  }
-  
-  // ==================== VIEWER LOGIC ====================
-  async function startViewer() {
+  }, PEER_INFO_INTERVAL_MS);
+
+  // ========================= EVENTS =========================
+  startBroadcastBtn.addEventListener("click", () => {
     if (isBroadcasting) {
-      setStatusMessage("⚠️ Stop broadcasting first to become viewer", false);
-      return;
+      stopEverything();
+    } else {
+      startOrigin();
     }
-    
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    stopMarecchiaViewer();
-    localVideoWrapper.style.display = "none";
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = null;
+  });
+
+  joinViewerBtn.addEventListener("click", () => {
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Stop broadcasting first", false);
+    } else {
+      startViewer();
     }
-    
-    myRole = 'viewer';
-    chatRoleBadge.innerHTML = '👁️ Viewer (P2P)';
-    setStatusMessage("👁️ Joining as viewer with Marecchia P2P...");
-    
-    try {
-      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
-      
-      webConnect.getMyId((attr) => {
-        myConnectId = attr.connectId;
-        setStatusMessage("👁️ Connected · Waiting for broadcaster...");
-        sendPeerInfo();
-      });
-      
-      webConnect.onConnect(async (attribute) => {
-        console.log("📡 Peer connected:", attribute.connectId);
-        setStatusMessage(`📡 Connected to mesh`);
-        sendPeerInfo(attribute.connectId);
-      });
-      
-      webConnect.onStreaming((stream, attribute) => {
-        console.log("🎬 Received broadcast stream");
-        updateRemoteVideo(attribute.connectId, stream, attribute.metadata);
-        setStatusMessage("✅ LIVE · Watching broadcast", false, true);
-        const label = document.getElementById(`label_${attribute.connectId}`);
-        if (label) label.innerText = `🎙️ Broadcaster`;
-        
-        // For viewers without Marecchia, show the direct stream
-        if (!hls && streamVideoWrapper.style.display === 'none') {
-          streamVideoWrapper.style.display = "block";
-          streamVideo.srcObject = stream;
-          streamLabel.innerText = `🎬 Live (WebRTC)`;
-          streamVideo.play().catch(e => console.log("autoplay blocked"));
-          p2pStatsSpan.innerHTML = `📺 WebRTC direct`;
-        }
-      });
-      
-      webConnect.onReceive((data, attribute) => {
-        handleReceiveData(data, attribute);
-      });
-      
-      webConnect.onDisconnect((attribute) => {
-        console.log("Peer disconnected:", attribute.connectId);
-        updateRemoteVideo(attribute.connectId, null);
-        if (activeRemoteStreams.size === 0 && !hls) {
-          setStatusMessage("📡 Broadcaster left. Waiting...");
-          addMessageToUI("System", "Broadcaster has ended the stream", false);
-          streamVideoWrapper.style.display = "none";
-        }
-      });
-      
-      webConnect.getConnection((connAttr) => {
-        updatePeersDisplay(connAttr.connection?.length || 0);
-      });
-      
-      addMessageToUI("System", `You joined as "${myName}". Marecchia P2P will activate when broadcaster shares HLS stream.`, false);
-      
-      setTimeout(() => {
-        if (webConnect && activeRemoteStreams.size === 0 && !hls) {
-          setStatusMessage("⏳ No broadcaster yet. Waiting for host...", false);
-        }
-      }, 4000);
-      
-    } catch (err) {
-      console.error("Viewer error:", err);
-      setStatusMessage(`❌ Viewer error: ${err.message.slice(0, 80)}`, true);
+  });
+
+  stopBtn.addEventListener("click", () => {
+    stopEverything();
+  });
+
+  muteMicBtn.addEventListener("click", toggleMute);
+  toggleCamBtn.addEventListener("click", toggleCamera);
+
+  relayOptInBtn.addEventListener("click", () => {
+    relayEnabled = !relayEnabled;
+
+    if (!relayEnabled && myRole === "relay") {
+      myRole = "viewer";
+      childPeerIds.clear();
+      updateRoleBadge();
+      updateStats();
     }
-  }
-  
-  async function stopViewer() {
-    stopMarecchiaViewer();
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    setStatusMessage("👋 Left the channel");
-    peerCountSpan.innerText = "0";
-    p2pStatsSpan.innerHTML = "Idle";
-    myRole = null;
-    chatRoleBadge.innerHTML = '';
-  }
-  
-  // ==================== EVENT HANDLERS ====================
-  startBroadcastBtn.addEventListener('click', () => {
-    if (isBroadcasting) stopBroadcasting();
-    else startBroadcaster();
+
+    safeSend({
+      type: "relayPrefUpdate",
+      connectId: myConnectId,
+      name: myName,
+      role: myRole,
+      relayEligible,
+      relayEnabled,
+      treeLevel: myTreeLevel,
+      assignedParentId,
+      hasLiveStream: !!(localStream || receivedLiveStream)
+    }, originId || null);
+
+    announcePeerInfo();
+    updateStats();
+    addMessageToUI("System", relayEnabled ? "Relay mode enabled." : "Relay mode disabled.", false);
   });
-  
-  joinViewerBtn.addEventListener('click', () => {
-    if (isBroadcasting) setStatusMessage("⚠️ Stop broadcasting first", false);
-    else startViewer();
+
+  sendChatBtn.addEventListener("click", () => sendChatMessage(chatInput.value));
+  chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChatMessage(chatInput.value);
   });
-  
-  stopBroadcastBtn.addEventListener('click', () => {
-    if (isBroadcasting) stopBroadcasting();
-    else stopViewer();
-  });
-  
-  muteMicBtn.addEventListener('click', toggleMute);
-  toggleCamBtn.addEventListener('click', toggleCamera);
-  
-  sendChatBtn.addEventListener('click', () => sendChatMessage(chatInput.value));
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendChatMessage(chatInput.value);
-  });
-  
+
   channelDisplay.innerText = CHANNEL;
-  channelDisplay.addEventListener('click', () => {
-    navigator.clipboard.writeText(CHANNEL);
-    setStatusMessage("📋 Channel copied!", false);
+  channelDisplay.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(CHANNEL);
+      setStatusMessage("📋 Channel copied!", false);
+    } catch (err) {
+      setStatusMessage("⚠️ Could not copy channel", true);
+    }
   });
-  
-  window.addEventListener('beforeunload', () => {
+
+  window.addEventListener("beforeunload", () => {
     if (localStream) localStream.getTracks().forEach(t => t.stop());
-    if (webConnect) webConnect.Disconnect();
-    if (hls) hls.destroy();
+    if (webConnect) {
+      try { webConnect.Disconnect(); } catch (err) {}
+    }
   });
-  
+
   if (!navigator.mediaDevices?.getUserMedia) {
-    setStatusMessage("⚠️ Browser not supported", true);
+    setStatusMessage("⚠️ Browser not supported for broadcasting", true);
     startBroadcastBtn.disabled = true;
   }
-  
+
+  updateRoleBadge();
+  updateStats();
+  updateOriginControls();
+
   // Auto-start from URL params
-  if (urlParams.has("broadcast")) setTimeout(() => startBroadcaster(), 500);
-  else if (urlParams.has("view")) setTimeout(() => startViewer(), 500);
-  
-  console.log("✅ EnticeChat Live with Marecchia WASM P2P");
+  if (urlParams.has("broadcast")) {
+    setTimeout(() => startOrigin(), 400);
+  } else if (urlParams.has("view")) {
+    setTimeout(() => startViewer(), 400);
+  }
+
+  console.log("✅ EnticeChat Relay Tree Experiment Ready");
 </script>
 </body>
 </html>
