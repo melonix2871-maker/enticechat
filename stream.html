@@ -38,19 +38,20 @@
 
     // ==================== BROADCASTER ====================
     async function startBroadcaster() {
-      document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">LIVE - You are Broadcaster</strong>';
+      document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
 
       vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 1280, height: 720 }, 
+        video: true, 
         audio: true 
       });
 
-      video.srcObject = stream;
+      video.srcObject = stream;   // local preview
 
       await vdo.connect();
       await vdo.joinRoom({ room: ROOM });
+
       await vdo.publish(stream, { streamID: "main" });
     }
 
@@ -63,19 +64,19 @@
       await vdo.connect();
       await vdo.joinRoom({ room: ROOM });
 
-      // This is the key part that was missing
+      // The most reliable way to receive the stream
       vdo.on("stream", (stream) => {
         video.srcObject = stream;
-        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Video from Broadcaster</strong>';
+        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Broadcaster Video</strong>';
       });
 
-      // Force request the main stream after joining
+      // Force request the stream (this often fixes the stuck "Joining room..." issue)
       setTimeout(() => {
         vdo.requestStream("main");
-      }, 1500);
+      }, 1000);
     }
 
-    // Auto-join as viewer if link has ?view
+    // Auto start as viewer if link has ?view
     if (window.location.search.includes("view")) {
       startViewer();
     }
