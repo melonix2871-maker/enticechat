@@ -22,7 +22,7 @@
 
   <div class="info">
     Room: <strong id="roomName">loading...</strong><br>
-    <span id="mode">Choose your role</span>
+    <span id="mode">Choose your role below</span>
   </div>
 
   <video id="video" autoplay playsinline controls></video>
@@ -39,48 +39,50 @@
 
     document.getElementById('roomName').textContent = room;
 
+    // ====================== BROADCASTER ======================
     async function startAsBroadcaster() {
-      document.getElementById('mode').innerHTML = '<strong style="color:#e74c3c;">You are the Broadcaster (LIVE)</strong>';
+      document.getElementById('mode').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
 
-      vdo = new VDONinjaSDK({
-        room: room,
-        streamId: "main"
-      });
+      vdo = new VDONinjaSDK({ salt: "vdo.ninja" });   // required for compatibility
 
-      // Get webcam + mic
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      // Get webcam + microphone
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720, frameRate: 30 },
-        audio: true 
+        audio: true
       });
 
-      video.srcObject = stream;   // show local preview
+      video.srcObject = stream;   // local preview
 
-      // Publish to the room
       await vdo.connect();
       await vdo.joinRoom({ room: room });
-      await vdo.publish(stream, { streamId: "main" });
 
-      console.log("Broadcasting started! Share this page link.");
+      // Publish the stream
+      await vdo.publish(stream, { room: room });
+
+      console.log("✅ Broadcasting started. Share this page link with viewers.");
     }
 
-    function startAsViewer() {
-      document.getElementById('mode').innerHTML = '<strong style="color:#3498db;">You are a Viewer</strong>';
+    // ====================== VIEWER ======================
+    async function startAsViewer() {
+      document.getElementById('mode').innerHTML = '<strong style="color:#3498db;">You are Viewer - Waiting for video...</strong>';
 
-      vdo = new VDONinjaSDK({
-        room: room
-      });
+      vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
-      vdo.on("stream", (stream) => {
-        video.srcObject = stream;
-        console.log("✅ Connected to broadcaster");
-      });
+      await vdo.connect();
+      await vdo.joinRoom({ room: room });
 
-      vdo.connect().then(() => {
-        vdo.joinRoom({ room: room });
+      // Listen for incoming tracks from broadcaster
+      vdo.addEventListener('track', (event) => {
+        console.log("Received track from broadcaster");
+        if (!video.srcObject) {
+          video.srcObject = new MediaStream();
+        }
+        video.srcObject.addTrack(event.detail.track);
+        document.getElementById('mode').innerHTML = '<strong style="color:#2ecc71;">✅ Connected to Broadcaster</strong>';
       });
     }
 
-    // Auto join as viewer if URL contains ?view
+    // Auto join as viewer if URL has ?view
     if (window.location.search.includes("view")) {
       startAsViewer();
     }
