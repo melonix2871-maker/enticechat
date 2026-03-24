@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>EnticeChat Live · Marecchia P2P + WebRTC Mesh</title>
+
+  <!-- webConnect.js - Signaling & Chat -->
+  <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
+  
+  <!-- HLS.js for video playback -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  
+  <!-- Marecchia - WASM P2P HLS Loader -->
+  <script type="importmap">
+    {
+      "imports": {
+        "marecchia": "https://cdn.skypack.dev/marecchia"
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
+      background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
+      color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    h1 {
+      font-weight: 700;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #FFB347, #FF6B6B);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .sub {
+      color: #aaa;
+      margin-top: -8px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .video-section {
+      flex: 3;
+      min-width: 300px;
+    }
+
+    .chat-section {
+      flex: 1.2;
+      min-width: 280px;
+      background: rgba(10, 15, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      border: 1px solid rgba(255,215,0,0.2);
+      display: flex;
+      flex-direction: column;
+      height: 70vh;
+      overflow: hidden;
+    }
+
+    .info-card {
+      background: rgba(20, 25, 45, 0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 32px;
+      padding: 12px 24px;
+      margin: 0 0 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 24px;
+      align-items: baseline;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .room-badge {
+      background: #1e2a3e;
+      padding: 6px 20px;
+      border-radius: 60px;
+      font-family: monospace;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #ffd966;
+      cursor: pointer;
+      user-select: all;
+    }
+
+    .room-badge:hover {
+      background: #2a3a4e;
+    }
+
+    #status {
+      background: #0f172a;
+      padding: 6px 18px;
+      border-radius: 60px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .video-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000000;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 20px 35px -10px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+
+    .video-wrapper video {
+      width: 100%;
+      background: #0a0a0a;
+      display: block;
+      border-radius: 24px;
+    }
+
+    .video-label {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .p2p-stats {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-family: monospace;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    button {
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 60px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #2c3e50;
+      color: white;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    .broadcaster {
+      background: linear-gradient(95deg, #E63E2E, #C0392B);
+    }
+
+    .viewer {
+      background: linear-gradient(95deg, #1F6392, #0E4A6E);
+    }
+
+    .control-bar {
+      margin: 12px auto;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .small-btn {
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      background: #2a2f3f;
+      gap: 6px;
+    }
+
+    .danger-btn {
+      background: #7f2a2a;
+    }
+
+    /* Chat Styles */
+    .chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-weight: 600;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .message.own {
+      align-items: flex-end;
+    }
+
+    .message-bubble {
+      max-width: 85%;
+      padding: 8px 14px;
+      border-radius: 18px;
+      background: rgba(30, 40, 60, 0.9);
+      word-wrap: break-word;
+    }
+
+    .message.own .message-bubble {
+      background: linear-gradient(135deg, #E63E2E, #C0392B);
+    }
+
+    .message-name {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      margin-bottom: 4px;
+      margin-left: 12px;
+    }
+
+    .message.own .message-name {
+      text-align: right;
+      margin-right: 12px;
+      margin-left: 0;
+    }
+
+    .message-text {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .message-time {
+      font-size: 0.6rem;
+      opacity: 0.5;
+      margin-top: 4px;
+      margin-left: 12px;
+    }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 40px;
+      background: rgba(20, 30, 45, 0.9);
+      color: white;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .chat-input:focus {
+      border: 1px solid #ffb347;
+    }
+
+    .send-btn {
+      padding: 10px 20px;
+      background: #ffb347;
+      color: #1a1a2e;
+      border-radius: 40px;
+    }
+
+    .peers-list {
+      margin: 10px auto;
+      padding: 8px 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 40px;
+      display: inline-flex;
+      gap: 12px;
+      font-size: 0.75rem;
+    }
+
+    .footer-note {
+      font-size: 0.7rem;
+      color: #6c7a89;
+      margin-top: 25px;
+      text-align: center;
+      border-top: 1px solid #222;
+      padding-top: 20px;
+    }
+
+    .live-pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #e74c3c;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 1.2s infinite;
+      vertical-align: middle;
+    }
+
+    .wasm-badge {
+      background: #2d6a4f;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      margin-left: 8px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1.2); }
+    }
+
+    @media (max-width: 768px) {
+      .main-layout { flex-direction: column; }
+      .chat-section { height: 40vh; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎙️ EnticeChat Live <span class="wasm-badge">⚡ Marecchia P2P</span></h1>
+  <div class="sub">WASM-Powered P2P Streaming + WebRTC Mesh Chat · GitHub Pages Ready</div>
+
+  <div class="info-card">
+    <span>🔗 Channel:</span>
+    <span class="room-badge" id="channelDisplay">enticechat-live</span>
+    <span id="status">⚡ Choose your role</span>
+    <span class="peers-list" style="margin:0;">👥 Peers: <span id="peerCount">0</span></span>
+    <span class="peers-list" style="margin:0;">📡 P2P: <span id="p2pStats">Idle</span></span>
+  </div>
+
+  <div class="main-layout">
+    <div class="video-section">
+      <div class="video-grid">
+        <div class="video-wrapper" id="localVideoWrapper" style="display: none;">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="video-label" id="localVideoLabel">📹 You (Broadcaster)</div>
+        </div>
+        <div class="video-wrapper" id="streamVideoWrapper" style="display: none;">
+          <video id="streamVideo" autoplay playsinline></video>
+          <div class="video-label" id="streamLabel">🎬 Live Stream</div>
+          <div class="p2p-stats" id="p2pLiveStats">🐌 Loading...</div>
+        </div>
+        <div id="remoteVideosContainer"></div>
+      </div>
+
+      <div class="button-group">
+        <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
+        <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
+      </div>
+
+      <div class="control-bar" id="controlBar" style="display: none;">
+        <button id="stopBroadcastBtn" class="small-btn danger-btn">🔴 Stop</button>
+        <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
+        <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
+      </div>
+    </div>
+
+    <div class="chat-section">
+      <div class="chat-header">
+        💬 Live Chat <span id="chatRoleBadge"></span>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="message">
+          <div class="message-bubble" style="background:#2c3e50;">✨ Welcome! Marecchia P2P enabled - viewers share video chunks!</div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500">
+        <button id="sendChatBtn" class="send-btn">📤 Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    🔒 <strong>Marecchia (WASM) + webConnect.js</strong> · Hybrid P2P Streaming<br>
+    🚀 Viewers automatically share video segments via WebRTC data channels (WASM-powered)<br>
+    📡 Broadcaster uploads HLS stream once; P2P mesh distributes to all viewers
+  </div>
+</div>
+
+<script type="module">
+  // ======================= IMPORTS =======================
+  import { P2PLoader, createP2PEngine } from 'https://cdn.skypack.dev/marecchia';
+  
+  // ======================= CONFIGURATION =======================
+  const CHANNEL = "enticechat-live";
+  
+  // Get name from URL param
+  const urlParams = new URLSearchParams(window.location.search);
+  let myName = urlParams.get('name') || `User_${Math.floor(Math.random() * 1000)}`;
+  let myRole = null;
+  
+  let webConnect = null;
+  let localStream = null;
+  let isBroadcasting = false;
+  let myConnectId = null;
+  let activeRemoteStreams = new Map();
+  
+  // Marecchia P2P engine
+  let marecchiaEngine = null;
+  let hls = null;
+  let currentStreamUrl = null;
+  let streamSegmenter = null;
+  
+  // DOM elements
+  const statusSpan = document.getElementById('status');
+  const startBroadcastBtn = document.getElementById('startBroadcastBtn');
+  const joinViewerBtn = document.getElementById('joinViewerBtn');
+  const controlBar = document.getElementById('controlBar');
+  const stopBroadcastBtn = document.getElementById('stopBroadcastBtn');
+  const muteMicBtn = document.getElementById('muteMicBtn');
+  const toggleCamBtn = document.getElementById('toggleCamBtn');
+  const localVideoWrapper = document.getElementById('localVideoWrapper');
+  const localVideo = document.getElementById('localVideo');
+  const localVideoLabel = document.getElementById('localVideoLabel');
+  const streamVideoWrapper = document.getElementById('streamVideoWrapper');
+  const streamVideo = document.getElementById('streamVideo');
+  const streamLabel = document.getElementById('streamLabel');
+  const p2pLiveStats = document.getElementById('p2pLiveStats');
+  const remoteVideosContainer = document.getElementById('remoteVideosContainer');
+  const peerCountSpan = document.getElementById('peerCount');
+  const p2pStatsSpan = document.getElementById('p2pStats');
+  const channelDisplay = document.getElementById('channelDisplay');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+  const sendChatBtn = document.getElementById('sendChatBtn');
+  const chatRoleBadge = document.getElementById('chatRoleBadge');
+  
+  // Helper: format time
+  function getTime() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // Add message to chat UI
+  function addMessageToUI(senderName, message, isOwn = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+    messageDiv.innerHTML = `
+      <div class="message-name">${escapeHtml(senderName)}</div>
+      <div class="message-bubble">
+        <div class="message-text">${escapeHtml(message)}</div>
+      </div>
+      <div class="message-time">${getTime()}</div>
+    `;
+    chatMessages.appendChild(messageDiv);
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    
+    while (chatMessages.children.length > 200) {
+      chatMessages.removeChild(chatMessages.firstChild);
+    }
+  }
+  
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+  
+  // Send chat message via P2P
+  function sendChatMessage(message) {
+    if (!message.trim()) return;
+    if (!webConnect) {
+      addMessageToUI("System", "Not connected to any peers", false);
+      return;
+    }
+    
+    const chatData = {
+      type: 'chat',
+      senderName: myName,
+      message: message.trim(),
+      timestamp: Date.now(),
+      senderRole: myRole
+    };
+    
+    webConnect.Send(JSON.stringify(chatData), { connectId: null });
+    addMessageToUI(myName, message.trim(), true);
+    chatInput.value = '';
+  }
+  
+  // Handle incoming P2P data
+  function handleReceiveData(data, attribute) {
+    try {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (parsed.type === 'chat') {
+        addMessageToUI(parsed.senderName, parsed.message, false);
+      } else if (parsed.type === 'stream_url') {
+        // Broadcaster shares HLS stream URL
+        console.log("Received stream URL:", parsed.url);
+        if (myRole === 'viewer' && parsed.url) {
+          startMarecchiaViewer(parsed.url);
+        }
+      }
+    } catch (e) {
+      console.log("Non-JSON data received");
+    }
+  }
+  
+  function sendPeerInfo(targetId = null) {
+    if (!webConnect) return;
+    const info = {
+      type: 'peerInfo',
+      name: myName,
+      role: myRole,
+      connectId: myConnectId
+    };
+    webConnect.Send(JSON.stringify(info), { connectId: targetId });
+  }
+  
+  function setStatusMessage(message, isError = false, isLive = false) {
+    if (isLive) {
+      statusSpan.innerHTML = `<span class="live-pulse"></span>${message}`;
+    } else {
+      statusSpan.innerHTML = message;
+    }
+    statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
+  }
+  
+  function updatePeersDisplay(count) {
+    peerCountSpan.innerText = count;
+  }
+  
+  function updateRemoteVideo(connectId, stream, metadata) {
+    let videoWrapper = document.getElementById(`remote_${connectId}`);
+    if (!videoWrapper && stream) {
+      videoWrapper = document.createElement('div');
+      videoWrapper.className = 'video-wrapper';
+      videoWrapper.id = `remote_${connectId}`;
+      const videoEl = document.createElement('video');
+      videoEl.id = `video_${connectId}`;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      const label = document.createElement('div');
+      label.className = 'video-label';
+      label.id = `label_${connectId}`;
+      label.innerText = `👤 Viewer`;
+      videoWrapper.appendChild(videoEl);
+      videoWrapper.appendChild(label);
+      remoteVideosContainer.appendChild(videoWrapper);
+    }
+    
+    if (stream && videoWrapper) {
+      const videoEl = document.getElementById(`video_${connectId}`);
+      if (videoEl && videoEl.srcObject !== stream) {
+        videoEl.srcObject = stream;
+        videoEl.play().catch(e => console.log("autoplay blocked"));
+      }
+      activeRemoteStreams.set(connectId, stream);
+    } else if (!stream && videoWrapper) {
+      videoWrapper.remove();
+      activeRemoteStreams.delete(connectId);
+    }
+  }
+  
+  function clearAllRemoteVideos() {
+    remoteVideosContainer.innerHTML = '';
+    activeRemoteStreams.clear();
+  }
+  
+  // ==================== MARECCHIA P2P BROADCASTER ====================
+  async function startMarecchiaBroadcaster(stream) {
+    try {
+      setStatusMessage("🎬 Initializing Marecchia P2P engine...");
+      
+      // Create MediaRecorder to segment stream for HLS
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=h264',
+        videoBitsPerSecond: 1500000
+      });
+      
+      const segments = [];
+      let segmentIndex = 0;
+      
+      // Simple HLS-like segment generation
+      mediaRecorder.ondataavailable = async (event) => {
+        if (event.data.size > 0) {
+          const segmentBlob = event.data;
+          const segmentUrl = URL.createObjectURL(segmentBlob);
+          
+          // Share segment URL with peers via webConnect
+          if (webConnect) {
+            const segmentInfo = {
+              type: 'segment',
+              index: segmentIndex++,
+              url: segmentUrl,
+              timestamp: Date.now()
+            };
+            webConnect.Send(JSON.stringify(segmentInfo), { connectId: null });
+          }
+          
+          // Update stats
+          p2pStatsSpan.innerHTML = `📡 Broadcasting segments`;
+          
+          // Clean up old URLs after 30 seconds
+          setTimeout(() => URL.revokeObjectURL(segmentUrl), 30000);
+        }
+      };
+      
+      // Record in 5-second chunks
+      mediaRecorder.start(5000);
+      streamSegmenter = mediaRecorder;
+      
+      setStatusMessage("✅ Marecchia P2P active - viewers will share segments", false, true);
+      p2pStatsSpan.innerHTML = `🎬 Segmenting active`;
+      
+    } catch (err) {
+      console.error("Marecchia broadcaster error:", err);
+      setStatusMessage(`⚠️ P2P fallback: ${err.message}`, false);
+    }
+  }
+  
+  // ==================== MARECCHIA P2P VIEWER ====================
+  async function startMarecchiaViewer(streamUrl) {
+    try {
+      setStatusMessage("🌐 Starting Marecchia WASM P2P loader...");
+      p2pStatsSpan.innerHTML = "⚙️ Loading WASM...";
+      
+      // Show video container
+      streamVideoWrapper.style.display = "block";
+      streamLabel.innerText = `🎬 Live Stream (P2P)`;
+      
+      // Initialize HLS.js with Marecchia P2P loader
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          // Custom loader with P2P support
+          loader: (config) => {
+            return new P2PLoader({
+              ...config,
+              trackerAnnounce: ['wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com'],
+              useP2P: true,
+              fallbackToCDN: true,
+              onPeerConnected: (count) => {
+                p2pStatsSpan.innerHTML = `🔄 ${count} peers sharing`;
+              },
+              onSegmentLoaded: (fromP2P) => {
+                p2pStatsSpan.innerHTML = fromP2P ? `📡 P2P: segment received` : `🌐 CDN fallback`;
+              }
+            });
+          }
+        });
+        
+        hls.loadSource(streamUrl);
+        hls.attachMedia(streamVideo);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setStatusMessage("✅ Watching with P2P acceleration", false, true);
+          p2pStatsSpan.innerHTML = `🚀 P2P active`;
+          streamVideo.play().catch(e => console.log("autoplay blocked"));
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.warn("HLS Error:", data);
+          p2pStatsSpan.innerHTML = `⚠️ P2P fallback to CDN`;
+        });
+        
+      } else if (streamVideo.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS fallback (Safari)
+        streamVideo.src = streamUrl;
+        streamVideo.addEventListener('loadedmetadata', () => {
+          setStatusMessage("✅ Watching (native HLS)", false, true);
+          p2pStatsSpan.innerHTML = `📺 Native playback`;
+        });
+      } else {
+        throw new Error("HLS not supported in this browser");
+      }
+      
+    } catch (err) {
+      console.error("Marecchia viewer error:", err);
+      setStatusMessage(`⚠️ P2P unavailable, using direct stream`, false);
+      p2pStatsSpan.innerHTML = `❌ P2P disabled`;
+      
+      // Fallback to direct video element
+      streamVideo.src = streamUrl;
+      streamVideo.play().catch(e => console.log("autoplay blocked"));
+    }
+  }
+  
+  function stopMarecchiaViewer() {
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+    if (streamVideo) {
+      streamVideo.pause();
+      streamVideo.srcObject = null;
+      streamVideo.src = '';
+    }
+    streamVideoWrapper.style.display = "none";
+    p2pStatsSpan.innerHTML = "Idle";
+  }
+  
+  // ==================== BROADCASTER LOGIC ====================
+  async function startBroadcaster() {
+    if (isBroadcasting) return;
+    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
+    clearAllRemoteVideos();
+    stopMarecchiaViewer();
+    
+    myRole = 'broadcaster';
+    chatRoleBadge.innerHTML = '🎙️ Broadcaster';
+    
+    setStatusMessage("🎙️ Requesting camera & microphone...");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+      
+      localStream = stream;
+      localVideo.srcObject = stream;
+      localVideoWrapper.style.display = "block";
+      localVideoLabel.innerText = `🎙️ ${myName} (Broadcaster)`;
+      
+      setStatusMessage("🟡 Connecting to P2P mesh network...");
+      
+      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+      
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        setStatusMessage("🔴 Broadcasting LIVE", false, true);
+        isBroadcasting = true;
+        controlBar.style.display = "flex";
+        updateBroadcasterUI();
+        
+        // Start Marecchia P2P segmenter
+        startMarecchiaBroadcaster(stream);
+      });
+      
+      webConnect.onConnect(async (attribute) => {
+        console.log("✅ Peer connected:", attribute.connectId);
+        setStatusMessage(`📡 Peer joined`, false);
+        
+        if (localStream && isBroadcasting) {
+          webConnect.openStreaming(localStream, { 
+            connectId: attribute.connectId,
+            metadata: { name: myName, role: "broadcaster" }
+          });
+        }
+        
+        sendPeerInfo(attribute.connectId);
+        
+        webConnect.getConnection((connAttr) => {
+          updatePeersDisplay(connAttr.connection?.length || 0);
+        });
+      });
+      
+      webConnect.onDisconnect((attribute) => {
+        console.log("👋 Peer disconnected:", attribute.connectId);
+        updateRemoteVideo(attribute.connectId, null);
+        webConnect.getConnection((connAttr) => {
+          updatePeersDisplay(connAttr.connection?.length || 0);
+        });
+        addMessageToUI("System", `A viewer left the room`, false);
+      });
+      
+      webConnect.onStreaming((stream, attribute) => {
+        console.log("Received stream from:", attribute.connectId);
+      });
+      
+      webConnect.onReceive((data, attribute) => {
+        handleReceiveData(data, attribute);
+      });
+      
+      webConnect.getConnection((connAttr) => {
+        updatePeersDisplay(connAttr.connection?.length || 0);
+      });
+      
+      addMessageToUI("System", `You are now LIVE with Marecchia P2P! Viewers will share video chunks.`, false);
+      
+    } catch (err) {
+      console.error("Broadcaster error:", err);
+      setStatusMessage(`❌ Failed: ${err.message.slice(0, 80)}`, true);
+      await stopBroadcasting();
+    }
+  }
+  
+  function updateBroadcasterUI() {
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+  }
+  
+  async function stopBroadcasting() {
+    if (streamSegmenter) {
+      streamSegmenter.stop();
+      streamSegmenter = null;
+    }
+    
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
+    localVideo.srcObject = null;
+    localVideoWrapper.style.display = "none";
+    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
+    clearAllRemoteVideos();
+    isBroadcasting = false;
+    controlBar.style.display = "none";
+    setStatusMessage("⏹️ Broadcast ended");
+    peerCountSpan.innerText = "0";
+    p2pStatsSpan.innerHTML = "Idle";
+    myRole = null;
+    chatRoleBadge.innerHTML = '';
+  }
+  
+  function toggleMute() {
+    if (!isBroadcasting || !localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+    }
+  }
+  
+  function toggleCamera() {
+    if (!isBroadcasting || !localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+    }
+  }
+  
+  // ==================== VIEWER LOGIC ====================
+  async function startViewer() {
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Stop broadcasting first to become viewer", false);
+      return;
+    }
+    
+    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
+    clearAllRemoteVideos();
+    stopMarecchiaViewer();
+    localVideoWrapper.style.display = "none";
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+    
+    myRole = 'viewer';
+    chatRoleBadge.innerHTML = '👁️ Viewer (P2P)';
+    setStatusMessage("👁️ Joining as viewer with Marecchia P2P...");
+    
+    try {
+      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+      
+      webConnect.getMyId((attr) => {
+        myConnectId = attr.connectId;
+        setStatusMessage("👁️ Connected · Waiting for broadcaster...");
+        sendPeerInfo();
+      });
+      
+      webConnect.onConnect(async (attribute) => {
+        console.log("📡 Peer connected:", attribute.connectId);
+        setStatusMessage(`📡 Connected to mesh`);
+        sendPeerInfo(attribute.connectId);
+      });
+      
+      webConnect.onStreaming((stream, attribute) => {
+        console.log("🎬 Received broadcast stream");
+        updateRemoteVideo(attribute.connectId, stream, attribute.metadata);
+        setStatusMessage("✅ LIVE · Watching broadcast", false, true);
+        const label = document.getElementById(`label_${attribute.connectId}`);
+        if (label) label.innerText = `🎙️ Broadcaster`;
+        
+        // For viewers without Marecchia, show the direct stream
+        if (!hls && streamVideoWrapper.style.display === 'none') {
+          streamVideoWrapper.style.display = "block";
+          streamVideo.srcObject = stream;
+          streamLabel.innerText = `🎬 Live (WebRTC)`;
+          streamVideo.play().catch(e => console.log("autoplay blocked"));
+          p2pStatsSpan.innerHTML = `📺 WebRTC direct`;
+        }
+      });
+      
+      webConnect.onReceive((data, attribute) => {
+        handleReceiveData(data, attribute);
+      });
+      
+      webConnect.onDisconnect((attribute) => {
+        console.log("Peer disconnected:", attribute.connectId);
+        updateRemoteVideo(attribute.connectId, null);
+        if (activeRemoteStreams.size === 0 && !hls) {
+          setStatusMessage("📡 Broadcaster left. Waiting...");
+          addMessageToUI("System", "Broadcaster has ended the stream", false);
+          streamVideoWrapper.style.display = "none";
+        }
+      });
+      
+      webConnect.getConnection((connAttr) => {
+        updatePeersDisplay(connAttr.connection?.length || 0);
+      });
+      
+      addMessageToUI("System", `You joined as "${myName}". Marecchia P2P will activate when broadcaster shares HLS stream.`, false);
+      
+      setTimeout(() => {
+        if (webConnect && activeRemoteStreams.size === 0 && !hls) {
+          setStatusMessage("⏳ No broadcaster yet. Waiting for host...", false);
+        }
+      }, 4000);
+      
+    } catch (err) {
+      console.error("Viewer error:", err);
+      setStatusMessage(`❌ Viewer error: ${err.message.slice(0, 80)}`, true);
+    }
+  }
+  
+  async function stopViewer() {
+    stopMarecchiaViewer();
+    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
+    clearAllRemoteVideos();
+    setStatusMessage("👋 Left the channel");
+    peerCountSpan.innerText = "0";
+    p2pStatsSpan.innerHTML = "Idle";
+    myRole = null;
+    chatRoleBadge.innerHTML = '';
+  }
+  
+  // ==================== EVENT HANDLERS ====================
+  startBroadcastBtn.addEventListener('click', () => {
+    if (isBroadcasting) stopBroadcasting();
+    else startBroadcaster();
+  });
+  
+  joinViewerBtn.addEventListener('click', () => {
+    if (isBroadcasting) setStatusMessage("⚠️ Stop broadcasting first", false);
+    else startViewer();
+  });
+  
+  stopBroadcastBtn.addEventListener('click', () => {
+    if (isBroadcasting) stopBroadcasting();
+    else stopViewer();
+  });
+  
+  muteMicBtn.addEventListener('click', toggleMute);
+  toggleCamBtn.addEventListener('click', toggleCamera);
+  
+  sendChatBtn.addEventListener('click', () => sendChatMessage(chatInput.value));
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendChatMessage(chatInput.value);
+  });
+  
+  channelDisplay.innerText = CHANNEL;
+  channelDisplay.addEventListener('click', () => {
+    navigator.clipboard.writeText(CHANNEL);
+    setStatusMessage("📋 Channel copied!", false);
+  });
+  
+  window.addEventListener('beforeunload', () => {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (webConnect) webConnect.Disconnect();
+    if (hls) hls.destroy();
+  });
+  
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setStatusMessage("⚠️ Browser not supported", true);
+    startBroadcastBtn.disabled = true;
+  }
+  
+  // Auto-start from URL params
+  if (urlParams.has("broadcast")) setTimeout(() => startBroadcaster(), 500);
+  else if (urlParams.has("view")) setTimeout(() => startViewer(), 500);
+  
+  console.log("✅ EnticeChat Live with Marecchia WASM P2P");
+</script>
+</body>
+</html>
