@@ -27,18 +27,18 @@
   <video id="video" autoplay playsinline controls></video>
 
   <div>
-    <button onclick="startBroadcaster()" class="broadcaster">🎥 I am the Broadcaster</button>
+    <button onclick="startBroadcaster()" class="broadcaster">🎥 Start Broadcasting</button>
     <button onclick="startViewer()" class="viewer">👁️ Join as Viewer</button>
   </div>
 
   <script>
-    const room = "enticechat-oi0pcuhk";   // ← Fixed room name you want
-    document.getElementById('roomName').textContent = room;
-
+    const ROOM = "enticechat-oi0pcuhk";        // Fixed room name
     let vdo = null;
     const video = document.getElementById('video');
 
-    // ==================== BROADCASTER ====================
+    document.getElementById('roomName').textContent = ROOM;
+
+    // ===================== BROADCASTER =====================
     async function startBroadcaster() {
       document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
 
@@ -52,31 +52,41 @@
       video.srcObject = stream;
 
       await vdo.connect();
-      await vdo.joinRoom({ room: room });
+      await vdo.joinRoom({ room: ROOM });
 
       await vdo.publish(stream, { 
         streamID: "main",
-        room: room 
+        room: ROOM 
       });
+
+      console.log("Broadcasting started");
     }
 
-    // ==================== VIEWER ====================
+    // ===================== VIEWER =====================
     async function startViewer() {
-      document.getElementById('status').innerHTML = '<strong style="color:#3498db;">Connecting to broadcaster...</strong>';
+      document.getElementById('status').innerHTML = '<strong style="color:#3498db;">Connecting to room...</strong>';
 
       vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
       await vdo.connect();
-      await vdo.joinRoom({ room: room });
+      await vdo.joinRoom({ room: ROOM });
 
+      // Force request the broadcaster's stream
       vdo.on("stream", (stream) => {
         video.srcObject = stream;
-        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Connected to Broadcaster</strong>';
+        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Broadcaster Video</strong>';
+        console.log("Viewer successfully received video stream");
       });
+
+      // Extra safety: request specific stream
+      setTimeout(() => {
+        if (vdo.requestStream) {
+          vdo.requestStream("main");
+        }
+      }, 2000);
     }
 
-    // ==================== AUTO JOIN AS VIEWER ====================
-    // If someone opens the link with ?view → automatically join as viewer
+    // Auto join as viewer if URL has ?view
     if (window.location.search.includes("view")) {
       startViewer();
     }
