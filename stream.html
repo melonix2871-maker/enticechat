@@ -3,71 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EnticeChat P2P Broadcast (Novage Style)</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "p2p-media-loader-core": "https://cdn.jsdelivr.net/npm/p2p-media-loader-core@latest/dist/p2p-media-loader-core.es.min.js",
-      "p2p-media-loader-hlsjs": "https://cdn.jsdelivr.net/npm/p2p-media-loader-hlsjs@latest/dist/p2p-media-loader-hlsjs.es.min.js"
-    }
-  }
-  </script>
-
+  <title>EnticeChat - VDO.Ninja Broadcast</title>
+  <script src="https://sdk.vdo.ninja/vdo.ninja.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background:#111; color:#eee; text-align:center; margin:0; padding:20px; }
-    video { max-width:100%; width:100%; max-height:80vh; background:#000; border-radius:10px; }
-    .stats { margin:20px; padding:15px; background:#222; border-radius:8px; }
+    video { max-width:100%; width:100%; max-height:75vh; background:#000; border-radius:12px; margin:15px 0; }
+    button { padding:12px 24px; font-size:18px; margin:10px; border-radius:8px; cursor:pointer; }
+    .broadcaster { background:#e74c3c; color:white; }
+    .viewer { background:#3498db; color:white; }
+    .info { margin:20px; padding:15px; background:#222; border-radius:10px; }
   </style>
 </head>
 <body>
-  <h1>EnticeChat P2P Live Broadcast</h1>
-  <video id="video" controls autoplay playsinline></video>
+  <h1>EnticeChat Live Broadcast (VDO.Ninja)</h1>
 
-  <div class="stats">
-    Status: <span id="status">Loading...</span><br>
-    Peers: <span id="peers">0</span> | P2P Data: <span id="p2p">0 MB</span>
+  <div class="info">
+    <strong>Room:</strong> <span id="room">broadcast-demo</span><br>
+    <strong>Stream ID:</strong> <span id="streamId">broadcaster</span>
   </div>
 
-  <script type="module">
-    import { HlsJsP2PEngine } from "p2p-media-loader-hlsjs";
+  <video id="video" autoplay playsinline controls></video>
 
-    const video = document.getElementById('video');
-    let hls = null;
+  <div>
+    <button onclick="startBroadcast()" class="broadcaster">🎥 Start Broadcasting (I am Broadcaster)</button>
+    <button onclick="startViewer()" class="viewer">👁️ Join as Viewer</button>
+  </div>
 
-    // Replace this with your real HLS URL (from go2rtc, SRS, etc.)
-    const STREAM_URL = "https://your-hls-source.example.com/live/stream.m3u8";
+  <script>
+    let vdo = null;
+    const videoElement = document.getElementById('video');
 
-   const engine = new HlsJsP2PEngine({
-  core: {
-    announceTrackers: [
-      "wss://tracker.novage.com.ua",
-      "wss://tracker.webtorrent.dev",
-      "wss://tracker.openwebtorrent.com"
-    ],
-    // Optional: group your viewers together
-    swarmId: "enticechat-live-" + "junielive"   // change this per broadcast
-  }
-});
+    const ROOM = "enticechat-" + Math.random().toString(36).substring(2, 8); // Change this for each broadcast
+    document.getElementById('room').textContent = ROOM;
 
-    hls = new Hls({
-      ...engine.getConfigForHlsJs(),
-      enableWorker: true
-    });
+    async function startBroadcast() {
+      vdo = new VdoNinja({
+        room: ROOM,
+        streamId: "broadcaster",
+        label: "Main Broadcaster"
+      });
 
-    hls.loadSource(STREAM_URL);
-    hls.attachMedia(video);
+      await vdo.startLocalStream({ video: true, audio: true });
 
-    // Simple stats
-    setInterval(() => {
-      const peerCount = engine.getPeers ? engine.getPeers().length : 0;
-      document.getElementById('peers').textContent = peerCount;
-    }, 3000);
+      vdo.attachLocalVideo(videoElement);
 
-    hls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) console.error("HLS Error", data);
-    });
+      document.getElementById('streamId').textContent = "broadcaster (You are live)";
+      console.log("Broadcast started. Share this page link with viewers.");
+    }
+
+    function startViewer() {
+      vdo = new VdoNinja({
+        room: ROOM,
+        view: "broadcaster",        // View the broadcaster's stream
+        label: "Viewer"
+      });
+
+      vdo.on("stream", (stream) => {
+        videoElement.srcObject = stream;
+        console.log("Connected to broadcaster");
+      });
+    }
+
+    // Auto-join as viewer if ?view=broadcaster in URL
+    if (window.location.search.includes("view")) {
+      startViewer();
+    }
   </script>
 </body>
 </html>
