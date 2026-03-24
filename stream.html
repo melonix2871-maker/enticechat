@@ -3,112 +3,150 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EnticeChat - Live Webcam Broadcast</title>
+  <title>EnticeChat - Webcam Broadcast (No Server)</title>
   <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#111; color:#eee; text-align:center; }
-    video { max-width:100%; width:100%; max-height:80vh; background:#000; border-radius:10px; }
-    .container { max-width:1000px; margin:0 auto; }
-    button { padding:14px 30px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
-    .start { background:#e74c3c; color:white; }
-    .stop  { background:#27ae60; color:white; }
-    .url-box { background:#222; padding:15px; margin:20px 0; border-radius:8px; word-break:break-all; font-family:monospace; }
-    .stats { margin:15px 0; font-size:15px; }
+    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#0a0a0a; color:#ddd; text-align:center; }
+    video { width:100%; max-width:900px; background:#000; border-radius:12px; margin:15px 0; }
+    textarea { width:90%; max-width:800px; height:120px; margin:10px; font-family:monospace; }
+    button { padding:12px 24px; font-size:17px; margin:8px; border:none; border-radius:8px; cursor:pointer; }
+    .broadcaster { background:#e74c3c; color:white; }
+    .viewer { background:#3498db; color:white; }
+    .section { margin:30px 0; padding:20px; background:#1f1f1f; border-radius:10px; }
+    .status { font-weight:bold; color:#2ecc71; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>EnticeChat Live Broadcast</h1>
+    <h1>EnticeChat Webcam Broadcast</h1>
+    <p><strong>No signaling server • Works on GitHub Pages</strong></p>
 
-    <video id="video" autoplay playsinline></video>
+    <video id="video" autoplay playsinline controls></video>
 
-    <div>
-      <button id="startBtn" class="start">🎥 Start Broadcasting My Webcam</button>
-      <button id="stopBtn" class="stop" style="display:none;">⏹ Stop Broadcast</button>
+    <!-- Broadcaster Section -->
+    <div id="broadcasterSection" class="section">
+      <h2>Broadcaster Mode</h2>
+      <button onclick="startAsBroadcaster()" class="broadcaster">🎥 Start Broadcasting My Webcam</button>
+      <div id="offerArea" style="display:none;">
+        <p>1. Copy this Offer and send to viewer:</p>
+        <textarea id="offerSdp" readonly></textarea><br>
+        <button onclick="copyOffer()">Copy Offer</button>
+        
+        <p>2. Paste Answer from viewer here:</p>
+        <textarea id="answerSdp"></textarea><br>
+        <button onclick="setAnswer()">Set Answer & Start Stream</button>
+      </div>
     </div>
 
-    <div id="shareSection" style="display:none;">
-      <h3>Share this link with viewers:</h3>
-      <div class="url-box" id="viewerLink"></div>
+    <!-- Viewer Section -->
+    <div id="viewerSection" class="section" style="display:none;">
+      <h2>Viewer Mode</h2>
+      <p>Paste Broadcaster's Offer here:</p>
+      <textarea id="remoteOffer"></textarea><br>
+      <button onclick="startAsViewer()" class="viewer">Join as Viewer</button>
+      
+      <div id="answerArea" style="display:none;">
+        <p>Copy this Answer and send back to broadcaster:</p>
+        <textarea id="answerSdpViewer" readonly></textarea><br>
+        <button onclick="copyAnswer()">Copy Answer</button>
+      </div>
     </div>
 
-    <div class="stats" id="status">Ready — Click Start to go live</div>
+    <div class="status" id="status">Choose mode below or refresh</div>
   </div>
 
   <script>
     let localStream = null;
-    let peerConnections = {};
-    let isBroadcaster = false;
-    const roomId = 'broadcast-' + Math.random().toString(36).substring(2, 10);
-
+    let peerConnection = null;
     const video = document.getElementById('video');
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const shareSection = document.getElementById('shareSection');
-    const viewerLinkEl = document.getElementById('viewerLink');
     const statusEl = document.getElementById('status');
 
-    const baseUrl = window.location.origin + window.location.pathname;
+    const config = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
 
-    // === Broadcaster Mode ===
-    async function startBroadcast() {
+    // Auto detect if someone pasted ?viewer=1 in URL
+    if (window.location.search.includes('viewer')) {
+      document.getElementById('broadcasterSection').style.display = 'none';
+      document.getElementById('viewerSection').style.display = 'block';
+      statusEl.textContent = 'Viewer Mode - Paste Offer';
+    }
+
+    async function startAsBroadcaster() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ 
           video: { width: 1280, height: 720, frameRate: 30 }, 
           audio: true 
         });
         video.srcObject = localStream;
-        isBroadcaster = true;
 
-        const shareLink = `${baseUrl}?room=${roomId}`;
-        viewerLinkEl.textContent = shareLink;
-        shareSection.style.display = 'block';
+        peerConnection = new RTCPeerConnection(config);
+        
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
 
-        statusEl.textContent = `LIVE • Broadcasting (Room: ${roomId})`;
-        startBtn.style.display = 'none';
-        stopBtn.style.display = 'inline-block';
+        peerConnection.onicecandidate = (e) => {
+          if (e.candidate) console.log("ICE candidate (ignore for manual):", e.candidate);
+        };
 
-        console.log('Broadcast started. Share:', shareLink);
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        document.getElementById('offerSdp').value = offer.sdp;
+        document.getElementById('offerArea').style.display = 'block';
+        statusEl.textContent = 'Offer generated - Send to viewer';
+
       } catch (err) {
-        alert('Cannot access camera/microphone: ' + err.message);
+        alert('Camera access failed: ' + err.message);
       }
     }
 
-    // === Viewer Mode (joins the broadcast) ===
-    async function joinAsViewer(room) {
-      statusEl.textContent = `Connecting to room: ${room}...`;
-      video.style.border = '3px solid #27ae60';
+    async function setAnswer() {
+      const answerSdp = document.getElementById('answerSdp').value.trim();
+      if (!answerSdp) return alert('Paste the Answer first');
 
-      // For true multi-viewer mesh we would need a signaling server.
-      // For this GitHub Pages demo we show the concept only.
-      // Real scalable version needs a tiny signaling server (e.g. PeerJS or Socket.IO).
-
-      // Simple demo: show that viewer mode is active
-      setTimeout(() => {
-        statusEl.innerHTML = `✅ Connected to broadcast<br><small>(Note: Full mesh requires signaling server for >2 viewers)</small>`;
-      }, 800);
+      const answer = { type: 'answer', sdp: answerSdp };
+      await peerConnection.setRemoteDescription(answer);
+      statusEl.textContent = '✅ Connected! Viewer should see your video now';
+      console.log('Answer set - Connection should establish');
     }
 
-    // Auto-detect mode
-    const params = new URLSearchParams(window.location.search);
-    const roomParam = params.get('room');
+    async function startAsViewer() {
+      const offerSdp = document.getElementById('remoteOffer').value.trim();
+      if (!offerSdp) return alert('Paste the Offer from broadcaster');
 
-    if (roomParam) {
-      // Viewer mode
-      document.querySelector('h1').textContent = 'Watching Live Broadcast';
-      startBtn.style.display = 'none';
-      joinAsViewer(roomParam);
-    } else {
-      // Broadcaster mode
-      startBtn.onclick = startBroadcast;
-      stopBtn.onclick = () => {
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
-        video.srcObject = null;
-        statusEl.textContent = 'Broadcast stopped';
-        startBtn.style.display = 'inline-block';
-        stopBtn.style.display = 'none';
-        shareSection.style.display = 'none';
-        isBroadcaster = false;
+      peerConnection = new RTCPeerConnection(config);
+
+      peerConnection.ontrack = (event) => {
+        video.srcObject = event.streams[0];
+        statusEl.textContent = '✅ Receiving live video!';
       };
+
+      peerConnection.onicecandidate = (e) => {
+        if (e.candidate) console.log("ICE candidate:", e.candidate);
+      };
+
+      await peerConnection.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      document.getElementById('answerSdpViewer').value = answer.sdp;
+      document.getElementById('answerArea').style.display = 'block';
+      statusEl.textContent = 'Answer generated - Send back to broadcaster';
+    }
+
+    function copyOffer() {
+      const text = document.getElementById('offerSdp').value;
+      navigator.clipboard.writeText(text).then(() => alert('Offer copied! Send it to the viewer.'));
+    }
+
+    function copyAnswer() {
+      const text = document.getElementById('answerSdpViewer').value;
+      navigator.clipboard.writeText(text).then(() => alert('Answer copied! Send it back to broadcaster.'));
     }
   </script>
 </body>
