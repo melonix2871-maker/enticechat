@@ -5,31 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EnticeChat - VDO.Ninja Broadcast</title>
 
-  <!-- Latest VDO.Ninja SDK -->
   <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
 
   <style>
     body { font-family: Arial, sans-serif; background:#111; color:#eee; text-align:center; margin:0; padding:20px; }
-    video { max-width:100%; width:100%; max-height:78vh; background:#000; border-radius:12px; margin:15px 0; }
-    button { padding:14px 30px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
+    video { max-width:100%; width:100%; max-height:80vh; background:#000; border-radius:12px; margin:15px 0; }
+    button { padding:14px 32px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
     .broadcaster { background:#e74c3c; color:white; }
     .viewer { background:#3498db; color:white; }
     .info { margin:20px; padding:15px; background:#222; border-radius:10px; }
   </style>
 </head>
 <body>
-  <h1>EnticeChat Live Broadcast (VDO.Ninja)</h1>
+  <h1>EnticeChat Live Broadcast</h1>
 
   <div class="info">
     Room: <strong id="roomName">loading...</strong><br>
-    <span id="mode">Choose your role below</span>
+    <span id="status">Choose your role below</span>
   </div>
 
   <video id="video" autoplay playsinline controls></video>
 
   <div>
-    <button onclick="startAsBroadcaster()" class="broadcaster">🎥 Start Broadcasting</button>
-    <button onclick="startAsViewer()" class="viewer">👁️ Join as Viewer</button>
+    <button onclick="startBroadcaster()" class="broadcaster">🎥 Start Broadcasting</button>
+    <button onclick="startViewer()" class="viewer">👁️ Join as Viewer</button>
   </div>
 
   <script>
@@ -39,52 +38,50 @@
 
     document.getElementById('roomName').textContent = room;
 
-    // ====================== BROADCASTER ======================
-    async function startAsBroadcaster() {
-      document.getElementById('mode').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
+    // ==================== BROADCASTER ====================
+    async function startBroadcaster() {
+      document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
 
-      vdo = new VDONinjaSDK({ salt: "vdo.ninja" });   // required for compatibility
+      vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
-      // Get webcam + microphone
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720, frameRate: 30 },
         audio: true
       });
 
-      video.srcObject = stream;   // local preview
+      video.srcObject = stream;                    // Show local preview
 
       await vdo.connect();
       await vdo.joinRoom({ room: room });
 
-      // Publish the stream
-      await vdo.publish(stream, { room: room });
+      await vdo.publish(stream, { 
+        streamID: "main",
+        room: room 
+      });
 
-      console.log("✅ Broadcasting started. Share this page link with viewers.");
+      console.log("Broadcasting started → Share this page with viewers");
     }
 
-    // ====================== VIEWER ======================
-    async function startAsViewer() {
-      document.getElementById('mode').innerHTML = '<strong style="color:#3498db;">You are Viewer - Waiting for video...</strong>';
+    // ==================== VIEWER ====================
+    async function startViewer() {
+      document.getElementById('status').innerHTML = '<strong style="color:#3498db;">Waiting for broadcaster...</strong>';
 
       vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
       await vdo.connect();
       await vdo.joinRoom({ room: room });
 
-      // Listen for incoming tracks from broadcaster
-      vdo.addEventListener('track', (event) => {
-        console.log("Received track from broadcaster");
-        if (!video.srcObject) {
-          video.srcObject = new MediaStream();
-        }
-        video.srcObject.addTrack(event.detail.track);
-        document.getElementById('mode').innerHTML = '<strong style="color:#2ecc71;">✅ Connected to Broadcaster</strong>';
+      // This is the correct way to receive the video
+      vdo.on("stream", (stream) => {
+        video.srcObject = stream;
+        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Broadcaster Video</strong>';
+        console.log("Viewer successfully connected to broadcaster");
       });
     }
 
-    // Auto join as viewer if URL has ?view
+    // Auto open as viewer if ?view is in the URL
     if (window.location.search.includes("view")) {
-      startAsViewer();
+      startViewer();
     }
   </script>
 </body>
