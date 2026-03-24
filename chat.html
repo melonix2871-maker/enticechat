@@ -26,6 +26,78 @@
             height: 100vh;
             overflow: hidden;           
         }
+        
+        /* No Room Error Overlay */
+        .no-room-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .no-room-card {
+            background: var(--sidebar-bg);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .no-room-card .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .no-room-card h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--danger);
+        }
+        .no-room-card p {
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        .no-room-card code {
+            background: #2b2d31;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--accent);
+        }
+        .no-room-card .example {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+        }
+        
+        .teacher-badge {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 9px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+        .screen-share-btn {
+            background: #f59e0b;
+            margin-left: 8px;
+        }
+        .screen-share-btn.active {
+            background: var(--success);
+        }
+        
         .app-container { display: flex; flex-direction: column; height: 100vh; }
 
         /* Header */
@@ -49,10 +121,10 @@
             background-clip: text;
             color: transparent;
             scale: .8;
-    margin-left: -14px;
+            margin-left: -14px;
         }
-        .header-right { display: flex; align-items: center; gap: 10px; }
-        .file-storage-btn, .reaction-btn {
+        .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .file-storage-btn, .reaction-btn, .screen-share-header-btn {
             background: #2b2d31;
             border: none;
             padding: 6px 14px;
@@ -63,6 +135,12 @@
             display: flex;
             align-items: center;
             gap: 6px;
+        }
+        .screen-share-header-btn {
+            background: #f59e0b;
+        }
+        .screen-share-header-btn.active {
+            background: var(--success);
         }
         .room-badge, .peer-count {
             background: #2b2d31;
@@ -84,7 +162,7 @@
             flex-shrink: 0;
         }
         .workspace-header { padding: 16px; border-bottom: 1px solid var(--border); }
-        .workspace-name { font-size: 16px; font-weight: 700; }
+        .workspace-name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .workspace-status { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; }
         .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -541,6 +619,7 @@
             .reaction-bar { bottom: 100px; right: 10px; }
             .reaction-emoji { width: 36px; height: 36px; font-size: 18px; }
             .chat-tab { padding: 4px 10px; font-size: 10px; }
+            .header-right .screen-share-header-btn span { display: none; }
         }
         .top-bar {
             display: none;
@@ -584,7 +663,24 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
+    <!-- No Room Error Overlay (initially hidden) -->
+    <div id="noRoomOverlay" class="no-room-overlay" style="display: none;">
+        <div class="no-room-card">
+            <div class="error-icon">❌</div>
+            <h2>Room Not Found</h2>
+            <p>Please provide a valid room name and username to join the virtual classroom.</p>
+            <code>?room=classroom1&username=StudentName</code>
+            <div class="example">
+                <strong>Example URL:</strong><br>
+                <code>https://aralshare.com/?room=Math101&username=JohnDoe</code>
+                <br><br>
+                <strong>Teacher URL (with screen share):</strong><br>
+                <code>https://aralshare.com/?room=Math101&username=Teacher&teacher=1</code>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="appContainer">
         <div class="main-header">
             <div class="logo-area">                
                 <span class="logo-text" style="display: flex; gap: 10px; align-items: center;"><?xml version="1.0" encoding="UTF-8"?>
@@ -593,8 +689,8 @@
 </svg><h2>AralShare</h2></span>
             </div>
             <div class="header-right">
-                <!--<div class="room-badge">🏠 <span id="roomDisplay">lobby</span></div>-->
                 <div class="peer-count" id="peerCount">👥 0/30</div>
+                <button class="screen-share-header-btn" id="screenShareHeaderBtn" style="display: none;">🖥️ Share Screen</button>
                 <button class="file-storage-btn" id="fileStorageBtn">📁 Files</button>
                 <button class="reaction-btn" id="reactionToggleBtn">😊 React</button>
             </div>
@@ -611,7 +707,10 @@
         <div class="content-area">
             <div class="sidebar" id="sidebar">
                 <div class="workspace-header">
-                    <div class="workspace-name" id="roomDisplay">SnoW Mesh Network</div>
+                    <div class="workspace-name" id="roomDisplay">
+                        <span id="roomNameSpan"></span>
+                        <span id="teacherBadge" class="teacher-badge" style="display: none;">👨‍🏫 Teacher</span>
+                    </div>
                     <div class="workspace-status">
                         <span class="status-indicator"></span>
                         <span id="connectionStatus">Initializing...</span>
@@ -712,14 +811,33 @@
     </div>
 
     <script>
+        // ==================== CHECK ROOM AND USERNAME ====================
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomName = urlParams.get('room');
+        const username = urlParams.get('username');
+        const isTeacher = urlParams.get('teacher') === '1';
+        
+        // If room or username is missing, show error overlay and stop execution
+        if (!roomName || !username) {
+            document.getElementById('noRoomOverlay').style.display = 'flex';
+            document.getElementById('appContainer').style.display = 'none';
+            throw new Error('Missing room or username parameter');
+        }
+        
+        // Hide error overlay and show app
+        document.getElementById('noRoomOverlay').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'flex';
+        
         // ==================== CONFIG ====================
         const MAX_PARTICIPANTS = 30;
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomName = urlParams.get('room') || 'snow-demo';
-        const username = urlParams.get('username') || `User_${Math.floor(Math.random() * 1000)}`;
-        window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}`);
-
+        window.history.replaceState({}, '', `?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}${isTeacher ? '&teacher=1' : ''}`);
+        
+        // ==================== TEACHER SCREEN SHARE STATE ====================
+        let screenShareStream = null;
+        let isScreenSharing = false;
+        let originalVideoTrack = null;
+        
         // ==================== STATE ====================
         let peer = null;
         let localStream = null;
@@ -730,10 +848,10 @@
         let currentMainVideo = { type: 'local', peerId: null, label: 'Your Camera' };
         
         // Chat State
-        let activeChat = 'global'; // 'global' or peerId
+        let activeChat = 'global';
         let globalMessages = [];
-        let dmMessages = new Map(); // peerId -> messages[]
-        let dmTabs = new Map(); // peerId -> { username, unreadCount }
+        let dmMessages = new Map();
+        let dmTabs = new Map();
         let globalUnreadCount = 0;
         
         // File sharing
@@ -752,7 +870,9 @@
         const peerCountSpan = document.getElementById('peerCount');
         const peerCountSidebar = document.getElementById('peerCountSidebar');
         const currentConnectionsSpan = document.getElementById('currentConnections');
-        const roomDisplay = document.getElementById('roomDisplay');       
+        const roomDisplaySpan = document.getElementById('roomDisplay');
+        const roomNameSpan = document.getElementById('roomNameSpan');
+        const teacherBadge = document.getElementById('teacherBadge');
         const mobileRoomName = document.getElementById('mobileRoomName');
         const myPeerIdSpan = document.getElementById('myPeerId');
         const connectionStatusSpan = document.getElementById('connectionStatus');
@@ -760,12 +880,126 @@
         const fileListContainer = document.getElementById('fileListContainer');
         const reactionBar = document.getElementById('reactionBar');
         const reactionToggleBtn = document.getElementById('reactionToggleBtn');
+        const screenShareHeaderBtn = document.getElementById('screenShareHeaderBtn');
         
-        currentUsernameSpan.textContent = username;       
-         roomDisplay.textContent = roomName;
+        // Set room and username display
+        roomNameSpan.textContent = roomName;
+        roomDisplaySpan.textContent = `📚 ${roomName}`;
+        currentUsernameSpan.textContent = username;
         if (mobileRoomName) mobileRoomName.textContent = roomName;
         
-        // ==================== Helper Functions ====================
+        // Show teacher badge and screen share button if user is teacher
+        if (isTeacher) {
+            teacherBadge.style.display = 'inline-block';
+            screenShareHeaderBtn.style.display = 'flex';
+            addSystemMessage('👨‍🏫 You are the Teacher! You can share your screen with the class.');
+        }
+        
+        // ==================== SCREEN SHARE FUNCTION ====================
+        async function toggleScreenShare() {
+            if (!isTeacher) {
+                addSystemMessage('Only teachers can share their screen.');
+                return;
+            }
+            
+            if (!isCameraActive) {
+                addSystemMessage('Please enable your camera first before sharing screen.');
+                return;
+            }
+            
+            if (!isScreenSharing) {
+                try {
+                    // Get screen share stream
+                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: 30 },
+                        audio: true
+                    });
+                    
+                    // Store original video track
+                    const videoTrack = localStream.getVideoTracks()[0];
+                    originalVideoTrack = videoTrack;
+                    
+                    // Replace video track with screen share
+                    const newVideoTrack = screenShareStream.getVideoTracks()[0];
+                    localStream.removeTrack(videoTrack);
+                    localStream.addTrack(newVideoTrack);
+                    
+                    isScreenSharing = true;
+                    screenShareHeaderBtn.classList.add('active');
+                    screenShareHeaderBtn.innerHTML = '🖥️ Stop Sharing';
+                    addSystemMessage('🖥️ You are now sharing your screen!');
+                    
+                    // Update main video if it's showing local
+                    if (currentMainVideo.type === 'local') {
+                        setMainVideo('local', localStream, 'Screen Share');
+                    }
+                    
+                    // Update all existing connections with new stream
+                    for (let [peerId, data] of connections) {
+                        if (data.call && data.call.peerConnection) {
+                            const senders = data.call.peerConnection.getSenders();
+                            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                            if (videoSender) {
+                                await videoSender.replaceTrack(newVideoTrack);
+                            }
+                        }
+                    }
+                    
+                    // Handle screen share stop
+                    screenShareStream.getVideoTracks()[0].onended = () => {
+                        stopScreenShare();
+                    };
+                    
+                } catch (err) {
+                    console.error('Screen share error:', err);
+                    addSystemMessage('❌ Failed to share screen. Please allow permission.');
+                }
+            } else {
+                stopScreenShare();
+            }
+        }
+        
+        async function stopScreenShare() {
+            if (!isScreenSharing) return;
+            
+            // Restore original camera track
+            if (originalVideoTrack && localStream) {
+                const screenTrack = localStream.getVideoTracks()[0];
+                localStream.removeTrack(screenTrack);
+                localStream.addTrack(originalVideoTrack);
+                
+                // Update all existing connections
+                for (let [peerId, data] of connections) {
+                    if (data.call && data.call.peerConnection) {
+                        const senders = data.call.peerConnection.getSenders();
+                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                        if (videoSender) {
+                            await videoSender.replaceTrack(originalVideoTrack);
+                        }
+                    }
+                }
+            }
+            
+            // Stop screen share stream
+            if (screenShareStream) {
+                screenShareStream.getTracks().forEach(track => track.stop());
+                screenShareStream = null;
+            }
+            
+            isScreenSharing = false;
+            originalVideoTrack = null;
+            screenShareHeaderBtn.classList.remove('active');
+            screenShareHeaderBtn.innerHTML = '🖥️ Share Screen';
+            
+            // Update main video label
+            if (currentMainVideo.type === 'local') {
+                setMainVideo('local', localStream, 'Your Camera');
+            }
+            
+            addSystemMessage('🖥️ Screen sharing stopped.');
+        }
+        
+        // ==================== Helper Functions (from original) ====================
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
@@ -779,7 +1013,7 @@
             const div = document.createElement('div');
             div.className = 'message';
             div.style.opacity = '0.7';
-            div.innerHTML = `<div class="message-avatar">❄️</div><div class="message-content"><div>${escapeHtml(msg)}</div></div>`;
+            div.innerHTML = `<div class="message-avatar">📚</div><div class="message-content"><div>${escapeHtml(msg)}</div></div>`;
             messagesContainer.appendChild(div);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -811,7 +1045,6 @@
         
         // ==================== Chat Tab Management ====================
         function updateUnreadCounters() {
-            // Update chat tabs
             const tabs = document.querySelectorAll('.chat-tab');
             tabs.forEach(tab => {
                 const chatType = tab.getAttribute('data-chat-type');
@@ -838,7 +1071,6 @@
                 }
             });
             
-            // Update sidebar DM badges
             for (let [peerId, data] of connections) {
                 const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
                 const userItem = document.querySelector(`.user-item[data-peer-id="${peerId}"] .dm-badge`);
@@ -890,7 +1122,7 @@
         function renderChatTabs() {
             let html = `
                 <div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global" data-peer-id="">
-                    💬 Conference Chat
+                    💬 Class Chat
                     ${globalUnreadCount > 0 ? `<span class="unread-badge">${globalUnreadCount > 99 ? '99+' : globalUnreadCount}</span>` : ''}
                 </div>
             `;
@@ -908,7 +1140,6 @@
             
             chatTabsScroll.innerHTML = html;
             
-            // Add event listeners to tabs
             document.querySelectorAll('.chat-tab').forEach(tab => {
                 tab.addEventListener('click', (e) => {
                     if (e.target.classList.contains('close-tab')) {
@@ -941,7 +1172,6 @@
             renderMessages();
             renderChatTabs();
             
-            // Scroll to make the new tab visible
             setTimeout(() => {
                 const newTab = document.querySelector(`.chat-tab[data-peer-id="${peerId}"]`);
                 if (newTab) {
@@ -1046,10 +1276,11 @@
             
             if (localStream && isCameraActive) {
                 const isActive = (currentMainVideo.type === 'local');
+                const label = isScreenSharing ? '🖥️ Screen Share' : '📹 You';
                 html += `
-                    <div class="thumbnail-item ${isActive ? 'active' : ''}" onclick="selectThumbnail('local', null, 'Your Camera')">
+                    <div class="thumbnail-item ${isActive ? 'active' : ''}" onclick="selectThumbnail('local', null, '${label}')">
                         <video id="thumb_local" class="thumbnail-video" autoplay playsinline muted></video>
-                        <div class="thumbnail-label">📹 You</div>
+                        <div class="thumbnail-label">${label}</div>
                     </div>
                 `;
                 setTimeout(() => {
@@ -1127,7 +1358,7 @@
                     audio: true
                 });
                 isCameraActive = true;
-                setMainVideo('local', localStream, 'Your Camera');
+                setMainVideo('local', localStream, isScreenSharing ? 'Screen Share' : 'Your Camera');
                 addSystemMessage('🎥 Camera enabled');
                 
                 document.getElementById('toggleAudioBtn').classList.add('active');
@@ -1298,7 +1529,7 @@
             
             conn.on('open', () => {
                 addSystemMessage(`✅ Connected to ${targetPeerId}`);
-                conn.send({ type: 'username', username: username });
+                conn.send({ type: 'username', username: username, isTeacher: isTeacher });
                 
                 connections.set(targetPeerId, {
                     connection: conn,
@@ -1322,6 +1553,7 @@
                     const connData = connections.get(targetPeerId);
                     if (connData) {
                         connData.username = data.username;
+                        if (data.isTeacher) connData.isTeacher = true;
                         connections.set(targetPeerId, connData);
                         renderUserList();
                     }
@@ -1346,7 +1578,7 @@
                 renderThumbnails();
                 renderUserList();
                 if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === targetPeerId && localStream && isCameraActive) {
-                    setMainVideo('local', localStream, 'Your Camera');
+                    setMainVideo('local', localStream, isScreenSharing ? 'Screen Share' : 'Your Camera');
                 }
             });
         }
@@ -1369,7 +1601,7 @@
                     stream: null
                 });
                 updateConnectionCounter();
-                conn.send({ type: 'username', username: username });
+                conn.send({ type: 'username', username: username, isTeacher: isTeacher });
                 renderUserList();
                 renderThumbnails();
             });
@@ -1378,6 +1610,7 @@
                     const connData = connections.get(peerId);
                     if (connData) {
                         connData.username = data.username;
+                        if (data.isTeacher) connData.isTeacher = true;
                         connections.set(peerId, connData);
                         renderUserList();
                     }
@@ -1419,7 +1652,8 @@
         function renderUserList() {
             const currentUserListEl = document.getElementById('currentUserList');
             if (currentUserListEl) {
-                currentUserListEl.innerHTML = `<li class="user-item"><span class="online-dot"></span><span>${escapeHtml(username)}</span><span class="you-badge">You</span></li>`;
+                const teacherBadgeHtml = isTeacher ? '<span class="teacher-badge" style="margin-left:6px;">👨‍🏫 Teacher</span>' : '';
+                currentUserListEl.innerHTML = `<li class="user-item"><span class="online-dot"></span><span>${escapeHtml(username)}${teacherBadgeHtml}</span><span class="you-badge">You</span></li>`;
             }
             
             const peerList = Array.from(connections.values());
@@ -1431,10 +1665,11 @@
                         const peerId = Array.from(connections.keys())[idx];
                         const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
                         const unreadDot = unreadCount > 0 ? '<span class="unread-dot"></span>' : '';
+                        const teacherIcon = data.isTeacher ? '<span class="teacher-badge" style="margin-left:4px;">👨‍🏫</span>' : '';
                         return `
                             <li class="user-item" data-peer-id="${escapeHtml(peerId)}">
                                 <span class="online-dot"></span>
-                                <span>${escapeHtml(data.username)}</span>
+                                <span>${escapeHtml(data.username)}${teacherIcon}</span>
                                 <span class="dm-badge" onclick="openDM('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadDot}</span>
                             </li>
                         `;
@@ -1451,8 +1686,7 @@
         }
         
         function joinRoom() {
-            const room = document.getElementById('roomInput').value.trim() || 'snow-demo';
-            addSystemMessage(`❄️ Joining SnoW room: ${room}...`);
+            addSystemMessage(`📚 Joining classroom: ${roomName}...`);
             
             peer = new Peer({
                 debug: 1,
@@ -1463,7 +1697,10 @@
                 connectionStatusSpan.textContent = 'Connected';
                 myPeerIdSpan.textContent = id;
                 addSystemMessage(`✅ Connected! Your ID: ${id}`);
-                addSystemMessage(`❄️ Share this ID to invite others. Max: ${MAX_PARTICIPANTS} participants`);
+                addSystemMessage(`📚 Welcome to ${roomName} classroom! Max: ${MAX_PARTICIPANTS} participants`);
+                if (isTeacher) {
+                    addSystemMessage('👨‍🏫 You are the Teacher. Use the "Share Screen" button to present to the class.');
+                }
             });
             peer.on('connection', handleIncomingConnection);
             peer.on('call', handleIncomingCall);
@@ -1472,8 +1709,9 @@
         
         function leaveRoom() {
             if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (screenShareStream) screenShareStream.getTracks().forEach(t => t.stop());
             if (peer) peer.destroy();
-            addSystemMessage('👋 Left. Reload to rejoin.');
+            addSystemMessage('👋 Left classroom. Reload to rejoin.');
             setTimeout(() => window.location.reload(), 1500);
         }
         
@@ -1495,6 +1733,7 @@
         });
         document.getElementById('copyPeerIdBtn')?.addEventListener('click', copyPeerId);
         document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
+        screenShareHeaderBtn?.addEventListener('click', toggleScreenShare);
         messageInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
         
         // Reaction toggle
@@ -1541,11 +1780,11 @@
         
         // ==================== INIT ====================
         function init() {
-            addSystemMessage(`❄️ Welcome to SnoW Conference, ${escapeHtml(username)}!`);
-            addSystemMessage(`📊 Max ${MAX_PARTICIPANTS} participants | Click "Join SnoW Room" to start`);
+            addSystemMessage(`📚 Welcome to ${roomName} classroom, ${escapeHtml(username)}!`);
+            addSystemMessage(`📊 Max ${MAX_PARTICIPANTS} participants`);
             addSystemMessage(`📹 Enable camera to share video | Click thumbnails to switch main view`);
             addSystemMessage(`😊 Click the reaction button (😊) to send emoji reactions!`);
-            addSystemMessage(`💬 Click DM on any participant to start private chat - tabs scroll horizontally!`);
+            addSystemMessage(`💬 Click DM on any participant to start private chat`);
             
             renderMessages();
             renderChatTabs();
