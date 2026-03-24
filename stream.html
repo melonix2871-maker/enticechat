@@ -2,84 +2,562 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EnticeChat Live</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>EnticeChat Live · HD Broadcast</title>
 
+  <!-- VDO.Ninja SDK (latest stable) -->
   <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; background:#111; color:#eee; text-align:center; margin:0; padding:20px; }
-    video { max-width:100%; width:100%; max-height:80vh; background:#000; border-radius:12px; margin:15px 0; }
-    button { padding:14px 32px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
-    .broadcaster { background:#e74c3c; color:white; }
-    .viewer { background:#3498db; color:white; }
-    .info { margin:20px; padding:15px; background:#222; border-radius:10px; }
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
+      color: #f0f0f0;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 2rem;
+      letter-spacing: -0.3px;
+      background: linear-gradient(135deg, #FFB347, #FF6B6B);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .sub {
+      color: #aaa;
+      margin-top: -8px;
+      font-size: 0.9rem;
+    }
+
+    .info-card {
+      background: rgba(20, 25, 45, 0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 32px;
+      padding: 16px 24px;
+      margin: 24px auto;
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 24px;
+      align-items: baseline;
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .room-badge {
+      background: #1e2a3e;
+      padding: 6px 20px;
+      border-radius: 60px;
+      font-family: monospace;
+      font-size: 1.1rem;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+      color: #ffd966;
+    }
+
+    #status {
+      background: #0f172a;
+      padding: 6px 18px;
+      border-radius: 60px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000000;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 20px 35px -10px rgba(0,0,0,0.6);
+      margin: 20px 0;
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+
+    video {
+      width: 100%;
+      max-height: 70vh;
+      background: #0a0a0a;
+      display: block;
+      object-fit: contain;
+      border-radius: 24px;
+      cursor: pointer;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin: 28px 0 20px;
+    }
+
+    button {
+      padding: 14px 36px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 60px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #2c3e50;
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    .broadcaster {
+      background: linear-gradient(95deg, #E63E2E, #C0392B);
+      box-shadow: 0 6px 14px rgba(230, 62, 46, 0.3);
+    }
+
+    .broadcaster:hover {
+      background: linear-gradient(95deg, #ff4a38, #d32f1f);
+      transform: scale(1.02);
+    }
+
+    .viewer {
+      background: linear-gradient(95deg, #1F6392, #0E4A6E);
+      box-shadow: 0 6px 14px rgba(31, 99, 146, 0.3);
+    }
+
+    .viewer:hover {
+      background: linear-gradient(95deg, #2c7ab0, #135b82);
+      transform: scale(1.02);
+    }
+
+    .control-bar {
+      margin: 12px auto;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .small-btn {
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      background: #2a2f3f;
+      box-shadow: none;
+      gap: 6px;
+    }
+
+    .danger-btn {
+      background: #7f2a2a;
+    }
+    .danger-btn:hover {
+      background: #a03a3a;
+    }
+
+    .footer-note {
+      font-size: 0.75rem;
+      color: #6c7a89;
+      margin-top: 35px;
+      border-top: 1px solid #222;
+      padding-top: 20px;
+    }
+
+    @media (max-width: 680px) {
+      button { padding: 10px 22px; font-size: 0.9rem; }
+      .info-card { flex-direction: column; gap: 12px; align-items: center; }
+    }
+
+    .recording-badge {
+      background: #e74c3c;
+      border-radius: 30px;
+      padding: 4px 12px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
   </style>
 </head>
 <body>
-  <h1>EnticeChat Live Broadcast</h1>
+<div class="container">
+  <h1>🎙️ EnticeChat Live</h1>
+  <div class="sub">Ultra-low latency · Real-time interaction</div>
 
-  <div class="info">
-    Room: <strong>enticechat-oi0pcuhk</strong><br>
-    <span id="status">Choose your role</span>
+  <div class="info-card">
+    <span>📡 Room ID:</span>
+    <span class="room-badge" id="roomIdDisplay">enticechat-oi0pcuhk</span>
+    <span id="status">⚡ Choose role to start</span>
   </div>
 
-  <video id="video" autoplay playsinline controls></video>
-
-  <div>
-    <button onclick="startBroadcaster()" class="broadcaster">🎥 Start Broadcasting</button>
-    <button onclick="startViewer()" class="viewer">👁️ Join as Viewer</button>
+  <div class="video-wrapper">
+    <video id="video" autoplay playsinline muted controls></video>
   </div>
 
-  <script>
-    const ROOM = "enticechat-oi0pcuhk";
-    let vdo = null;
-    const video = document.getElementById('video');
+  <div class="button-group">
+    <button id="broadcasterBtn" class="broadcaster">🎥 Go LIVE (Broadcast)</button>
+    <button id="viewerBtn" class="viewer">👁️ Watch Stream (Viewer)</button>
+  </div>
 
-    // ==================== BROADCASTER ====================
-    async function startBroadcaster() {
-      document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
+  <div class="control-bar" id="controlBar" style="display: none;">
+    <button id="stopBroadcastBtn" class="small-btn danger-btn">🔴 Stop Broadcasting</button>
+    <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
+    <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
+  </div>
 
-      vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
+  <div class="footer-note">
+    🔒 WebRTC powered by VDO.Ninja — secure & direct. <br>
+    <span style="font-size:0.7rem;">⭐ Broadcaster: share camera+mic | Viewer: auto-receives HD stream</span>
+  </div>
+</div>
 
+<script>
+  // ======================= CONFIGURATION =======================
+  const ROOM = "enticechat-oi0pcuhk";
+  let vdo = null;               // SDK instance
+  let localStream = null;      // broadcaster's local stream (for preview & control)
+  let isBroadcasting = false;
+  let isViewerActive = false;
+  let isMuted = false;
+  let cameraEnabled = true;
+
+  const videoElement = document.getElementById('video');
+  const statusSpan = document.getElementById('status');
+  const broadcasterBtn = document.getElementById('broadcasterBtn');
+  const viewerBtn = document.getElementById('viewerBtn');
+  const controlBar = document.getElementById('controlBar');
+  const stopBroadcastBtn = document.getElementById('stopBroadcastBtn');
+  const muteMicBtn = document.getElementById('muteMicBtn');
+  const toggleCamBtn = document.getElementById('toggleCamBtn');
+
+  // Helper: update UI status
+  function setStatusMessage(htmlContent, isError = false) {
+    statusSpan.innerHTML = htmlContent;
+    if (isError) {
+      statusSpan.style.background = "#4a1a1a";
+      statusSpan.style.border = "1px solid #ff6666";
+    } else {
+      statusSpan.style.background = "#0f172a";
+      statusSpan.style.border = "none";
+    }
+  }
+
+  // reset everything (clean up old SDK instance, streams)
+  async function fullCleanup() {
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+      });
+      localStream = null;
+    }
+    if (vdo) {
+      try {
+        // leave room & disconnect properly
+        if (vdo.leaveRoom) await vdo.leaveRoom();
+        if (vdo.disconnect) await vdo.disconnect();
+      } catch(e) { console.warn("cleanup err:", e); }
+      vdo = null;
+    }
+    if (videoElement.srcObject) {
+      // avoid stopping the stream if it's viewer stream – but we stop only local ones
+      if (!isBroadcasting && videoElement.srcObject && !videoElement.srcObject.getVideoTracks().length) {
+        // do nothing
+      }
+      videoElement.srcObject = null;
+    }
+    isBroadcasting = false;
+    isViewerActive = false;
+    controlBar.style.display = "none";
+    // reset UI buttons labels
+    if (muteMicBtn) muteMicBtn.innerHTML = "🎤 Mute Mic";
+    if (toggleCamBtn) toggleCamBtn.innerHTML = "📷 Pause Camera";
+    isMuted = false;
+    cameraEnabled = true;
+  }
+
+  // ==================== BROADCASTER LOGIC ====================
+  async function startBroadcaster() {
+    // clean previous session fully
+    await fullCleanup();
+    
+    setStatusMessage("🎙️ Requesting camera & microphone...");
+    try {
+      // request high-quality media
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       });
-
-      video.srcObject = stream;   // local preview
-
+      
+      localStream = stream;
+      // show local preview
+      videoElement.srcObject = stream;
+      videoElement.muted = true;  // avoid feedback echo for broadcaster
+      
+      // Initialize SDK with stable salt
+      vdo = new VDONinjaSDK({ salt: "vdo.ninja", debug: false });
+      
+      setStatusMessage("🟡 Connecting to VDO.Ninja network...");
+      
       await vdo.connect();
-      await vdo.joinRoom({ room: ROOM });
-
-      await vdo.publish(stream, { streamID: "main" });
+      await vdo.joinRoom({ room: ROOM, password: null });
+      
+      setStatusMessage("🔴 LIVE: Publishing stream...");
+      
+      // publish the stream with streamID "main"
+      await vdo.publish(stream, { streamID: "main", videoBitrate: 2000, audioBitrate: 128 });
+      
+      isBroadcasting = true;
+      isViewerActive = false;
+      setStatusMessage('<strong style="color:#ff8866;">🔴 YOU ARE LIVE</strong> · Broadcasting to viewers');
+      
+      // show control bar for broadcaster
+      controlBar.style.display = "flex";
+      
+      // update mute button status
+      updateBroadcasterControlsUI();
+      
+    } catch (err) {
+      console.error("Broadcaster error:", err);
+      setStatusMessage(`❌ Broadcast failed: ${err.message.slice(0, 80)}`, true);
+      await fullCleanup();
+      videoElement.srcObject = null;
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
     }
-
-    // ==================== VIEWER ====================
-    async function startViewer() {
-      document.getElementById('status').innerHTML = '<strong style="color:#3498db;">Joining room...</strong>';
-
-      vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
-
+  }
+  
+  function updateBroadcasterControlsUI() {
+    if (!isBroadcasting) return;
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+      }
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+      }
+    }
+  }
+  
+  async function stopBroadcasting() {
+    if (!isBroadcasting) return;
+    setStatusMessage("🛑 Stopping broadcast...");
+    try {
+      if (vdo && vdo.unpublish) {
+        await vdo.unpublish("main");
+      }
+    } catch(e) { console.warn("unpublish error", e); }
+    await fullCleanup();
+    videoElement.srcObject = null;
+    videoElement.muted = false;
+    setStatusMessage("⏹️ Broadcast ended · select role again");
+    controlBar.style.display = "none";
+  }
+  
+  function toggleMute() {
+    if (!isBroadcasting || !localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      isMuted = !audioTrack.enabled;
+      muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+      setStatusMessage(`🔴 LIVE ${audioTrack.enabled ? "🎙️ Mic active" : "🔇 Mic muted"}`, false);
+    } else {
+      muteMicBtn.innerHTML = "🎤 No mic";
+    }
+  }
+  
+  function toggleCamera() {
+    if (!isBroadcasting || !localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      cameraEnabled = videoTrack.enabled;
+      toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+      setStatusMessage(`🔴 LIVE ${videoTrack.enabled ? "📹 Camera on" : "📷 Camera paused"}`, false);
+    } else {
+      toggleCamBtn.innerHTML = "📷 No cam";
+    }
+  }
+  
+  // ==================== VIEWER LOGIC ====================
+  async function startViewer() {
+    // cleanup previous sessions (if any broadcaster leftover or old viewer)
+    await fullCleanup();
+    
+    setStatusMessage("👁️ Joining room as viewer...");
+    isViewerActive = true;
+    isBroadcasting = false;
+    controlBar.style.display = "none";
+    
+    try {
+      vdo = new VDONinjaSDK({ salt: "vdo.ninja", debug: false });
+      
       await vdo.connect();
       await vdo.joinRoom({ room: ROOM });
-
-      // The most reliable way to receive the stream
-      vdo.on("stream", (stream) => {
-        video.srcObject = stream;
-        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Broadcaster Video</strong>';
+      
+      setStatusMessage("📡 Waiting for broadcaster signal...");
+      
+      // Handle incoming stream events
+      vdo.on("stream", (stream, streamId) => {
+        if (streamId === "main" || (stream && stream.getVideoTracks().length > 0)) {
+          console.log("🎬 Viewer received stream:", streamId);
+          if (videoElement.srcObject !== stream) {
+            videoElement.srcObject = stream;
+            videoElement.muted = false;  // ensure viewer can hear audio
+            setStatusMessage('<strong style="color:#6fcf97;">✅ LIVE · Watching broadcast</strong>');
+          }
+        }
       });
-
-      // Force request the stream (this often fixes the stuck "Joining room..." issue)
+      
+      // If stream added after some seconds (backup)
+      vdo.on("streamAdded", (streamId) => {
+        console.log("streamAdded event:", streamId);
+        if (streamId === "main") {
+          // attempt to request again if auto not working
+          setTimeout(() => {
+            if (vdo && isViewerActive) {
+              vdo.requestStream("main");
+            }
+          }, 300);
+        }
+      });
+      
+      // Also listen for existing publishers
       setTimeout(() => {
-        vdo.requestStream("main");
-      }, 1000);
+        if (vdo && isViewerActive) {
+          // request the main stream explicitly (fixes stuck joining)
+          vdo.requestStream("main").catch(e => console.warn("req stream warn", e));
+          // fallback: check for any available stream after 1.5s
+          setTimeout(() => {
+            if (isViewerActive && videoElement.srcObject === null) {
+              setStatusMessage("⚠️ No active broadcaster. Ask someone to go LIVE!", false);
+            }
+          }, 4000);
+        }
+      }, 800);
+      
+    } catch (err) {
+      console.error("Viewer error:", err);
+      setStatusMessage(`❌ Viewer connection error: ${err.message.slice(0, 80)}`, true);
+      await fullCleanup();
+      isViewerActive = false;
+      videoElement.srcObject = null;
     }
-
-    // Auto start as viewer if link has ?view
-    if (window.location.search.includes("view")) {
+  }
+  
+  // ==================== AUTO VIEWER MODE (URL param ?view) ====================
+  function autoHandleUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("view")) {
       startViewer();
     }
-  </script>
+    if (urlParams.has("broadcast")) {
+      startBroadcaster();
+    }
+  }
+  
+  // ==================== EVENT LISTENERS ====================
+  broadcasterBtn.addEventListener('click', () => {
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Already broadcasting! Stop before restart.", false);
+      return;
+    }
+    startBroadcaster();
+  });
+  
+  viewerBtn.addEventListener('click', () => {
+    if (isBroadcasting) {
+      setStatusMessage("⚠️ Stop broadcasting first to switch role, or open new tab.", false);
+      return;
+    }
+    startViewer();
+  });
+  
+  if (stopBroadcastBtn) {
+    stopBroadcastBtn.addEventListener('click', () => {
+      if (isBroadcasting) {
+        stopBroadcasting();
+      } else {
+        // If viewer but we want to leave
+        if (isViewerActive) {
+          fullCleanup();
+          videoElement.srcObject = null;
+          setStatusMessage("👋 Disconnected from room");
+          isViewerActive = false;
+          controlBar.style.display = "none";
+        }
+      }
+    });
+  }
+  
+  if (muteMicBtn) {
+    muteMicBtn.addEventListener('click', toggleMute);
+  }
+  
+  if (toggleCamBtn) {
+    toggleCamBtn.addEventListener('click', toggleCamera);
+  }
+  
+  // handle page unload gracefully
+  window.addEventListener('beforeunload', () => {
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+    }
+    if (vdo) {
+      try {
+        if (vdo.leaveRoom) vdo.leaveRoom();
+        if (vdo.disconnect) vdo.disconnect();
+      } catch(e) {}
+    }
+  });
+  
+  // optional: also listen for visibility change to avoid unnecessary reconnections
+  autoHandleUrlParams();
+  
+  // Additional robust improvement: if viewer mode loses stream due to network, show status but not crash
+  // Also add retry concept for viewer if connection lost? but SDK handles reconnect partly.
+  // Set a small heartbeat on viewer to detect empty stream
+  setInterval(() => {
+    if (isViewerActive && vdo && videoElement && !videoElement.srcObject) {
+      // try re-request stream every 8 seconds if still no stream (helpful if broadcaster starts late)
+      if (document.visibilityState === "visible") {
+        console.log("viewer re-request stream (keepalive)");
+        vdo.requestStream("main").catch(e => null);
+        setStatusMessage("🔄 Waiting for broadcaster...", false);
+      }
+    }
+    // if broadcaster, no action needed.
+  }, 9000);
+  
+  // Display room ID in UI (copy-friendly)
+  document.getElementById('roomIdDisplay').innerText = ROOM;
+  
+  // extra edge: if broadcaster tries to start with unsupported devices, show user-friendly.
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setStatusMessage("⚠️ Browser not supported: getUserMedia missing", true);
+    broadcasterBtn.disabled = true;
+  }
+</script>
 </body>
 </html>
