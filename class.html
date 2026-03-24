@@ -1,0 +1,2599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AralShare Virtual Classroom - Scalable Relay Tree Edition</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --sidebar-bg: #111214;
+            --accent: #5865f2;
+            --accent-hover: #4752c4;
+            --text: #e0e0e0;
+            --text-muted: #9ca3af;
+            --border: #2b2d31;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;           
+        }
+        
+        /* Join Form Overlay */
+        .join-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .join-card {
+            background: var(--sidebar-bg);
+            border-radius: 28px;
+            padding: 40px;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            margin: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: fadeInUp 0.4s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .join-card .logo-icon { font-size: 48px; margin-bottom: 0px; }
+        .join-card h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .join-card p { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
+        .join-input-group { margin-bottom: 16px; text-align: left; }
+        .join-input-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); }
+        .join-input {
+            width: 100%;
+            background: #2b2d31;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .join-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,101,242,0.2); }
+        .join-input.error { border-color: var(--danger); }
+        .error-message { color: var(--danger); font-size: 11px; margin-top: 4px; display: none; }
+        .teacher-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .teacher-checkbox input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+        .teacher-checkbox label { font-size: 13px; cursor: pointer; color: var(--text); }
+        .join-btn {
+            width: 100%;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .join-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
+        .example {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        .teacher-badge {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 9px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+        .relay-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 9px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+        .screen-share-btn { background: #f59e0b; margin-left: 8px; }
+        .screen-share-btn.active { background: var(--success); }
+        
+        .app-container { display: flex; flex-direction: column; height: 100vh; }
+
+        /* Header */
+        .main-header {
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 50;
+        }
+        .logo-area { display: flex; align-items: center; gap: 8px; }
+        .logo-icon { font-size: 24px; }
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            scale: .8;
+            margin-left: -14px;
+        }
+        .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .file-storage-btn, .reaction-btn, .screen-share-header-btn, .tree-stats-btn {
+            background: #2b2d31;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 30px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tree-stats-btn { background: var(--success); }
+        .screen-share-header-btn { background: #f59e0b; }
+        .screen-share-header-btn.active { background: var(--success); }
+        .room-badge, .peer-count {
+            background: #2b2d31;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+        }
+
+        /* Content Area */
+        .content-area { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .workspace-header { padding: 16px; border-bottom: 1px solid var(--border); }
+        .workspace-name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .workspace-status { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+        .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        
+        .users-section { flex: 1; overflow-y: auto; padding: 12px; }
+        .user-section-title { font-size: 10px; color: var(--text-muted); margin: 0 0 8px 6px; text-transform: uppercase; }
+        .user-item {
+            padding: 8px 10px;
+            margin: 2px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            list-style: none;
+            cursor: pointer;
+        }
+        .user-item:hover { background: #2b2d31; }
+        .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+        .you-badge { background: var(--accent); padding: 2px 6px; border-radius: 10px; font-size: 9px; margin-left: auto; }
+        .dm-badge {
+            background: #4b5563;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            cursor: pointer;
+            margin-left: auto;
+            position: relative;
+        }
+        .unread-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 8px;
+            height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
+        }
+        
+        .connect-section {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            background: var(--sidebar-bg);
+        }
+        .peer-id-input {
+            width: 100%;
+            background: #2b2d31;
+            border: none;
+            border-radius: 8px;
+            padding: 8px;
+            color: white;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+        .connect-btn {
+            width: 100%;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            padding: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .limit-warning {
+            background: rgba(16, 185, 129, 0.1);
+            padding: 8px;
+            font-size: 11px;
+            margin-top: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        /* Video Layout */
+        .video-layout {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+        .main-video-area {
+            flex: 3;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid var(--accent);
+            aspect-ratio: 16 / 9;
+        }
+        .main-video-element {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .main-video-label {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 5;
+        }
+        .reaction-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            animation: reactionPop 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+        @keyframes reactionPop {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+
+        .thumbnails-area {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(4px);
+        }
+        .thumbnails-header {
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+        .thumbnails-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .thumbnail-item {
+            background: #1a1c20;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            aspect-ratio: 16 / 9;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .thumbnail-item.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+        .thumbnail-item:hover { transform: scale(1.02); border-color: var(--accent); }
+        .thumbnail-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .thumbnail-label {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 12px;
+            border-radius: 40px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+        .video-control-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #2b2d31;
+            border: none;
+            font-size: 16px;
+            color: white;
+            cursor: pointer;
+        }
+        .video-control-btn.active { background: var(--success); }
+
+        /* Reaction Bar */
+        .reaction-bar {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 40px;
+            backdrop-filter: blur(8px);
+        }
+        .reaction-emoji {
+            background: #2b2d31;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .reaction-emoji:hover { transform: scale(1.1); background: var(--accent); }
+
+        /* Chat Section */
+        .chat-section {
+            height: 32vh;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+        }
+        .chat-tabs-container {
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .chat-tabs-scroll {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            display: flex;
+            gap: 4px;
+            padding: 6px 8px;
+            scroll-behavior: smooth;
+        }
+        .chat-tabs-scroll::-webkit-scrollbar { height: 3px; }
+        .chat-tabs-scroll::-webkit-scrollbar-track { background: var(--border); }
+        .chat-tabs-scroll::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+        .nav-arrow {
+            background: #2b2d31;
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .nav-arrow:hover { background: var(--accent); }
+        .chat-tab {
+            padding: 6px 14px;
+            background: #2b2d31;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .chat-tab.active { background: var(--accent); }
+        .chat-tab .unread-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .chat-tab .close-tab {
+            margin-left: 6px;
+            font-size: 11px;
+            opacity: 0.7;
+            cursor: pointer;
+        }
+        .chat-tab .close-tab:hover { opacity: 1; }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 12px;
+        }
+        .message {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            animation: fadeIn 0.2s;
+            position: relative;
+        }
+        .message.dm {
+            background: rgba(88,101,242,0.1);
+            border-left: 3px solid var(--accent);
+            padding-left: 8px;
+            border-radius: 6px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+        .message-content { flex: 1; }
+        .message-header { display: flex; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; align-items: center; }
+        .message-author { font-weight: 600; font-size: 11px; }
+        .message-time { font-size: 9px; color: var(--text-muted); }
+        .message-text { font-size: 11px; word-break: break-word; }
+        
+        .message-reactions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .reaction-bubble {
+            background: #2b2d31;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .reaction-bubble:hover {
+            background: var(--accent);
+            transform: scale(1.05);
+        }
+        .reaction-bubble .reaction-count {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+        .message-reaction-picker {
+            position: absolute;
+            right: 0;
+            top: -40px;
+            background: #2b2d31;
+            border-radius: 30px;
+            padding: 4px 8px;
+            display: flex;
+            gap: 6px;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.2s;
+            pointer-events: none;
+        }
+        .message:hover .message-reaction-picker {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        .reaction-picker-emoji {
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .reaction-picker-emoji:hover {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+        .add-reaction-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 11px;
+            padding: 2px 4px;
+            border-radius: 12px;
+            margin-left: 4px;
+        }
+        .add-reaction-btn:hover {
+            background: #2b2d31;
+            color: var(--accent);
+        }
+
+        .input-area {
+            padding: 8px 12px;
+            border-top: 1px solid var(--border);
+        }
+        .message-input-wrapper {
+            background: #2b2d31;
+            border-radius: 5px;
+            padding: 6px 10px;
+            display: flex;
+            gap: 6px;
+        }
+        .message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: white;
+            outline: none;
+            font-size: 14px;
+            resize: none;
+        }
+        .send-btn {
+            background: var(--accent);
+            border: none;
+            padding: 4px 14px;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* File Cabinet Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .file-cabinet {
+            background: var(--sidebar-bg);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 700px;
+            height: 70%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .cabinet-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        .file-item {
+            background: #2b2d31;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .download-btn, .delete-btn {
+            background: #1e1f22;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            margin-left: 6px;
+            font-size: 11px;
+        }
+        .download-btn:hover { background: var(--success); }
+        .delete-btn:hover { background: var(--danger); }
+
+        /* Tree Stats Modal */
+        .tree-stats-modal {
+            background: var(--sidebar-bg);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .tree-stats-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .tree-node {
+            margin-left: 20px;
+            padding: 8px;
+            border-left: 2px solid var(--accent);
+            margin-bottom: 8px;
+        }
+        .tree-node-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content { margin-top: 60px; }
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+                transition: transform 0.2s;
+                z-index: 300;
+                width: 280px;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .top-bar { display: flex !important; }
+            .video-layout { flex-direction: column; }
+            .thumbnails-area { max-height: 110px; }
+            .thumbnails-scroll { flex-direction: row; overflow-x: auto; }
+            .thumbnail-item { min-width: 130px; flex-shrink: 0; }
+            .reaction-bar { bottom: 100px; right: 10px; }
+            .reaction-emoji { width: 36px; height: 36px; font-size: 18px; }
+            .chat-tab { padding: 4px 10px; font-size: 10px; }
+            .header-right .screen-share-header-btn span { display: none; }
+            .join-card { padding: 30px 24px; }
+            .join-card h2 { font-size: 20px; }
+        }
+        .top-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: var(--sidebar-bg);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            margin-top: 54px;
+        }
+        .hamburger {
+            background: var(--accent);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 299;
+        }
+        .sidebar-overlay.active { display: block; }
+        @media (min-width: 769px) { .sidebar-overlay { display: none !important; } }
+        .logo-text svg{
+            filter: brightness(0) saturate(100%) invert(91%) sepia(74%) saturate(853%) hue-rotate(350deg) brightness(99%) contrast(106%);
+        }       
+    </style>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <!-- Join Form Overlay -->
+    <div id="joinOverlay" class="join-overlay">
+        <div class="join-card">
+            <div class="logo-icon">
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="50" height="41">
+                    <path d="M0 0 C3.70093553 1.74260277 7.20674292 3.83320408 10.75 5.875 C12.20599609 6.68904297 12.20599609 6.68904297 13.69140625 7.51953125 C14.61308594 8.04675781 15.53476562 8.57398438 16.484375 9.1171875 C17.32709961 9.59784668 18.16982422 10.07850586 19.03808594 10.57373047 C21 12 21 12 22 15 C18.535 16.98 18.535 16.98 15 19 C15 22.96 15 26.92 15 31 C12.46917897 32.54193728 9.92794722 34.05800484 7.375 35.5625 C6.66214844 36.00013672 5.94929688 36.43777344 5.21484375 36.88867188 C1.94050979 38.79619671 -0.22361681 39.99207772 -4.0625 40.03125 C-7.78296632 38.72512884 -11.00844163 36.97219447 -14.375 34.9375 C-15.01566406 34.56044922 -15.65632812 34.18339844 -16.31640625 33.79492188 C-17.88254066 32.87160383 -19.44198034 31.93694607 -21 31 C-21 27.04 -21 23.08 -21 19 C-21.66 18.67 -22.32 18.34 -23 18 C-23.33 22.29 -23.66 26.58 -24 31 C-25.32 30.67 -26.64 30.34 -28 30 C-29.35665025 14.95960591 -29.35665025 14.95960591 -26.48828125 10.81640625 C-24.07710963 9.24312791 -21.63904675 8.15325635 -19 7 C-17.81023054 6.30073175 -16.63103786 5.58326777 -15.4609375 4.8515625 C-14.22419808 4.08815314 -12.98721926 3.32513147 -11.75 2.5625 C-11.16009277 2.19503662 -10.57018555 1.82757324 -9.96240234 1.44897461 C-6.10371455 -0.80092713 -4.24194976 -1.22336499 0 0 Z M-10.625 9.5 C-11.23601563 9.83386719 -11.84703125 10.16773438 -12.4765625 10.51171875 C-13.98641801 11.33742098 -15.49347848 12.16823037 -17 13 C-13.44608026 15.96926381 -9.81482005 18.42318536 -5.8125 20.75 C-4.76707031 21.36359375 -3.72164062 21.9771875 -2.64453125 22.609375 C-0.20294935 24.15514103 -0.20294935 24.15514103 2 24 C0.68 25.32 -0.64 26.64 -2 28 C-6.49797113 26.31326082 -10.72886302 24.18326108 -15 22 C-15.39198722 24.3574433 -15.39198722 24.3574433 -15 27 C-13.00174974 28.95642071 -13.00174974 28.95642071 -10.3125 30.375 C-9.44238281 30.89835937 -8.57226562 31.42171875 -7.67578125 31.9609375 C-4.50287517 33.1930441 -3.19753956 33.06753299 0 32 C2.47243227 30.83935432 2.47243227 30.83935432 4.8125 29.4375 C5.99779297 28.75494141 5.99779297 28.75494141 7.20703125 28.05859375 C7.79871094 27.70925781 8.39039062 27.35992188 9 27 C9 25.35 9 23.7 9 22 C8.45601562 21.89816406 7.91203125 21.79632813 7.3515625 21.69140625 C4.41788663 20.82884707 2.02968263 19.45088377 -0.625 17.9375 C-4.10923764 15.73910643 -4.10923764 15.73910643 -8 15 C-6.68 13.68 -5.36 12.36 -4 11 C-1.22008044 12.03254155 1.05857502 13.04100251 3.5 14.75 C5.98886107 16.34749483 5.98886107 16.34749483 8.8125 15.1875 C9.534375 14.795625 10.25625 14.40375 11 14 C8.23612808 11.84821844 5.43466931 10.01629579 2.375 8.3125 C1.59898438 7.87550781 0.82296875 7.43851563 0.0234375 6.98828125 C-4.14846989 4.95065081 -6.91953132 7.44932396 -10.625 9.5 Z " fill="#FFFFFF" transform="translate(28,1)"/>
+                </svg>
+            </div>
+            <h2>AralShare</h2>
+            <p>Join a virtual classroom with scalable relay tree</p>
+            <div class="join-input-group">
+                <label>Room Name</label>
+                <input type="text" id="joinRoomInput" class="join-input" placeholder="e.g., Math101, ScienceClass" value="">
+                <div class="error-message" id="roomError">Please enter a room name</div>
+            </div>
+            <div class="join-input-group">
+                <label>Your Name</label>
+                <input type="text" id="joinUsernameInput" class="join-input" placeholder="e.g., John Doe" value="">
+                <div class="error-message" id="usernameError">Please enter your name</div>
+            </div>
+            <div class="teacher-checkbox">
+                <input type="checkbox" id="joinTeacherCheckbox">
+                <label>Join as Teacher (Origin node - can screen share)</label>
+            </div>
+            <button id="joinBtn" class="join-btn">🎓 Join Classroom</button>            
+        </div>
+    </div>
+
+    <div class="app-container" id="appContainer" style="display: none;">
+        <div class="main-header">
+            <div class="logo-area">                
+                <span class="logo-text" style="display: flex; gap: 10px; align-items: center;">
+                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="50" height="41">
+                        <path d="M0 0 C3.70093553 1.74260277 7.20674292 3.83320408 10.75 5.875 C12.20599609 6.68904297 12.20599609 6.68904297 13.69140625 7.51953125 C14.61308594 8.04675781 15.53476562 8.57398438 16.484375 9.1171875 C17.32709961 9.59784668 18.16982422 10.07850586 19.03808594 10.57373047 C21 12 21 12 22 15 C18.535 16.98 18.535 16.98 15 19 C15 22.96 15 26.92 15 31 C12.46917897 32.54193728 9.92794722 34.05800484 7.375 35.5625 C6.66214844 36.00013672 5.94929688 36.43777344 5.21484375 36.88867188 C1.94050979 38.79619671 -0.22361681 39.99207772 -4.0625 40.03125 C-7.78296632 38.72512884 -11.00844163 36.97219447 -14.375 34.9375 C-15.01566406 34.56044922 -15.65632812 34.18339844 -16.31640625 33.79492188 C-17.88254066 32.87160383 -19.44198034 31.93694607 -21 31 C-21 27.04 -21 23.08 -21 19 C-21.66 18.67 -22.32 18.34 -23 18 C-23.33 22.29 -23.66 26.58 -24 31 C-25.32 30.67 -26.64 30.34 -28 30 C-29.35665025 14.95960591 -29.35665025 14.95960591 -26.48828125 10.81640625 C-24.07710963 9.24312791 -21.63904675 8.15325635 -19 7 C-17.81023054 6.30073175 -16.63103786 5.58326777 -15.4609375 4.8515625 C-14.22419808 4.08815314 -12.98721926 3.32513147 -11.75 2.5625 C-11.16009277 2.19503662 -10.57018555 1.82757324 -9.96240234 1.44897461 C-6.10371455 -0.80092713 -4.24194976 -1.22336499 0 0 Z M-10.625 9.5 C-11.23601563 9.83386719 -11.84703125 10.16773438 -12.4765625 10.51171875 C-13.98641801 11.33742098 -15.49347848 12.16823037 -17 13 C-13.44608026 15.96926381 -9.81482005 18.42318536 -5.8125 20.75 C-4.76707031 21.36359375 -3.72164062 21.9771875 -2.64453125 22.609375 C-0.20294935 24.15514103 -0.20294935 24.15514103 2 24 C0.68 25.32 -0.64 26.64 -2 28 C-6.49797113 26.31326082 -10.72886302 24.18326108 -15 22 C-15.39198722 24.3574433 -15.39198722 24.3574433 -15 27 C-13.00174974 28.95642071 -13.00174974 28.95642071 -10.3125 30.375 C-9.44238281 30.89835937 -8.57226562 31.42171875 -7.67578125 31.9609375 C-4.50287517 33.1930441 -3.19753956 33.06753299 0 32 C2.47243227 30.83935432 2.47243227 30.83935432 4.8125 29.4375 C5.99779297 28.75494141 5.99779297 28.75494141 7.20703125 28.05859375 C7.79871094 27.70925781 8.39039062 27.35992188 9 27 C9 25.35 9 23.7 9 22 C8.45601562 21.89816406 7.91203125 21.79632813 7.3515625 21.69140625 C4.41788663 20.82884707 2.02968263 19.45088377 -0.625 17.9375 C-4.10923764 15.73910643 -4.10923764 15.73910643 -8 15 C-6.68 13.68 -5.36 12.36 -4 11 C-1.22008044 12.03254155 1.05857502 13.04100251 3.5 14.75 C5.98886107 16.34749483 5.98886107 16.34749483 8.8125 15.1875 C9.534375 14.795625 10.25625 14.40375 11 14 C8.23612808 11.84821844 5.43466931 10.01629579 2.375 8.3125 C1.59898438 7.87550781 0.82296875 7.43851563 0.0234375 6.98828125 C-4.14846989 4.95065081 -6.91953132 7.44932396 -10.625 9.5 Z " fill="#FFFFFF" transform="translate(28,1)"/>
+                    </svg>
+                    <h2>AralShare</h2>
+                </span>
+            </div>
+            <div class="header-right">
+                <div class="peer-count" id="peerCount">👥 0/500</div>
+                <button class="tree-stats-btn" id="treeStatsBtn">🌳 Tree Stats</button>
+                <button class="screen-share-header-btn" id="screenShareHeaderBtn" style="display: none;">🖥️ Share Screen</button>
+                <button class="file-storage-btn" id="fileStorageBtn">📁 Files</button>
+            </div>
+        </div>
+
+        <div class="top-bar" id="mobileTopBar">
+            <button class="hamburger" id="hamburgerBtn">☰</button>
+            <div class="room-title-mobile" id="mobileRoomName"></div>
+            <div style="width: 36px;"></div>
+        </div>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="content-area">
+            <div class="sidebar" id="sidebar">
+                <div class="workspace-header">
+                    <div class="workspace-name" id="roomDisplay">
+                        <span id="roomNameSpan"></span>
+                        <span id="teacherBadge" class="teacher-badge" style="display: none;">👨‍🏫 Teacher</span>
+                        <span id="relayBadge" class="relay-badge" style="display: none;">🔄 Relay</span>
+                    </div>
+                    <div class="workspace-status">
+                        <span class="status-indicator"></span>
+                        <span id="connectionStatus">Initializing...</span>
+                    </div>
+                    <div class="limit-warning" id="limitWarning">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2">
+                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                        <span id="currentConnections">0</span><span>/500 participants (Relay Tree)</span>
+                    </div>
+                    <div style="font-size: 11px; margin-top: 8px; background:#2b2d31; padding:5px; border-radius:6px; word-break:break-all;">
+                        <strong>Role:</strong> <span id="nodeRole">-</span><br>
+                        <strong>Level:</strong> <span id="treeLevel">-</span><br>
+                        <strong>Children:</strong> <span id="childCount">0</span><br>
+                        <strong>Quality:</strong> <span id="qualityLevel">-</span><br>
+                        <strong>Peer ID:</strong> <br/><span id="myPeerId">connecting...</span>
+                        <button id="copyPeerIdBtn" style="background:var(--accent); border:none; border-radius:4px; padding:2px 6px; margin-left:6px; cursor:pointer; display: block; width: 95%; margin-top: 8px;">Copy</button>
+                    </div>
+                </div>
+                <div class="users-section">
+                    <div class="user-section-title">👤 YOU</div>
+                    <ul id="currentUserList" style="list-style:none;">
+                        <li class="user-item"><span class="online-dot"></span><span id="currentUsername">You</span><span class="you-badge">You</span></li>
+                    </ul>
+                    <div class="user-section-title" style="margin-top:12px;">🟢 PARTICIPANTS (<span id="peerCountSidebar">0</span>/500)</div>
+                    <ul id="peerList" style="list-style:none;"></ul>
+                </div>
+                <div class="connect-section">
+                    <input type="text" id="peerIdInput" class="peer-id-input" placeholder="Enter Peer ID to connect manually">
+                    <button id="connectPeerBtn" class="connect-btn">🔗 Connect to Peer</button>
+                    <button id="leaveRoomBtn" style="width:100%; background:#ef4444; border:none; border-radius:8px; padding:12px; color:white; font-weight:bold; cursor:pointer; margin-top:12px;">🚪 Leave Room</button>
+                </div>
+            </div>
+
+            <div class="main-content" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                <div class="video-layout" id="videoLayout">
+                    <div class="main-video-area" id="mainVideoArea">
+                        <video id="mainVideo" class="main-video-element" autoplay playsinline muted></video>
+                        <div class="main-video-label" id="mainVideoLabel">Your Camera</div>
+                        <div class="video-placeholder" id="videoPlaceholder" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#1e1f22,#111214); z-index:5;">
+                            <div style="font-size: 40px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2">
+                                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                </svg>
+                            </div>
+                            <button id="enableCameraBtn" style="background:var(--accent); border:none; padding:10px 24px; border-radius:30px; color:white; cursor:pointer; margin-top:12px;">Enable Camera</button>
+                            <p style="margin-top:8px; font-size:11px;">Join AralShare Class with Relay Tree Scaling</p>
+                        </div>
+                        <div class="video-controls" id="videoControls" style="display:none;">
+                            <button class="video-control-btn" id="toggleAudioBtn">🎤</button>
+                            <button class="video-control-btn" id="toggleVideoBtn">📹</button>
+                        </div>
+                        <div class="reaction-bar" id="reactionBar" style="display:none;">
+                            <button class="reaction-emoji" data-reaction="😊">😊</button>
+                            <button class="reaction-emoji" data-reaction="✋">✋</button>
+                            <button class="reaction-emoji" data-reaction="👏">👏</button>
+                            <button class="reaction-emoji" data-reaction="👍">👍</button>
+                            <button class="reaction-emoji" data-reaction="🎉">🎉</button>
+                            <button class="reaction-emoji" data-reaction="❤️">❤️</button>
+                        </div>
+                    </div>
+
+                    <div class="thumbnails-area">
+                        <div class="thumbnails-header">📹 Active Videos</div>
+                        <div class="thumbnails-scroll" id="thumbnailsScroll"></div>
+                    </div>
+                </div>
+
+                <div class="chat-section">
+                    <div class="chat-tabs-container">
+                        <button class="nav-arrow" id="scrollTabsLeft">◀</button>
+                        <div class="chat-tabs-scroll" id="chatTabsScroll">
+                            <div class="chat-tab active" data-chat-type="global" data-peer-id="">💬 Class Chat</div>
+                        </div>
+                        <button class="nav-arrow" id="scrollTabsRight">▶</button>
+                    </div>
+                    <div class="messages-container" id="messagesContainer"></div>
+                    <div class="input-area">
+                        <div class="message-input-wrapper">
+                            <textarea class="message-input" id="messageInput" placeholder="Type a message... (Enter to send)" rows="1"></textarea>
+                            <button class="send-btn" id="sendBtn">Send</button>
+                            <button class="reaction-btn" id="reactionToggleBtn">😊 React</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="fileCabinetModal">
+        <div class="file-cabinet">
+            <div class="cabinet-header">
+                <h3>📁 File Cabinet</h3>
+                <button class="close-cabinet" id="closeCabinetBtn" style="background:#2b2d31; border:none; width:28px; height:28px; border-radius:50%; cursor:pointer;">✕</button>
+            </div>
+            <div style="padding:12px 20px; border-bottom:1px solid var(--border);">
+                <input type="file" id="fileInput" style="display:none;" multiple>
+                <button id="uploadFileBtn" style="background:var(--accent); border:none; padding:6px 16px; border-radius:20px; color:white; cursor:pointer;">📤 Upload File</button>
+                <span style="margin-left:10px; font-size:11px;">Files shared P2P with all participants</span>
+            </div>
+            <div class="file-list" id="fileListContainer">
+                <div style="text-align:center; padding:30px;">No files shared yet</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="treeStatsModal">
+        <div class="tree-stats-modal">
+            <div class="cabinet-header">
+                <h3>🌳 Relay Tree Structure</h3>
+                <button class="close-tree-stats" id="closeTreeStatsBtn" style="background:#2b2d31; border:none; width:28px; height:28px; border-radius:50%; cursor:pointer;">✕</button>
+            </div>
+            <div class="tree-stats-content" id="treeStatsContent">
+                <div style="text-align:center; padding:20px;">Loading tree structure...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== CONFIGURATION ====================
+        const MAX_TREE_DEPTH = 4;
+        const MAX_ORIGIN_CHILDREN = 6;
+        const MAX_RELAY_CHILDREN = 4;
+        const MAX_TOTAL_PARTICIPANTS = 500;
+        const BACKUP_PARENT_COUNT = 3;
+        const HEALTH_CHECK_INTERVAL = 10000;
+
+        const QUALITY_PROFILES = {
+            high: { 
+                label: "High", 
+                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
+                bitrate: 1500000 
+            },
+            medium: { 
+                label: "Medium", 
+                video: { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } }, 
+                bitrate: 800000 
+            },
+            low: { 
+                label: "Low", 
+                video: { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 15 } }, 
+                bitrate: 400000 
+            }
+        };
+
+        // ==================== GLOBAL VARIABLES ====================
+        let peer = null;
+        let localStream = null;
+        let connections = new Map(); // peerId -> { connection, call, stream, username, isTeacher, isRelay, level, parentId, children }
+        let isCameraActive = false;
+        let isAudioEnabled = true;
+        let isVideoEnabled = true;
+        let currentMainVideo = { type: 'local', peerId: null, label: 'Your Camera' };
+        
+        let screenShareStream = null;
+        let isScreenSharing = false;
+        let originalVideoTrack = null;
+        
+        // Tree structure variables
+        let nodeRole = null; // 'origin', 'relay', 'viewer'
+        let parentId = null;
+        let children = new Set();
+        let treeLevel = 0;
+        let originId = null;
+        let backupParents = [];
+        let currentQuality = 'medium';
+        let healthScore = 100;
+        
+        // Message structures
+        let globalMessages = [];
+        let dmMessages = new Map();
+        let dmTabs = new Map();
+        let activeChat = 'global';
+        let globalUnreadCount = 0;
+        
+        let sharedFiles = new Map();
+        
+        // DOM Elements
+        const mainVideo = document.getElementById('mainVideo');
+        const mainVideoLabel = document.getElementById('mainVideoLabel');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const videoControls = document.getElementById('videoControls');
+        const thumbnailsScroll = document.getElementById('thumbnailsScroll');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const chatTabsScroll = document.getElementById('chatTabsScroll');
+        const peerListEl = document.getElementById('peerList');
+        const peerCountSpan = document.getElementById('peerCount');
+        const peerCountSidebar = document.getElementById('peerCountSidebar');
+        const currentConnectionsSpan = document.getElementById('currentConnections');
+        const roomDisplaySpan = document.getElementById('roomDisplay');
+        const roomNameSpan = document.getElementById('roomNameSpan');
+        const teacherBadge = document.getElementById('teacherBadge');
+        const relayBadge = document.getElementById('relayBadge');
+        const mobileRoomName = document.getElementById('mobileRoomName');
+        const myPeerIdSpan = document.getElementById('myPeerId');
+        const connectionStatusSpan = document.getElementById('connectionStatus');
+        const currentUsernameSpan = document.getElementById('currentUsername');
+        const fileListContainer = document.getElementById('fileListContainer');
+        const reactionBar = document.getElementById('reactionBar');
+        const reactionToggleBtn = document.getElementById('reactionToggleBtn');
+        const screenShareHeaderBtn = document.getElementById('screenShareHeaderBtn');
+        const nodeRoleSpan = document.getElementById('nodeRole');
+        const treeLevelSpan = document.getElementById('treeLevel');
+        const childCountSpan = document.getElementById('childCount');
+        const qualityLevelSpan = document.getElementById('qualityLevel');
+
+        // ==================== HELPER FUNCTIONS ====================
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
+        }
+        
+        function getTime() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function generateMessageId() {
+            return Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+        }
+        
+        function canBeRelay() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const hasGoodCPU = navigator.hardwareConcurrency >= 4;
+            const connection = navigator.connection;
+            const hasGoodBandwidth = !connection || connection.downlink > 5;
+            return !isMobile && hasGoodCPU && hasGoodBandwidth;
+        }
+        
+        function addSystemMessage(msg) {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.style.opacity = '0.7';
+            div.innerHTML = `<div class="message-avatar">📚</div><div class="message-content"><div>${escapeHtml(msg)}</div></div>`;
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function updateTreeUI() {
+            nodeRoleSpan.textContent = nodeRole ? nodeRole.toUpperCase() : '-';
+            treeLevelSpan.textContent = treeLevel;
+            childCountSpan.textContent = children.size;
+            qualityLevelSpan.textContent = QUALITY_PROFILES[currentQuality]?.label || currentQuality;
+            
+            if (nodeRole === 'origin') {
+                teacherBadge.style.display = 'inline-block';
+                relayBadge.style.display = 'none';
+            } else if (nodeRole === 'relay') {
+                teacherBadge.style.display = 'none';
+                relayBadge.style.display = 'inline-block';
+            } else {
+                teacherBadge.style.display = 'none';
+                relayBadge.style.display = 'none';
+            }
+        }
+        
+        function updateConnectionCounter() {
+            const count = connections.size;
+            currentConnectionsSpan.textContent = count;
+            peerCountSpan.textContent = `👥 ${count}/${MAX_TOTAL_PARTICIPANTS}`;
+            peerCountSidebar.textContent = `${count}/${MAX_TOTAL_PARTICIPANTS}`;
+        }
+        
+        // ==================== QUALITY ADAPTATION ====================
+        async function adjustQuality() {
+            if (!localStream) return;
+            
+            // Determine quality based on position in tree
+            if (nodeRole === 'origin') {
+                currentQuality = 'high';
+            } else if (treeLevel === 1) {
+                currentQuality = 'high';
+            } else if (treeLevel === 2) {
+                currentQuality = 'medium';
+            } else {
+                currentQuality = 'low';
+            }
+            
+            const profile = QUALITY_PROFILES[currentQuality];
+            const videoTrack = localStream.getVideoTracks()[0];
+            
+            if (videoTrack) {
+                try {
+                    await videoTrack.applyConstraints(profile.video);
+                    addSystemMessage(`🎚️ Quality adjusted to ${profile.label} (Level ${treeLevel})`);
+                } catch (err) {
+                    console.warn('Quality adjustment failed', err);
+                }
+            }
+            
+            updateTreeUI();
+            
+            // Notify children of quality change
+            for (let childId of children) {
+                const childConn = connections.get(childId);
+                if (childConn && childConn.connection && childConn.connection.open) {
+                    childConn.connection.send({
+                        type: 'quality-update',
+                        quality: currentQuality,
+                        bitrate: profile.bitrate
+                    });
+                }
+            }
+        }
+        
+        // ==================== TREE MANAGEMENT ====================
+        function findBestParent() {
+            let bestParent = null;
+            let bestScore = -1;
+            
+            for (let [peerId, data] of connections) {
+                if (data.isRelay || data.isTeacher) {
+                    const maxChildren = data.isTeacher ? MAX_ORIGIN_CHILDREN : MAX_RELAY_CHILDREN;
+                    const childCount = data.children ? data.children.length : 0;
+                    
+                    if (childCount < maxChildren && data.level < MAX_TREE_DEPTH) {
+                        let score = 100;
+                        score -= childCount * 5;
+                        score -= data.level * 2;
+                        score += data.healthScore || 0;
+                        
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestParent = { peerId, data };
+                        }
+                    }
+                }
+            }
+            
+            return bestParent;
+        }
+        
+        async function assignToTree() {
+            if (nodeRole === 'origin') {
+                originId = peer.id;
+                nodeRole = 'origin';
+                treeLevel = 0;
+                addSystemMessage(`🎥 You are the ORIGIN node. Can support up to ${MAX_TOTAL_PARTICIPANTS} participants!`);
+                updateTreeUI();
+                return;
+            }
+            
+            const bestParent = findBestParent();
+            
+            if (bestParent) {
+                parentId = bestParent.peerId;
+                treeLevel = bestParent.data.level + 1;
+                
+                const conn = peer.connect(parentId);
+                
+                conn.on('open', () => {
+                    conn.send({
+                        type: 'tree-attach',
+                        childId: peer.id,
+                        childName: username,
+                        childRole: nodeRole,
+                        childLevel: treeLevel,
+                        canRelay: nodeRole === 'relay'
+                    });
+                    
+                    if (localStream && isCameraActive) {
+                        const call = peer.call(parentId, localStream, {
+                            metadata: { quality: currentQuality, level: treeLevel, role: nodeRole }
+                        });
+                        setupCall(call, parentId);
+                        connections.get(parentId).call = call;
+                    }
+                });
+                
+                connections.set(parentId, {
+                    connection: conn,
+                    call: null,
+                    stream: null,
+                    username: bestParent.data.username,
+                    isTeacher: bestParent.data.isTeacher,
+                    isRelay: bestParent.data.isRelay,
+                    level: bestParent.data.level,
+                    parentId: null,
+                    children: [],
+                    healthScore: 100
+                });
+                
+                addSystemMessage(`🔗 Attached to ${bestParent.data.username} at level ${treeLevel}`);
+            } else if (originId) {
+                addSystemMessage(`⚠️ No suitable parent found, connecting directly to origin`);
+                connectToPeer(originId);
+            } else {
+                addSystemMessage(`⚠️ Waiting for origin to become available...`);
+                setTimeout(() => assignToTree(), 3000);
+            }
+            
+            updateTreeUI();
+        }
+        
+        function handleTreeAttach(data, fromPeerId) {
+            const parent = connections.get(fromPeerId);
+            
+            if (!parent) {
+                addSystemMessage(`⚠️ Cannot attach: parent ${fromPeerId.substring(0, 8)} not found`);
+                return;
+            }
+            
+            const maxChildren = parent.isTeacher ? MAX_ORIGIN_CHILDREN : MAX_RELAY_CHILDREN;
+            
+            if (parent.children.length < maxChildren && parent.level < MAX_TREE_DEPTH) {
+                if (!parent.children) parent.children = [];
+                parent.children.push(data.childId);
+                connections.set(fromPeerId, parent);
+                
+                children.add(data.childId);
+                
+                const childNode = {
+                    connection: null,
+                    call: null,
+                    stream: null,
+                    username: data.childName,
+                    isTeacher: false,
+                    isRelay: data.childRole === 'relay',
+                    level: data.childLevel,
+                    parentId: fromPeerId,
+                    children: [],
+                    healthScore: 100
+                };
+                
+                connections.set(data.childId, childNode);
+                
+                const conn = connections.get(fromPeerId).connection;
+                if (conn && conn.open) {
+                    conn.send({
+                        type: 'tree-attach-ack',
+                        parentId: fromPeerId,
+                        childId: data.childId,
+                        accepted: true,
+                        parentLevel: parent.level,
+                        parentRole: parent.isTeacher ? 'origin' : 'relay'
+                    });
+                }
+                
+                addSystemMessage(`🔗 ${data.childName} attached as ${data.childRole} at level ${data.childLevel}`);
+                
+                if (localStream && isCameraActive && (nodeRole === 'relay' || nodeRole === 'origin')) {
+                    const call = peer.call(data.childId, localStream, {
+                        metadata: { quality: currentQuality, level: treeLevel, role: nodeRole }
+                    });
+                    setupCall(call, data.childId);
+                    const childData = connections.get(data.childId);
+                    if (childData) childData.call = call;
+                }
+            } else {
+                addSystemMessage(`⚠️ Cannot attach ${data.childName}: parent at capacity (${parent.children.length}/${maxChildren})`);
+                if (conn && conn.open) {
+                    conn.send({
+                        type: 'tree-attach-ack',
+                        parentId: fromPeerId,
+                        childId: data.childId,
+                        accepted: false,
+                        reason: 'capacity'
+                    });
+                }
+            }
+            
+            updateTreeUI();
+            renderUserList();
+        }
+        
+        function handleTreeAttachAck(data) {
+            if (data.accepted) {
+                addSystemMessage(`✅ Successfully attached to parent at level ${data.parentLevel + 1}`);
+                treeLevel = data.parentLevel + 1;
+                updateTreeUI();
+            } else {
+                addSystemMessage(`⚠️ Attachment rejected: ${data.reason || 'unknown'}. Retrying...`);
+                setTimeout(() => assignToTree(), 2000);
+            }
+        }
+        
+        async function findNewParent() {
+            const newParent = findBestParent();
+            
+            if (newParent && newParent.peerId !== parentId) {
+                addSystemMessage(`🔄 Attempting to reconnect to new parent...`);
+                
+                if (parentId) {
+                    const oldConn = connections.get(parentId);
+                    if (oldConn && oldConn.connection) {
+                        oldConn.connection.close();
+                    }
+                    connections.delete(parentId);
+                }
+                
+                parentId = newParent.peerId;
+                treeLevel = newParent.data.level + 1;
+                
+                const conn = peer.connect(parentId);
+                
+                conn.on('open', () => {
+                    conn.send({
+                        type: 'tree-attach',
+                        childId: peer.id,
+                        childName: username,
+                        childRole: nodeRole,
+                        childLevel: treeLevel,
+                        canRelay: nodeRole === 'relay'
+                    });
+                    
+                    if (localStream && isCameraActive) {
+                        const call = peer.call(parentId, localStream, {
+                            metadata: { quality: currentQuality, level: treeLevel, role: nodeRole }
+                        });
+                        setupCall(call, parentId);
+                        connections.get(parentId).call = call;
+                    }
+                });
+                
+                connections.set(parentId, {
+                    connection: conn,
+                    call: null,
+                    stream: null,
+                    username: newParent.data.username,
+                    isTeacher: newParent.data.isTeacher,
+                    isRelay: newParent.data.isRelay,
+                    level: newParent.data.level,
+                    parentId: null,
+                    children: [],
+                    healthScore: 100
+                });
+                
+                updateTreeUI();
+            }
+        }
+        
+        function monitorTreeHealth() {
+            setInterval(() => {
+                if (!peer || !peer.id) return;
+                
+                // Calculate health score
+                let newHealthScore = 100;
+                if (children.size > (nodeRole === 'origin' ? MAX_ORIGIN_CHILDREN * 0.8 : MAX_RELAY_CHILDREN * 0.8)) {
+                    newHealthScore -= 20;
+                }
+                newHealthScore -= treeLevel * 5;
+                newHealthScore -= children.size * 2;
+                healthScore = Math.max(0, newHealthScore);
+                
+                // Update health in connections
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({
+                            type: 'health-update',
+                            peerId: peer.id,
+                            healthScore: healthScore,
+                            childrenCount: children.size,
+                            level: treeLevel
+                        });
+                    }
+                }
+                
+                // Check if parent is unhealthy
+                if (parentId) {
+                    const parent = connections.get(parentId);
+                    if (parent && parent.healthScore < 30) {
+                        addSystemMessage(`⚠️ Parent node unhealthy, searching for new parent...`);
+                        findNewParent();
+                    }
+                }
+            }, HEALTH_CHECK_INTERVAL);
+        }
+        
+        function handleHealthUpdate(data) {
+            const peerData = connections.get(data.peerId);
+            if (peerData) {
+                peerData.healthScore = data.healthScore;
+                peerData.childrenCount = data.childrenCount;
+                peerData.level = data.level;
+                connections.set(data.peerId, peerData);
+            }
+        }
+        
+        // ==================== CALL MANAGEMENT ====================
+        function setupCall(call, peerId) {
+            call.on('stream', (remoteStream) => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = remoteStream;
+                    connections.set(peerId, data);
+                    renderThumbnails();
+                    
+                    if (currentMainVideo.type === 'local' && !currentMainVideo.stream) {
+                        setMainVideo('remote', remoteStream, data.username || peerId.substring(0, 8), peerId);
+                    }
+                }
+                
+                // Forward stream to children if we're a relay
+                if ((nodeRole === 'relay' || nodeRole === 'origin') && children.size > 0 && peerId === parentId) {
+                    forwardStreamToChildren(remoteStream);
+                }
+            });
+            
+            call.on('close', () => {
+                const data = connections.get(peerId);
+                if (data) {
+                    data.stream = null;
+                    connections.set(peerId, data);
+                    renderThumbnails();
+                }
+            });
+        }
+        
+        function forwardStreamToChildren(stream) {
+            for (let childId of children) {
+                const childData = connections.get(childId);
+                if (childData && childData.connection && childData.connection.open) {
+                    const call = peer.call(childId, stream, {
+                        metadata: { quality: currentQuality, level: treeLevel, isForwarded: true }
+                    });
+                    childData.call = call;
+                    connections.set(childId, childData);
+                    
+                    call.on('stream', (childStream) => {
+                        // Child is receiving stream
+                    });
+                }
+            }
+        }
+        
+        // ==================== VIDEO FUNCTIONS ====================
+        function setMainVideo(type, stream, label, peerId = null) {
+            currentMainVideo = { type, stream, label, peerId };
+            if (stream) {
+                mainVideo.srcObject = stream;
+                mainVideo.muted = (type === 'local');
+                mainVideoLabel.textContent = label;
+                videoPlaceholder.style.display = 'none';
+                videoControls.style.display = 'flex';
+                mainVideo.style.display = 'block';
+            } else {
+                videoPlaceholder.style.display = 'flex';
+                videoControls.style.display = 'none';
+                mainVideo.style.display = 'none';
+            }
+            renderThumbnails();
+        }
+        
+        function renderThumbnails() {
+            let html = '';
+            if (localStream && isCameraActive) {
+                const isActive = (currentMainVideo.type === 'local');
+                const label = isScreenSharing ? '🖥️ Screen Share' : '📹 You';
+                html += `<div class="thumbnail-item ${isActive ? 'active' : ''}" onclick="window.selectThumbnail('local', null, '${label}')">
+                            <video id="thumb_local" class="thumbnail-video" autoplay playsinline muted></video>
+                            <div class="thumbnail-label">${label}</div>
+                         </div>`;
+                setTimeout(() => { const thumb = document.getElementById('thumb_local'); if (thumb && localStream) thumb.srcObject = localStream; }, 50);
+            }
+            
+            for (let [peerId, data] of connections) {
+                if (data.stream) {
+                    const isActive = (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId);
+                    const displayName = data.username || peerId.substring(0, 8);
+                    const roleIcon = data.isTeacher ? '👨‍🏫' : (data.isRelay ? '🔄' : '👤');
+                    html += `<div class="thumbnail-item ${isActive ? 'active' : ''}" onclick="window.selectThumbnail('remote', '${escapeHtml(peerId)}', '${escapeHtml(displayName)}')">
+                                <video id="thumb_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}" class="thumbnail-video" autoplay playsinline></video>
+                                <div class="thumbnail-label">${roleIcon} ${escapeHtml(displayName)} (L${data.level})</div>
+                             </div>`;
+                    setTimeout(() => { 
+                        const thumb = document.getElementById(`thumb_${peerId.replace(/[^a-zA-Z0-9]/g, '_')}`); 
+                        if (thumb && data.stream) thumb.srcObject = data.stream; 
+                    }, 50);
+                }
+            }
+            
+            if (html === '') html = '<div style="padding:20px; text-align:center; color:#6b7280;">No active videos<br>Enable camera to start</div>';
+            thumbnailsScroll.innerHTML = html;
+        }
+        
+        window.selectThumbnail = function(type, peerId, label) {
+            if (type === 'local' && localStream && isCameraActive) {
+                setMainVideo('local', localStream, label);
+            } else if (type === 'remote' && peerId) {
+                const data = connections.get(peerId);
+                if (data && data.stream) setMainVideo('remote', data.stream, label, peerId);
+            }
+        };
+        
+        async function enableCamera() {
+            try {
+                const profile = QUALITY_PROFILES[currentQuality];
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: profile.video, 
+                    audio: true 
+                });
+                isCameraActive = true;
+                setMainVideo('local', localStream, isScreenSharing ? 'Screen Share' : 'Your Camera');
+                addSystemMessage('🎥 Camera enabled');
+                
+                document.getElementById('toggleAudioBtn').classList.add('active');
+                document.getElementById('toggleVideoBtn').classList.add('active');
+                
+                // Assign to tree after camera is enabled
+                if (nodeRole !== 'origin') {
+                    await assignToTree();
+                }
+                
+                // Start quality adjustment
+                adjustQuality();
+                setInterval(adjustQuality, 5000);
+                
+                renderUserList();
+            } catch(err) { 
+                addSystemMessage('❌ Camera access denied: ' + err.message); 
+            }
+        }
+        
+        function toggleAudio() {
+            if (!localStream) return;
+            const track = localStream.getAudioTracks()[0];
+            if (track) {
+                isAudioEnabled = !isAudioEnabled;
+                track.enabled = isAudioEnabled;
+                const btn = document.getElementById('toggleAudioBtn');
+                btn.textContent = isAudioEnabled ? '🎤' : '🔇';
+                btn.classList.toggle('active', isAudioEnabled);
+            }
+        }
+        
+        function toggleVideo() {
+            if (!localStream) return;
+            const track = localStream.getVideoTracks()[0];
+            if (track) {
+                isVideoEnabled = !isVideoEnabled;
+                track.enabled = isVideoEnabled;
+                const btn = document.getElementById('toggleVideoBtn');
+                btn.textContent = isVideoEnabled ? '📹' : '🚫';
+                btn.classList.toggle('active', isVideoEnabled);
+            }
+        }
+        
+        // ==================== SCREEN SHARE ====================
+        async function toggleScreenShare() {
+            if (nodeRole !== 'origin') { 
+                addSystemMessage('Only teachers (origin nodes) can share their screen.'); 
+                return; 
+            }
+            if (!isCameraActive) { 
+                addSystemMessage('Please enable your camera first.'); 
+                return; 
+            }
+            
+            if (!isScreenSharing) {
+                try {
+                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ 
+                        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: 30 }, 
+                        audio: true 
+                    });
+                    const videoTrack = localStream.getVideoTracks()[0];
+                    originalVideoTrack = videoTrack;
+                    const newVideoTrack = screenShareStream.getVideoTracks()[0];
+                    localStream.removeTrack(videoTrack);
+                    localStream.addTrack(newVideoTrack);
+                    isScreenSharing = true;
+                    screenShareHeaderBtn.classList.add('active');
+                    screenShareHeaderBtn.innerHTML = '🖥️ Stop Sharing';
+                    addSystemMessage('🖥️ You are now sharing your screen!');
+                    
+                    if (currentMainVideo.type === 'local') setMainVideo('local', localStream, 'Screen Share');
+                    
+                    for (let [peerId, data] of connections) {
+                        if (data.call && data.call.peerConnection) {
+                            const senders = data.call.peerConnection.getSenders();
+                            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                            if (videoSender) await videoSender.replaceTrack(newVideoTrack);
+                        }
+                    }
+                    
+                    screenShareStream.getVideoTracks()[0].onended = () => stopScreenShare();
+                } catch(err) { 
+                    addSystemMessage('❌ Failed to share screen.'); 
+                }
+            } else { 
+                stopScreenShare(); 
+            }
+        }
+        
+        async function stopScreenShare() {
+            if (!isScreenSharing) return;
+            if (originalVideoTrack && localStream) {
+                const screenTrack = localStream.getVideoTracks()[0];
+                localStream.removeTrack(screenTrack);
+                localStream.addTrack(originalVideoTrack);
+                for (let [peerId, data] of connections) {
+                    if (data.call && data.call.peerConnection) {
+                        const senders = data.call.peerConnection.getSenders();
+                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                        if (videoSender) await videoSender.replaceTrack(originalVideoTrack);
+                    }
+                }
+            }
+            if (screenShareStream) screenShareStream.getTracks().forEach(track => track.stop());
+            isScreenSharing = false;
+            originalVideoTrack = null;
+            screenShareHeaderBtn.classList.remove('active');
+            screenShareHeaderBtn.innerHTML = '🖥️ Share Screen';
+            if (currentMainVideo.type === 'local') setMainVideo('local', localStream, 'Your Camera');
+            addSystemMessage('🖥️ Screen sharing stopped.');
+        }
+        
+        // ==================== MESSAGE HANDLING ====================
+        function addMessageToUI(author, text, time, isDM = false, recipient = null, messageId = null, reactions = null) {
+            const div = document.createElement('div');
+            div.className = `message ${isDM ? 'dm' : ''}`;
+            div.setAttribute('data-message-id', messageId || '');
+            
+            const dmLabel = isDM && recipient ? ` → ${escapeHtml(recipient)}` : '';
+            let reactionsHtml = '';
+            
+            if (reactions) {
+                reactionsHtml = '<div class="message-reactions">';
+                for (let [emoji, users] of Object.entries(reactions)) {
+                    const count = users.length;
+                    const hasReacted = users.includes(username);
+                    reactionsHtml += `
+                        <span class="reaction-bubble ${hasReacted ? 'reacted' : ''}" data-emoji="${emoji}" style="${hasReacted ? 'background: var(--accent);' : ''}">
+                            ${emoji} ${count > 1 ? `<span class="reaction-count">${count}</span>` : ''}
+                        </span>
+                    `;
+                }
+                reactionsHtml += '</div>';
+            }
+            
+            div.innerHTML = `
+                <div class="message-avatar">${escapeHtml(author.substring(0,2).toUpperCase())}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${escapeHtml(author)}${dmLabel}</span>
+                        <span class="message-time">${escapeHtml(time)}</span>
+                        <button class="add-reaction-btn" onclick="event.stopPropagation(); window.showReactionPicker(this, '${messageId}')">😊</button>
+                    </div>
+                    <div class="message-text">${escapeHtml(text)}</div>
+                    ${reactionsHtml}
+                    <div class="message-reaction-picker" style="display: none;">
+                        <span class="reaction-picker-emoji" data-emoji="😊">😊</span>
+                        <span class="reaction-picker-emoji" data-emoji="👍">👍</span>
+                        <span class="reaction-picker-emoji" data-emoji="❤️">❤️</span>
+                        <span class="reaction-picker-emoji" data-emoji="🎉">🎉</span>
+                        <span class="reaction-picker-emoji" data-emoji="👏">👏</span>
+                        <span class="reaction-picker-emoji" data-emoji="😂">😂</span>
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Add reaction picker listeners
+            const picker = div.querySelector('.message-reaction-picker');
+            if (picker) {
+                picker.querySelectorAll('.reaction-picker-emoji').forEach(emojiBtn => {
+                    emojiBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const emoji = emojiBtn.getAttribute('data-emoji');
+                        const messageId = div.getAttribute('data-message-id');
+                        if (messageId) {
+                            addReactionToMessage(activeChat, messageId, emoji);
+                        }
+                        picker.style.display = 'none';
+                    });
+                });
+            }
+            
+            // Add reaction bubble listeners
+            div.querySelectorAll('.reaction-bubble').forEach(bubble => {
+                bubble.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const emoji = bubble.getAttribute('data-emoji');
+                    const messageId = div.getAttribute('data-message-id');
+                    if (messageId) {
+                        addReactionToMessage(activeChat, messageId, emoji);
+                    }
+                });
+            });
+        }
+        
+        function addReactionToMessage(chatId, messageId, emoji) {
+            let messages = chatId === 'global' ? globalMessages : dmMessages.get(chatId);
+            if (!messages) return;
+            
+            const message = messages.find(m => m.id === messageId);
+            if (message) {
+                if (!message.reactions) message.reactions = {};
+                if (!message.reactions[emoji]) message.reactions[emoji] = [];
+                
+                const userIndex = message.reactions[emoji].indexOf(username);
+                if (userIndex === -1) {
+                    message.reactions[emoji].push(username);
+                } else {
+                    message.reactions[emoji].splice(userIndex, 1);
+                    if (message.reactions[emoji].length === 0) {
+                        delete message.reactions[emoji];
+                    }
+                }
+                
+                if (chatId === 'global') {
+                    globalMessages = messages;
+                } else {
+                    dmMessages.set(chatId, messages);
+                }
+                
+                // Broadcast reaction to peers
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({
+                            type: 'message-reaction',
+                            chatId: chatId,
+                            messageId: messageId,
+                            emoji: emoji,
+                            user: username,
+                            action: userIndex === -1 ? 'add' : 'remove'
+                        });
+                    }
+                }
+                
+                renderMessages();
+            }
+        }
+        
+        window.showReactionPicker = function(btn, messageId) {
+            const picker = btn.closest('.message-content').querySelector('.message-reaction-picker');
+            if (picker) {
+                picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+                document.querySelectorAll('.message-reaction-picker').forEach(p => {
+                    if (p !== picker) p.style.display = 'none';
+                });
+                const closePicker = (e) => {
+                    if (!picker.contains(e.target) && e.target !== btn) {
+                        picker.style.display = 'none';
+                        document.removeEventListener('click', closePicker);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', closePicker), 100);
+            }
+        };
+        
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            if (activeChat === 'global') {
+                globalUnreadCount = 0;
+                updateUnreadCounters();
+                globalMessages.forEach(msg => {
+                    addMessageToUI(msg.author, msg.text, msg.time, false, null, msg.id, msg.reactions);
+                });
+                messageInput.placeholder = 'Message everyone...';
+            } else {
+                const msgs = dmMessages.get(activeChat) || [];
+                const peerUsername = connections.get(activeChat)?.username || activeChat.substring(0, 8);
+                if (dmTabs.has(activeChat)) {
+                    const tab = dmTabs.get(activeChat);
+                    tab.unreadCount = 0;
+                    dmTabs.set(activeChat, tab);
+                }
+                updateUnreadCounters();
+                msgs.forEach(msg => {
+                    addMessageToUI(msg.author, msg.text, msg.time, true, peerUsername, msg.id, msg.reactions);
+                });
+                messageInput.placeholder = `Message @${peerUsername} (DM)...`;
+            }
+            renderChatTabs();
+        }
+        
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            const time = getTime();
+            const messageId = generateMessageId();
+            
+            if (activeChat === 'global') {
+                const newMsg = { id: messageId, author: username, text, time, reactions: {} };
+                globalMessages.push(newMsg);
+                addMessageToUI(username, text, time, false, null, messageId, {});
+                
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({ type: 'chat', text: text, author: username, time: time, isGlobal: true, messageId: messageId });
+                    }
+                }
+            } else {
+                const peerId = activeChat;
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                const newMsg = { id: messageId, author: username, text, time, isDM: true, reactions: {} };
+                dmMessages.get(peerId).push(newMsg);
+                addMessageToUI(username, text, time, true, peerUsername, messageId, {});
+                
+                const connection = connections.get(peerId)?.connection;
+                if (connection && connection.open) {
+                    connection.send({ type: 'dm', text: text, author: username, time: time, to: peerId, messageId: messageId });
+                }
+            }
+            messageInput.value = '';
+        }
+        
+        function receiveMessage(peerId, data) {
+            const messageId = data.messageId || generateMessageId();
+            if (data.isGlobal) {
+                const newMsg = { id: messageId, author: data.author, text: data.text, time: data.time, reactions: {} };
+                globalMessages.push(newMsg);
+                if (activeChat === 'global') {
+                    addMessageToUI(data.author, data.text, data.time, false, null, messageId, {});
+                } else {
+                    globalUnreadCount++;
+                }
+            } else {
+                const peerUsername = connections.get(peerId)?.username || peerId.substring(0, 8);
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+                const newMsg = { id: messageId, author: data.author, text: data.text, time: data.time, isDM: true, reactions: {} };
+                dmMessages.get(peerId).push(newMsg);
+                
+                if (!dmTabs.has(peerId)) {
+                    dmTabs.set(peerId, { username: peerUsername, unreadCount: 1 });
+                    renderChatTabs();
+                } else if (activeChat !== peerId) {
+                    const tab = dmTabs.get(peerId);
+                    tab.unreadCount = (tab.unreadCount || 0) + 1;
+                    dmTabs.set(peerId, tab);
+                }
+                
+                if (activeChat === peerId) {
+                    addMessageToUI(data.author, data.text, data.time, true, peerUsername, messageId, {});
+                    const tab = dmTabs.get(peerId);
+                    if (tab) tab.unreadCount = 0;
+                }
+            }
+            updateUnreadCounters();
+            renderChatTabs();
+        }
+        
+        function receiveMessageReaction(peerId, data) {
+            let messages = data.chatId === 'global' ? globalMessages : dmMessages.get(data.chatId);
+            if (!messages) return;
+            
+            const message = messages.find(m => m.id === data.messageId);
+            if (message) {
+                if (!message.reactions) message.reactions = {};
+                if (!message.reactions[data.emoji]) message.reactions[data.emoji] = [];
+                
+                if (data.action === 'add') {
+                    if (!message.reactions[data.emoji].includes(data.user)) {
+                        message.reactions[data.emoji].push(data.user);
+                    }
+                } else {
+                    const idx = message.reactions[data.emoji].indexOf(data.user);
+                    if (idx !== -1) message.reactions[data.emoji].splice(idx, 1);
+                    if (message.reactions[data.emoji].length === 0) {
+                        delete message.reactions[data.emoji];
+                    }
+                }
+                
+                if (data.chatId === 'global') {
+                    globalMessages = messages;
+                } else {
+                    dmMessages.set(data.chatId, messages);
+                }
+                
+                if ((data.chatId === 'global' && activeChat === 'global') || activeChat === data.chatId) {
+                    renderMessages();
+                }
+            }
+        }
+        
+        function updateUnreadCounters() {
+            const tabs = document.querySelectorAll('.chat-tab');
+            tabs.forEach(tab => {
+                const chatType = tab.getAttribute('data-chat-type');
+                const peerId = tab.getAttribute('data-peer-id');
+                let unread = 0;
+                if (chatType === 'global') {
+                    unread = globalUnreadCount;
+                } else if (peerId) {
+                    unread = dmTabs.get(peerId)?.unreadCount || 0;
+                }
+                const existingBadge = tab.querySelector('.unread-badge');
+                if (unread > 0) {
+                    if (existingBadge) existingBadge.textContent = unread > 99 ? '99+' : unread;
+                    else {
+                        const badge = document.createElement('span');
+                        badge.className = 'unread-badge';
+                        badge.textContent = unread > 99 ? '99+' : unread;
+                        tab.appendChild(badge);
+                    }
+                } else if (existingBadge) {
+                    existingBadge.remove();
+                }
+            });
+        }
+        
+        function renderChatTabs() {
+            let html = `<div class="chat-tab ${activeChat === 'global' ? 'active' : ''}" data-chat-type="global" data-peer-id="">💬 Class Chat${globalUnreadCount > 0 ? `<span class="unread-badge">${globalUnreadCount > 99 ? '99+' : globalUnreadCount}</span>` : ''}</div>`;
+            for (let [peerId, data] of dmTabs) {
+                const displayName = data.username.length > 15 ? data.username.substring(0, 12) + '..' : data.username;
+                const unreadBadge = data.unreadCount > 0 ? `<span class="unread-badge">${data.unreadCount > 99 ? '99+' : data.unreadCount}</span>` : '';
+                html += `<div class="chat-tab ${activeChat === peerId ? 'active' : ''}" data-chat-type="dm" data-peer-id="${escapeHtml(peerId)}">💬 ${escapeHtml(displayName)}${unreadBadge}<span class="close-tab" data-peer-id="${escapeHtml(peerId)}">✕</span></div>`;
+            }
+            chatTabsScroll.innerHTML = html;
+            document.querySelectorAll('.chat-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('close-tab')) {
+                        e.stopPropagation();
+                        const peerId = e.target.getAttribute('data-peer-id');
+                        closeDMTab(peerId);
+                    } else {
+                        const chatType = tab.getAttribute('data-chat-type');
+                        if (chatType === 'global') {
+                            activeChat = 'global';
+                        } else {
+                            activeChat = tab.getAttribute('data-peer-id');
+                        }
+                        renderMessages();
+                        renderChatTabs();
+                    }
+                });
+            });
+        }
+        
+        function openDM(peerId, peerUsername) {
+            if (!dmTabs.has(peerId)) {
+                dmTabs.set(peerId, { username: peerUsername, unreadCount: 0 });
+                if (!dmMessages.has(peerId)) dmMessages.set(peerId, []);
+            }
+            activeChat = peerId;
+            renderMessages();
+            renderChatTabs();
+            setTimeout(() => {
+                const newTab = document.querySelector(`.chat-tab[data-peer-id="${peerId}"]`);
+                if (newTab) newTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }, 100);
+        }
+        
+        function closeDMTab(peerId) {
+            dmTabs.delete(peerId);
+            if (activeChat === peerId) {
+                activeChat = 'global';
+                renderMessages();
+            }
+            renderChatTabs();
+        }
+        
+        // ==================== FILE SHARING ====================
+        function renderFileList() {
+            if (sharedFiles.size === 0) { 
+                fileListContainer.innerHTML = '<div style="text-align:center; padding:30px;">📂 No files shared yet</div>'; 
+                return; 
+            }
+            let html = '';
+            for (let [fileId, file] of sharedFiles) {
+                const sizeKB = (file.size / 1024).toFixed(1);
+                html += `<div class="file-item">
+                            <div>
+                                <strong>${escapeHtml(file.name)}</strong><br>
+                                <small>${sizeKB} KB • ${escapeHtml(file.uploader)}</small>
+                            </div>
+                            <div>
+                                <button class="download-btn" onclick="window.downloadFile('${escapeHtml(fileId)}')">⬇️ Download</button>
+                                ${file.uploader === username ? `<button class="delete-btn" onclick="window.deleteFile('${escapeHtml(fileId)}')">🗑️ Delete</button>` : ''}
+                            </div>
+                         </div>`;
+            }
+            fileListContainer.innerHTML = html;
+        }
+        
+        function uploadFile(file) {
+            const reader = new FileReader();
+            const fileId = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            reader.onload = (e) => {
+                const fileData = e.target.result;
+                sharedFiles.set(fileId, { id: fileId, name: file.name, size: file.size, data: fileData, uploader: username, timestamp: Date.now() });
+                renderFileList();
+                addSystemMessage(`📤 Shared: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) {
+                        data.connection.send({ type: 'file-share', fileId: fileId, name: file.name, size: file.size, data: fileData, uploader: username });
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function receiveFile(fileData) {
+            if (!sharedFiles.has(fileData.fileId)) {
+                sharedFiles.set(fileData.fileId, { id: fileData.fileId, name: fileData.name, size: fileData.size, data: fileData.data, uploader: fileData.uploader, timestamp: Date.now() });
+                renderFileList();
+                addSystemMessage(`📥 New file: ${fileData.name} from ${fileData.uploader}`);
+            }
+        }
+        
+        function downloadFile(fileId) {
+            const file = sharedFiles.get(fileId);
+            if (file && file.data) {
+                const link = document.createElement('a');
+                link.href = file.data;
+                link.download = file.name;
+                link.click();
+                addSystemMessage(`⬇️ Downloading: ${file.name}`);
+            }
+        }
+        
+        function deleteFile(fileId) {
+            const file = sharedFiles.get(fileId);
+            if (file && file.uploader === username) {
+                sharedFiles.delete(fileId);
+                renderFileList();
+                addSystemMessage(`🗑️ Deleted: ${file.name}`);
+                for (let [peerId, data] of connections) {
+                    if (data.connection && data.connection.open) data.connection.send({ type: 'file-delete', fileId: fileId });
+                }
+            }
+        }
+        
+        window.downloadFile = downloadFile;
+        window.deleteFile = deleteFile;
+        
+        // ==================== REACTIONS ====================
+        function showReactionOnMainVideo(emoji) {
+            const overlay = document.createElement('div');
+            overlay.className = 'reaction-overlay';
+            overlay.textContent = emoji;
+            document.getElementById('mainVideoArea').appendChild(overlay);
+            setTimeout(() => overlay.remove(), 500);
+        }
+        
+        function sendReaction(emoji) {
+            showReactionOnMainVideo(emoji);
+            addSystemMessage(`✨ You sent ${emoji}`);
+            for (let [peerId, data] of connections) {
+                if (data.connection && data.connection.open) {
+                    data.connection.send({ type: 'reaction', emoji: emoji, sender: username });
+                }
+            }
+        }
+        
+        function receiveReaction(peerId, emoji, sender) {
+            if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === peerId) showReactionOnMainVideo(emoji);
+            addSystemMessage(`✨ ${sender} sent ${emoji}`);
+        }
+        
+        // ==================== TREE STATS ====================
+        function renderTreeStats() {
+            const content = document.getElementById('treeStatsContent');
+            let html = `<div style="padding: 10px;">
+                            <h4>🌳 Relay Tree Structure</h4>
+                            <p><strong>Your Role:</strong> ${nodeRole?.toUpperCase() || 'Unknown'}</p>
+                            <p><strong>Your Level:</strong> ${treeLevel}</p>
+                            <p><strong>Children Count:</strong> ${children.size}</p>
+                            <p><strong>Parent:</strong> ${parentId ? parentId.substring(0, 8) : 'None'}</p>
+                            <p><strong>Origin:</strong> ${originId ? originId.substring(0, 8) : 'Unknown'}</p>
+                            <p><strong>Health Score:</strong> ${healthScore}</p>
+                            <p><strong>Current Quality:</strong> ${QUALITY_PROFILES[currentQuality]?.label || currentQuality}</p>
+                            <hr style="margin: 15px 0; border-color: var(--border);">
+                            <h5>📊 Connected Nodes:</h5>`;
+            
+            for (let [peerId, data] of connections) {
+                const roleIcon = data.isTeacher ? '👨‍🏫' : (data.isRelay ? '🔄' : '👤');
+                html += `<div style="margin: 8px 0; padding: 8px; background: #2b2d31; border-radius: 8px;">
+                            <strong>${roleIcon} ${escapeHtml(data.username || peerId.substring(0, 8))}</strong><br>
+                            <small>Level: ${data.level || 0} | Children: ${data.children?.length || 0} | Health: ${data.healthScore || 100}</small>
+                         </div>`;
+            }
+            
+            if (connections.size === 0) {
+                html += `<p>No other nodes connected yet</p>`;
+            }
+            
+            html += `</div>`;
+            content.innerHTML = html;
+        }
+        
+        // ==================== PEER CONNECTION ====================
+        function connectToPeer(targetPeerId) {
+            if (connections.has(targetPeerId)) { 
+                addSystemMessage(`Already connected to ${targetPeerId.substring(0, 8)}`); 
+                return; 
+            }
+            if (targetPeerId === peer.id) { 
+                addSystemMessage(`Cannot connect to yourself`); 
+                return; 
+            }
+            if (connections.size >= MAX_TOTAL_PARTICIPANTS) { 
+                addSystemMessage(`⚠️ Max participants (${MAX_TOTAL_PARTICIPANTS}) reached`); 
+                return; 
+            }
+            
+            addSystemMessage(`Connecting to ${targetPeerId.substring(0, 8)}...`);
+            const conn = peer.connect(targetPeerId);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${targetPeerId.substring(0, 8)}`);
+                conn.send({ 
+                    type: 'username', 
+                    username: username, 
+                    isTeacher: nodeRole === 'origin',
+                    isRelay: nodeRole === 'relay',
+                    level: treeLevel,
+                    canRelay: nodeRole === 'relay'
+                });
+                
+                connections.set(targetPeerId, { 
+                    connection: conn, 
+                    call: null, 
+                    stream: null, 
+                    username: targetPeerId.substring(0, 8), 
+                    isTeacher: false,
+                    isRelay: false,
+                    level: 0,
+                    parentId: null,
+                    children: [],
+                    healthScore: 100
+                });
+                updateConnectionCounter();
+                
+                if (localStream && isCameraActive) {
+                    const call = peer.call(targetPeerId, localStream);
+                    setupCall(call, targetPeerId);
+                    connections.get(targetPeerId).call = call;
+                }
+                
+                renderUserList();
+                renderThumbnails();
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(targetPeerId);
+                    if (connData) {
+                        connData.username = data.username;
+                        connData.isTeacher = data.isTeacher;
+                        connData.isRelay = data.isRelay;
+                        connData.level = data.level;
+                        connections.set(targetPeerId, connData);
+                        renderUserList();
+                    }
+                } else if (data.type === 'file-share') receiveFile(data);
+                else if (data.type === 'file-delete') { 
+                    if (sharedFiles.has(data.fileId)) { 
+                        sharedFiles.delete(data.fileId); 
+                        renderFileList(); 
+                    } 
+                }
+                else if (data.type === 'chat' || data.type === 'dm') receiveMessage(targetPeerId, data);
+                else if (data.type === 'reaction') receiveReaction(targetPeerId, data.emoji, data.sender);
+                else if (data.type === 'message-reaction') receiveMessageReaction(targetPeerId, data);
+                else if (data.type === 'tree-attach') handleTreeAttach(data, targetPeerId);
+                else if (data.type === 'tree-attach-ack') handleTreeAttachAck(data);
+                else if (data.type === 'health-update') handleHealthUpdate(data);
+                else if (data.type === 'quality-update') {
+                    currentQuality = data.quality;
+                    updateTreeUI();
+                    addSystemMessage(`🎚️ Source quality changed to ${QUALITY_PROFILES[currentQuality]?.label}`);
+                }
+            });
+            
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${targetPeerId.substring(0, 8)}`);
+                if (parentId === targetPeerId) {
+                    parentId = null;
+                    addSystemMessage(`⚠️ Parent disconnected, searching for new parent...`);
+                    findNewParent();
+                }
+                if (children.has(targetPeerId)) {
+                    children.delete(targetPeerId);
+                    updateTreeUI();
+                }
+                connections.delete(targetPeerId);
+                updateConnectionCounter();
+                renderThumbnails();
+                renderUserList();
+                if (currentMainVideo.type === 'remote' && currentMainVideo.peerId === targetPeerId && localStream && isCameraActive) {
+                    setMainVideo('local', localStream, isScreenSharing ? 'Screen Share' : 'Your Camera');
+                }
+            });
+        }
+        
+        function handleIncomingConnection(conn) {
+            const peerId = conn.peer;
+            if (connections.size >= MAX_TOTAL_PARTICIPANTS) { 
+                addSystemMessage(`⚠️ Room full. Cannot accept connection from ${peerId.substring(0, 8)}`); 
+                conn.close(); 
+                return; 
+            }
+            
+            addSystemMessage(`📞 Incoming connection from ${peerId.substring(0, 8)}`);
+            
+            conn.on('open', () => {
+                addSystemMessage(`✅ Connected to ${peerId.substring(0, 8)}`);
+                connections.set(peerId, { 
+                    connection: conn, 
+                    call: null, 
+                    stream: null, 
+                    username: peerId.substring(0, 8), 
+                    isTeacher: false,
+                    isRelay: false,
+                    level: 0,
+                    parentId: null,
+                    children: [],
+                    healthScore: 100
+                });
+                updateConnectionCounter();
+                conn.send({ 
+                    type: 'username', 
+                    username: username, 
+                    isTeacher: nodeRole === 'origin',
+                    isRelay: nodeRole === 'relay',
+                    level: treeLevel,
+                    canRelay: nodeRole === 'relay'
+                });
+                renderUserList();
+                renderThumbnails();
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'username') {
+                    const connData = connections.get(peerId);
+                    if (connData) {
+                        connData.username = data.username;
+                        connData.isTeacher = data.isTeacher;
+                        connData.isRelay = data.isRelay;
+                        connData.level = data.level;
+                        connections.set(peerId, connData);
+                        renderUserList();
+                        
+                        // Auto-assign to tree if not origin
+                        if (nodeRole === 'origin' && !data.isTeacher && !connections.get(peerId).parentId) {
+                            setTimeout(() => {
+                                handleTreeAttach({
+                                    childId: peerId,
+                                    childName: data.username,
+                                    childRole: data.canRelay ? 'relay' : 'viewer',
+                                    childLevel: 1
+                                }, peerId);
+                            }, 500);
+                        }
+                    }
+                } else if (data.type === 'file-share') receiveFile(data);
+                else if (data.type === 'file-delete') { 
+                    if (sharedFiles.has(data.fileId)) { 
+                        sharedFiles.delete(data.fileId); 
+                        renderFileList(); 
+                    } 
+                }
+                else if (data.type === 'chat' || data.type === 'dm') receiveMessage(peerId, data);
+                else if (data.type === 'reaction') receiveReaction(peerId, data.emoji, data.sender);
+                else if (data.type === 'message-reaction') receiveMessageReaction(peerId, data);
+                else if (data.type === 'tree-attach') handleTreeAttach(data, peerId);
+                else if (data.type === 'tree-attach-ack') handleTreeAttachAck(data);
+                else if (data.type === 'health-update') handleHealthUpdate(data);
+                else if (data.type === 'quality-update') {
+                    currentQuality = data.quality;
+                    updateTreeUI();
+                }
+            });
+            
+            conn.on('close', () => {
+                addSystemMessage(`❌ Disconnected from ${peerId.substring(0, 8)}`);
+                if (children.has(peerId)) {
+                    children.delete(peerId);
+                    updateTreeUI();
+                }
+                connections.delete(peerId);
+                updateConnectionCounter();
+                renderThumbnails();
+                renderUserList();
+            });
+        }
+        
+        function handleIncomingCall(call) {
+            const peerId = call.peer;
+            if (localStream && isCameraActive) {
+                call.answer(localStream);
+                setupCall(call, peerId);
+                const connData = connections.get(peerId);
+                if (connData) connData.call = call;
+            } else { 
+                call.close(); 
+            }
+        }
+        
+        // ==================== USER INTERFACE ====================
+        function renderUserList() {
+            const currentUserListEl = document.getElementById('currentUserList');
+            if (currentUserListEl) {
+                const teacherBadgeHtml = nodeRole === 'origin' ? '<span class="teacher-badge" style="margin-left:6px;">👨‍🏫 Teacher</span>' : '';
+                const relayBadgeHtml = nodeRole === 'relay' ? '<span class="relay-badge" style="margin-left:6px;">🔄 Relay</span>' : '';
+                currentUserListEl.innerHTML = `<li class="user-item">
+                                                    <span class="online-dot"></span>
+                                                    <span>${escapeHtml(username)}${teacherBadgeHtml}${relayBadgeHtml}</span>
+                                                    <span class="you-badge">You (L${treeLevel})</span>
+                                                </li>`;
+            }
+            
+            const peerList = Array.from(connections.values());
+            if (peerListEl) {
+                if (peerList.length === 0) {
+                    peerListEl.innerHTML = '<li style="padding:16px;text-align:center;color:#6b7280;">No connected peers</li>';
+                } else {
+                    peerListEl.innerHTML = Array.from(connections.entries()).map(([peerId, data]) => {
+                        const unreadCount = dmTabs.get(peerId)?.unreadCount || 0;
+                        const unreadDot = unreadCount > 0 ? '<span class="unread-dot"></span>' : '';
+                        const roleIcon = data.isTeacher ? '👨‍🏫' : (data.isRelay ? '🔄' : '👤');
+                        return `<li class="user-item" data-peer-id="${escapeHtml(peerId)}">
+                                    <span class="online-dot"></span>
+                                    <span>${roleIcon} ${escapeHtml(data.username)} (L${data.level})</span>
+                                    <span class="dm-badge" onclick="openDM('${escapeHtml(peerId)}', '${escapeHtml(data.username)}')">💬 DM${unreadDot}</span>
+                                </li>`;
+                    }).join('');
+                }
+            }
+        }
+        
+        function copyPeerId() { 
+            if (peer && peer.id) { 
+                navigator.clipboard.writeText(peer.id); 
+                addSystemMessage('📋 Peer ID copied'); 
+            } 
+        }
+        
+        function leaveRoom() {
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            if (screenShareStream) screenShareStream.getTracks().forEach(t => t.stop());
+            if (peer) peer.destroy();
+            addSystemMessage('👋 Left classroom. Redirecting...');
+            setTimeout(() => {
+                window.location.href = window.location.pathname;
+            }, 1000);
+        }
+        
+        function scrollTabs(direction) { 
+            chatTabsScroll.scrollBy({ left: direction * 150, behavior: 'smooth' }); 
+        }
+        
+        function updateDisplay() {
+            roomNameSpan.textContent = roomName;
+            if (mobileRoomName) mobileRoomName.textContent = roomName;
+            currentUsernameSpan.textContent = username;
+            if (nodeRole === 'origin') {
+                teacherBadge.style.display = 'inline-block';
+                screenShareHeaderBtn.style.display = 'flex';
+            }
+        }
+        
+        // ==================== PEERJS INITIALIZATION ====================
+        function joinRoom() {
+            addSystemMessage(`📚 Joining classroom: ${roomName}...`);
+            peer = new Peer({ 
+                debug: 1, 
+                config: { 
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' }, 
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ] 
+                } 
+            });
+            
+            peer.on('open', (id) => {
+                connectionStatusSpan.textContent = 'Connected';
+                myPeerIdSpan.textContent = id;
+                addSystemMessage(`✅ Connected! Your ID: ${id}`);
+                addSystemMessage(`📚 Welcome to ${roomName} classroom! Max: ${MAX_TOTAL_PARTICIPANTS} participants using relay tree`);
+                
+                // Determine role
+                if (isTeacher) {
+                    nodeRole = 'origin';
+                    originId = id;
+                    addSystemMessage(`🎥 You are the ORIGIN node. Will distribute stream to up to ${MAX_TOTAL_PARTICIPANTS} participants!`);
+                    addSystemMessage(`👨‍🏫 You are the Teacher. Use the "Share Screen" button to present to the class.`);
+                } else if (canBeRelay()) {
+                    nodeRole = 'relay';
+                    addSystemMessage(`🔄 You are a RELAY node. Your device will help distribute the stream to others!`);
+                } else {
+                    nodeRole = 'viewer';
+                    addSystemMessage(`👁️ You are a VIEWER node. Receiving stream through the relay tree.`);
+                }
+                
+                updateTreeUI();
+                updateDisplay();
+            });
+            
+            peer.on('connection', handleIncomingConnection);
+            peer.on('call', handleIncomingCall);
+            peer.on('error', (err) => { 
+                addSystemMessage(`❌ Error: ${err.type}`); 
+                console.error(err);
+            });
+            
+            // Start health monitoring
+            setTimeout(monitorTreeHealth, 5000);
+        }
+        
+        // ==================== EVENT LISTENERS ====================
+        function initApp() {
+            updateDisplay();
+            
+            document.getElementById('enableCameraBtn')?.addEventListener('click', enableCamera);
+            document.getElementById('toggleAudioBtn')?.addEventListener('click', toggleAudio);
+            document.getElementById('toggleVideoBtn')?.addEventListener('click', toggleVideo);
+            document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
+            document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
+                const targetId = document.getElementById('peerIdInput').value.trim();
+                if (targetId) connectToPeer(targetId);
+            });
+            document.getElementById('copyPeerIdBtn')?.addEventListener('click', copyPeerId);
+            document.getElementById('leaveRoomBtn')?.addEventListener('click', leaveRoom);
+            screenShareHeaderBtn?.addEventListener('click', toggleScreenShare);
+            messageInput?.addEventListener('keydown', (e) => { 
+                if (e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    sendMessage(); 
+                } 
+            });
+            reactionToggleBtn?.addEventListener('click', () => {
+                const isVisible = reactionBar.style.display === 'flex';
+                reactionBar.style.display = isVisible ? 'none' : 'flex';
+            });
+            document.querySelectorAll('.reaction-emoji').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    sendReaction(btn.getAttribute('data-reaction'));
+                    reactionBar.style.display = 'none';
+                });
+            });
+            document.getElementById('scrollTabsLeft')?.addEventListener('click', () => scrollTabs(-1));
+            document.getElementById('scrollTabsRight')?.addEventListener('click', () => scrollTabs(1));
+            
+            const fileModal = document.getElementById('fileCabinetModal');
+            const fileStorageBtn = document.getElementById('fileStorageBtn');
+            const closeCabinetBtn = document.getElementById('closeCabinetBtn');
+            const uploadFileBtn = document.getElementById('uploadFileBtn');
+            const fileInputEl = document.getElementById('fileInput');
+            fileStorageBtn?.addEventListener('click', () => fileModal.classList.add('active'));
+            closeCabinetBtn?.addEventListener('click', () => fileModal.classList.remove('active'));
+            fileModal?.addEventListener('click', (e) => { if (e.target === fileModal) fileModal.classList.remove('active'); });
+            uploadFileBtn?.addEventListener('click', () => fileInputEl.click());
+            fileInputEl?.addEventListener('change', (e) => { 
+                Array.from(e.target.files).forEach(file => uploadFile(file)); 
+                fileInputEl.value = ''; 
+            });
+            
+            const treeStatsModal = document.getElementById('treeStatsModal');
+            const treeStatsBtn = document.getElementById('treeStatsBtn');
+            const closeTreeStatsBtn = document.getElementById('closeTreeStatsBtn');
+            treeStatsBtn?.addEventListener('click', () => {
+                renderTreeStats();
+                treeStatsModal.classList.add('active');
+            });
+            closeTreeStatsBtn?.addEventListener('click', () => treeStatsModal.classList.remove('active'));
+            treeStatsModal?.addEventListener('click', (e) => { if (e.target === treeStatsModal) treeStatsModal.classList.remove('active'); });
+            
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const sidebarEl = document.getElementById('sidebar');
+            const sidebarOverlayEl = document.getElementById('sidebarOverlay');
+            function openSidebar() { sidebarEl.classList.add('open'); sidebarOverlayEl.classList.add('active'); }
+            function closeSidebar() { sidebarEl.classList.remove('open'); sidebarOverlayEl.classList.remove('active'); }
+            hamburgerBtn?.addEventListener('click', openSidebar);
+            sidebarOverlayEl?.addEventListener('click', closeSidebar);
+            
+            addSystemMessage(`📚 Welcome to ${roomName} classroom, ${escapeHtml(username)}!`);
+            addSystemMessage(`📊 Max ${MAX_TOTAL_PARTICIPANTS} participants using adaptive relay tree`);
+            addSystemMessage(`📹 Enable camera to share video | Click thumbnails to switch main view`);
+            addSystemMessage(`😊 Click the reaction button (😊) to send emoji reactions!`);
+            addSystemMessage(`💬 Click DM on any participant to start private chat`);
+            addSystemMessage(`✨ Hover over any message and click 😊 to add reactions!`);
+            addSystemMessage(`🌳 The relay tree optimizes bandwidth - deeper nodes receive lower quality automatically`);
+            
+            renderMessages();
+            renderChatTabs();
+            renderFileList();
+            setTimeout(() => joinRoom(), 500);
+        }
+        
+        // ==================== JOIN VALIDATION ====================
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomName = urlParams.get('room');
+        let username = urlParams.get('username');
+        let isTeacher = urlParams.get('teacher') === '1';
+        
+        const joinOverlay = document.getElementById('joinOverlay');
+        const appContainer = document.getElementById('appContainer');
+        const joinBtn = document.getElementById('joinBtn');
+        const joinRoomInput = document.getElementById('joinRoomInput');
+        const joinUsernameInput = document.getElementById('joinUsernameInput');
+        const joinTeacherCheckbox = document.getElementById('joinTeacherCheckbox');
+        const roomError = document.getElementById('roomError');
+        const usernameError = document.getElementById('usernameError');
+        
+        function validateAndJoin() {
+            let isValid = true;
+            const roomValue = joinRoomInput.value.trim();
+            const usernameValue = joinUsernameInput.value.trim();
+            
+            roomError.style.display = 'none';
+            usernameError.style.display = 'none';
+            joinRoomInput.classList.remove('error');
+            joinUsernameInput.classList.remove('error');
+            
+            if (!roomValue) {
+                roomError.style.display = 'block';
+                joinRoomInput.classList.add('error');
+                isValid = false;
+            }
+            if (!usernameValue) {
+                usernameError.style.display = 'block';
+                joinUsernameInput.classList.add('error');
+                isValid = false;
+            }
+            
+            if (isValid) {
+                roomName = roomValue;
+                username = usernameValue;
+                isTeacher = joinTeacherCheckbox.checked;
+                
+                const newUrl = `${window.location.pathname}?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(username)}${isTeacher ? '&teacher=1' : ''}`;
+                window.history.replaceState({}, '', newUrl);
+                
+                joinOverlay.style.display = 'none';
+                appContainer.style.display = 'flex';
+                initApp();
+            }
+        }
+        
+        joinBtn.addEventListener('click', validateAndJoin);
+        joinRoomInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') validateAndJoin(); });
+        joinUsernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') validateAndJoin(); });
+        
+        if (roomName && username) {
+            joinOverlay.style.display = 'none';
+            appContainer.style.display = 'flex';
+            if (joinRoomInput) joinRoomInput.value = roomName;
+            if (joinUsernameInput) joinUsernameInput.value = username;
+            if (joinTeacherCheckbox) joinTeacherCheckbox.checked = isTeacher;
+            initApp();
+        } else {
+            if (roomName) joinRoomInput.value = roomName;
+            if (username) joinUsernameInput.value = username;
+            joinOverlay.style.display = 'flex';
+            appContainer.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
