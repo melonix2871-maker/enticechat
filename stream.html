@@ -4,69 +4,74 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EnticeChat - VDO.Ninja Broadcast</title>
+
+  <!-- Correct SDK include (2026 version) -->
   <script src="https://cdn.jsdelivr.net/gh/steveseguin/ninjasdk@latest/vdoninja-sdk.min.js"></script>
+
   <style>
     body { font-family: Arial, sans-serif; background:#111; color:#eee; text-align:center; margin:0; padding:20px; }
-    video { max-width:100%; width:100%; max-height:75vh; background:#000; border-radius:12px; margin:15px 0; }
-    button { padding:12px 24px; font-size:18px; margin:10px; border-radius:8px; cursor:pointer; }
+    video { max-width:100%; width:100%; max-height:78vh; background:#000; border-radius:12px; margin:15px 0; }
+    button { padding:14px 30px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
     .broadcaster { background:#e74c3c; color:white; }
     .viewer { background:#3498db; color:white; }
-    .info { margin:20px; padding:15px; background:#222; border-radius:10px; }
+    .info { margin:20px; padding:15px; background:#222; border-radius:10px; font-size:15px; }
   </style>
 </head>
 <body>
-  <h1>EnticeChat Live Broadcast (VDO.Ninja)</h1>
+  <h1>EnticeChat Live Broadcast (VDO.Ninja SDK)</h1>
 
   <div class="info">
-    <strong>Room:</strong> <span id="room">broadcast-demo</span><br>
-    <strong>Stream ID:</strong> <span id="streamId">broadcaster</span>
+    Room: <strong id="roomName">loading...</strong><br>
+    <span id="mode">Choose mode below</span>
   </div>
 
   <video id="video" autoplay playsinline controls></video>
 
   <div>
-    <button onclick="startBroadcast()" class="broadcaster">🎥 Start Broadcasting (I am Broadcaster)</button>
-    <button onclick="startViewer()" class="viewer">👁️ Join as Viewer</button>
+    <button onclick="startAsBroadcaster()" class="broadcaster">🎥 Start Broadcasting (I am the Broadcaster)</button>
+    <button onclick="startAsViewer()" class="viewer">👁️ Join as Viewer</button>
   </div>
 
   <script>
     let vdo = null;
-    const videoElement = document.getElementById('video');
+    const video = document.getElementById('video');
+    let room = "enticechat-" + Math.random().toString(36).substring(2, 10);
 
-    const ROOM = "enticechat-" + Math.random().toString(36).substring(2, 8); // Change this for each broadcast
-    document.getElementById('room').textContent = ROOM;
+    document.getElementById('roomName').textContent = room;
 
-    async function startBroadcast() {
-      vdo = new VdoNinja({
-        room: ROOM,
-        streamId: "broadcaster",
-        label: "Main Broadcaster"
+    async function startAsBroadcaster() {
+      document.getElementById('mode').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
+
+      vdo = new VDONinjaSDK({
+        room: room,
+        streamId: "main",
+        label: "Broadcaster"
       });
 
-      await vdo.startLocalStream({ video: true, audio: true });
+      await vdo.startLocalMedia({ video: true, audio: true });
+      vdo.attachLocalVideo(video);
 
-      vdo.attachLocalVideo(videoElement);
-
-      document.getElementById('streamId').textContent = "broadcaster (You are live)";
       console.log("Broadcast started. Share this page link with viewers.");
     }
 
-    function startViewer() {
-      vdo = new VdoNinja({
-        room: ROOM,
-        view: "broadcaster",        // View the broadcaster's stream
+    function startAsViewer() {
+      document.getElementById('mode').innerHTML = '<strong style="color:#3498db;">You are Viewer</strong>';
+
+      vdo = new VDONinjaSDK({
+        room: room,
+        view: "main",           // view the broadcaster's streamId
         label: "Viewer"
       });
 
-      vdo.on("stream", (stream) => {
-        videoElement.srcObject = stream;
+      vdo.on("stream", (stream, peer) => {
+        video.srcObject = stream;
         console.log("Connected to broadcaster");
       });
     }
 
-    // Auto-join as viewer if ?view=broadcaster in URL
+    // Auto viewer mode if URL has ?view
     if (window.location.search.includes("view")) {
-      startViewer();
+      startAsViewer();
     }
   </script>
 </body>
