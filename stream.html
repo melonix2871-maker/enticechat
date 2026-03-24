@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>EnticeChat Live · WebRTC Mesh P2P with Chat</title>
+  <title>EnticeChat Live · Your Own P2P HLS Server</title>
 
-  <!-- webConnect.js - Auto WebRTC Mesh, no signaling server needed! -->
+  <!-- HLS.js and p2p-hls for P2P video distribution -->
+  <script src="https://unpkg.com/hls.js@1.5.15/dist/hls.min.js"></script>
+  <script src="https://unpkg.com/webp2p-hls@latest/p2phls.js"></script>
+  
+  <!-- webConnect.js for signaling (no server needed!) -->
   <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
 
   <style>
@@ -58,17 +62,14 @@
       min-width: 300px;
     }
 
-    .chat-section {
+    .stats-section {
       flex: 1.2;
-      min-width: 280px;
+      min-width: 260px;
       background: rgba(10, 15, 25, 0.8);
       backdrop-filter: blur(12px);
       border-radius: 28px;
       border: 1px solid rgba(255,215,0,0.2);
-      display: flex;
-      flex-direction: column;
-      height: 70vh;
-      overflow: hidden;
+      padding: 20px;
     }
 
     .info-card {
@@ -97,8 +98,15 @@
       user-select: all;
     }
 
-    .room-badge:hover {
-      background: #2a3a4e;
+    .stream-url-input {
+      background: #0f172a;
+      padding: 8px 16px;
+      border-radius: 60px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      border: 1px solid #ffd966;
+      width: 300px;
+      text-align: center;
     }
 
     #status {
@@ -107,12 +115,6 @@
       border-radius: 60px;
       font-size: 0.85rem;
       font-weight: 500;
-    }
-
-    .video-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
     }
 
     .video-wrapper {
@@ -124,7 +126,7 @@
       border: 1px solid rgba(255,215,0,0.3);
     }
 
-    .video-wrapper video {
+    video {
       width: 100%;
       background: #0a0a0a;
       display: block;
@@ -171,133 +173,70 @@
       transform: scale(0.96);
     }
 
-    .broadcaster {
-      background: linear-gradient(95deg, #E63E2E, #C0392B);
-    }
-
-    .viewer {
+    .primary-btn {
       background: linear-gradient(95deg, #1F6392, #0E4A6E);
     }
 
-    .control-bar {
-      margin: 12px auto;
-      display: flex;
-      justify-content: center;
-      gap: 14px;
-      flex-wrap: wrap;
+    .broadcaster-btn {
+      background: linear-gradient(95deg, #E63E2E, #C0392B);
     }
 
-    .small-btn {
-      padding: 8px 18px;
-      font-size: 0.85rem;
-      background: #2a2f3f;
-      gap: 6px;
-    }
-
-    .danger-btn {
-      background: #7f2a2a;
-    }
-
-    /* Chat Styles */
-    .chat-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      font-weight: 600;
-      background: rgba(0,0,0,0.3);
-    }
-
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
+    .stat-card {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
       padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      margin: 12px 0;
+      text-align: center;
     }
 
-    .message {
-      display: flex;
-      flex-direction: column;
-      animation: fadeIn 0.2s ease;
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ffd966;
     }
 
-    .message.own {
-      align-items: flex-end;
-    }
-
-    .message-bubble {
-      max-width: 85%;
-      padding: 8px 14px;
-      border-radius: 18px;
-      background: rgba(30, 40, 60, 0.9);
-      word-wrap: break-word;
-    }
-
-    .message.own .message-bubble {
-      background: linear-gradient(135deg, #E63E2E, #C0392B);
-    }
-
-    .message-name {
-      font-size: 0.7rem;
+    .stat-label {
+      font-size: 0.75rem;
       opacity: 0.7;
-      margin-bottom: 4px;
-      margin-left: 12px;
-    }
-
-    .message.own .message-name {
-      text-align: right;
-      margin-right: 12px;
-      margin-left: 0;
-    }
-
-    .message-text {
-      font-size: 0.9rem;
-      line-height: 1.4;
-    }
-
-    .message-time {
-      font-size: 0.6rem;
-      opacity: 0.5;
       margin-top: 4px;
-      margin-left: 12px;
     }
 
-    .chat-input-area {
-      padding: 16px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      display: flex;
-      gap: 10px;
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #2c3e50;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
     }
 
-    .chat-input {
-      flex: 1;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 40px;
-      background: rgba(20, 30, 45, 0.9);
-      color: white;
-      font-size: 0.9rem;
-      outline: none;
-    }
-
-    .chat-input:focus {
-      border: 1px solid #ffb347;
-    }
-
-    .send-btn {
-      padding: 10px 20px;
-      background: #ffb347;
-      color: #1a1a2e;
-      border-radius: 40px;
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ffb347, #ff6b6b);
+      width: 0%;
+      transition: width 0.3s;
     }
 
     .peers-list {
-      margin: 10px auto;
-      padding: 8px 16px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 40px;
-      display: inline-flex;
-      gap: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .peer-badge {
+      background: #1e2a3e;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-family: monospace;
+    }
+
+    .config-box {
+      background: rgba(0,0,0,0.4);
+      border-radius: 16px;
+      padding: 12px;
+      margin-top: 12px;
       font-size: 0.75rem;
     }
 
@@ -321,11 +260,6 @@
       vertical-align: middle;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
     @keyframes pulse {
       0% { opacity: 0.4; transform: scale(0.8); }
       100% { opacity: 1; transform: scale(1.2); }
@@ -333,190 +267,149 @@
 
     @media (max-width: 768px) {
       .main-layout { flex-direction: column; }
-      .chat-section { height: 40vh; }
+      .stream-url-input { width: 100%; }
     }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">WebRTC Mesh P2P · Live Chat · GitHub Pages Ready</div>
+  <div class="sub">Your Own RTMP → HLS Server · P2P CDN Powered by webConnect.js</div>
 
   <div class="info-card">
-    <span>🔗 Channel:</span>
-    <span class="room-badge" id="channelDisplay">enticechat-live</span>
-    <span id="status">⚡ Choose your role</span>
-    <span class="peers-list" style="margin:0;">👥 Peers: <span id="peerCount">0</span></span>
+    <span>🔗 P2P Channel:</span>
+    <span class="room-badge" id="channelDisplay">enticechat-p2p</span>
+    <span id="status">⚡ Enter your HLS URL</span>
   </div>
 
   <div class="main-layout">
     <div class="video-section">
-      <div class="video-grid">
-        <div class="video-wrapper" id="localVideoWrapper" style="display: none;">
-          <video id="localVideo" autoplay playsinline muted></video>
-          <div class="video-label" id="localVideoLabel">📹 You (Broadcaster)</div>
-        </div>
-        <div id="remoteVideosContainer"></div>
+      <div class="video-wrapper">
+        <video id="video" controls autoplay playsinline></video>
+        <div class="video-label">🎬 Live Stream (P2P Enhanced)</div>
+      </div>
+
+      <div class="config-box">
+        <div style="margin-bottom: 8px;">📡 Your HLS Stream URL:</div>
+        <input type="text" id="streamUrlInput" class="stream-url-input" placeholder="http://localhost:8080/hls/enticechat.m3u8" value="http://localhost:8080/hls/enticechat.m3u8">
+        <div style="font-size: 0.7rem; margin-top: 6px;">💡 After starting OBS broadcast, click "Start P2P Streaming"</div>
       </div>
 
       <div class="button-group">
-        <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
-        <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
+        <button id="playBtn" class="primary-btn">▶️ Start P2P Streaming</button>
+        <button id="reconnectBtn" class="primary-btn">🔄 Reconnect</button>
       </div>
 
-      <div class="control-bar" id="controlBar" style="display: none;">
-        <button id="stopBroadcastBtn" class="small-btn danger-btn">🔴 Stop</button>
-        <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
-        <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
+      <div class="config-box">
+        <strong>🎥 For Broadcasters (OBS Setup):</strong><br>
+        Server: <code>rtmp://localhost/live</code><br>
+        Stream Key: <code>enticechat</code><br>
+        <span style="color:#ffd966;">→ Then start streaming in OBS</span>
       </div>
     </div>
 
-    <div class="chat-section">
-      <div class="chat-header">
-        💬 Live Chat <span id="chatRoleBadge"></span>
+    <div class="stats-section">
+      <h3 style="margin:0 0 12px 0;">📊 P2P Stats</h3>
+      
+      <div class="stat-card">
+        <div class="stat-number" id="peerCount">0</div>
+        <div class="stat-label">Connected Peers (via webConnect)</div>
+        <div class="peers-list" id="peersList"></div>
       </div>
-      <div class="chat-messages" id="chatMessages">
-        <div class="message">
-          <div class="message-bubble" style="background:#2c3e50;">✨ Welcome! Messages appear here.</div>
+
+      <div class="stat-card">
+        <div class="stat-number" id="p2pPercent">0%</div>
+        <div class="stat-label">Data from Peers (P2P)</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="p2pProgress"></div>
         </div>
       </div>
-      <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500">
-        <button id="sendChatBtn" class="send-btn">📤 Send</button>
+
+      <div class="stat-card">
+        <div class="stat-number" id="httpBytes">0 MB</div>
+        <div class="stat-label">From Your Server</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-number" id="p2pBytes">0 MB</div>
+        <div class="stat-label">From Peers (P2P)</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-number" id="totalBytes">0 MB</div>
+        <div class="stat-label">Total Downloaded</div>
       </div>
     </div>
   </div>
 
   <div class="footer-note">
-    🔒 <strong>webConnect.js</strong> · Auto WebRTC mesh using public torrent trackers & nostr relays<br>
-    💬 Use URL params: <code>?broadcast&name=YourName</code> or <code>?view&name=YourName</code> to set your display name.<br>
-    📡 Only broadcaster can share video; viewers watch & chat.
+    🔒 <strong>nginx-rtmp-hls + webConnect.js + p2p-hls</strong><br>
+    📡 Broadcast: OBS → RTMP → NGINX → HLS → Viewers<br>
+    💡 Viewers automatically share video chunks! The more viewers, the less load on your server.
   </div>
 </div>
 
 <script>
   // ======================= CONFIGURATION =======================
-  const CHANNEL = "enticechat-live";
+  const DEFAULT_STREAM_URL = "http://localhost:8080/hls/enticechat.m3u8";
+  const CHANNEL = "enticechat-p2p";
   
-  // Get name from URL param
-  const urlParams = new URLSearchParams(window.location.search);
-  let myName = urlParams.get('name') || `User_${Math.floor(Math.random() * 1000)}`;
-  let myRole = null; // 'broadcaster' or 'viewer'
-  
-  let webConnect = null;
-  let localStream = null;
-  let isBroadcasting = false;
-  let myConnectId = null;
-  let activeRemoteStreams = new Map();
+  let p2phls = null;
+  let hls = null;
+  let signaling = null;
+  let isPlaying = false;
+  let peerList = new Map();
+  let totalHttp = 0;
+  let totalP2p = 0;
+  let currentStreamUrl = DEFAULT_STREAM_URL;
   
   // DOM elements
+  const video = document.getElementById('video');
   const statusSpan = document.getElementById('status');
-  const startBroadcastBtn = document.getElementById('startBroadcastBtn');
-  const joinViewerBtn = document.getElementById('joinViewerBtn');
-  const controlBar = document.getElementById('controlBar');
-  const stopBroadcastBtn = document.getElementById('stopBroadcastBtn');
-  const muteMicBtn = document.getElementById('muteMicBtn');
-  const toggleCamBtn = document.getElementById('toggleCamBtn');
-  const localVideoWrapper = document.getElementById('localVideoWrapper');
-  const localVideo = document.getElementById('localVideo');
-  const localVideoLabel = document.getElementById('localVideoLabel');
-  const remoteVideosContainer = document.getElementById('remoteVideosContainer');
   const peerCountSpan = document.getElementById('peerCount');
+  const peersListDiv = document.getElementById('peersList');
+  const p2pPercentSpan = document.getElementById('p2pPercent');
+  const p2pProgressFill = document.getElementById('p2pProgress');
+  const httpBytesSpan = document.getElementById('httpBytes');
+  const p2pBytesSpan = document.getElementById('p2pBytes');
+  const totalBytesSpan = document.getElementById('totalBytes');
+  const playBtn = document.getElementById('playBtn');
+  const reconnectBtn = document.getElementById('reconnectBtn');
   const channelDisplay = document.getElementById('channelDisplay');
-  const chatMessages = document.getElementById('chatMessages');
-  const chatInput = document.getElementById('chatInput');
-  const sendChatBtn = document.getElementById('sendChatBtn');
-  const chatRoleBadge = document.getElementById('chatRoleBadge');
+  const streamUrlInput = document.getElementById('streamUrlInput');
   
-  // Helper: format time
-  function getTime() {
-    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Helper: format bytes to MB
+  function formatBytes(bytes) {
+    return (bytes / (1024 * 1024)).toFixed(1);
   }
   
-  // Add message to chat UI
-  function addMessageToUI(senderName, message, isOwn = false, senderId = null) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${isOwn ? 'own' : ''}`;
-    messageDiv.innerHTML = `
-      <div class="message-name">${escapeHtml(senderName)}</div>
-      <div class="message-bubble">
-        <div class="message-text">${escapeHtml(message)}</div>
-      </div>
-      <div class="message-time">${getTime()}</div>
-    `;
-    chatMessages.appendChild(messageDiv);
-    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  // Update statistics display
+  function updateStats() {
+    const total = totalHttp + totalP2p;
+    const p2pPercent = total > 0 ? (totalP2p / total * 100).toFixed(1) : 0;
     
-    // Keep only last 200 messages
-    while (chatMessages.children.length > 200) {
-      chatMessages.removeChild(chatMessages.firstChild);
+    p2pPercentSpan.innerText = `${p2pPercent}%`;
+    p2pProgressFill.style.width = `${p2pPercent}%`;
+    httpBytesSpan.innerText = `${formatBytes(totalHttp)} MB`;
+    p2pBytesSpan.innerText = `${formatBytes(totalP2p)} MB`;
+    totalBytesSpan.innerText = `${formatBytes(total)} MB`;
+  }
+  
+  // Update peers list display
+  function updatePeersList() {
+    const peerIds = Array.from(peerList.keys());
+    peerCountSpan.innerText = peerIds.length;
+    
+    if (peerIds.length === 0) {
+      peersListDiv.innerHTML = '<span style="opacity:0.5;">No peers connected yet</span>';
+    } else {
+      peersListDiv.innerHTML = peerIds.map(id => 
+        `<div class="peer-badge">👤 ${id.slice(0, 8)}</div>`
+      ).join('');
     }
   }
   
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-      return c;
-    });
-  }
-  
-  // Send chat message via P2P
-  function sendChatMessage(message) {
-    if (!message.trim()) return;
-    if (!webConnect) {
-      addMessageToUI("System", "Not connected to any peers", false);
-      return;
-    }
-    
-    const chatData = {
-      type: 'chat',
-      senderName: myName,
-      message: message.trim(),
-      timestamp: Date.now(),
-      senderRole: myRole
-    };
-    
-    // Send to all connected peers (null = broadcast to all)
-    webConnect.Send(JSON.stringify(chatData), { connectId: null });
-    
-    // Show own message immediately
-    addMessageToUI(myName, message.trim(), true);
-    chatInput.value = '';
-  }
-  
-  // Handle incoming P2P data
-  function handleReceiveData(data, attribute) {
-    try {
-      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-      if (parsed.type === 'chat') {
-        addMessageToUI(parsed.senderName, parsed.message, false, attribute.connectId);
-      } else if (parsed.type === 'peerInfo') {
-        // Handle peer info if needed
-        console.log("Peer info received:", parsed);
-      }
-    } catch (e) {
-      // Not JSON, ignore
-      console.log("Non-JSON data received");
-    }
-  }
-  
-  // Broadcast peer info (name and role) to new peers
-  function sendPeerInfo(targetId = null) {
-    if (!webConnect) return;
-    const info = {
-      type: 'peerInfo',
-      name: myName,
-      role: myRole,
-      connectId: myConnectId
-    };
-    webConnect.Send(JSON.stringify(info), { connectId: targetId });
-  }
-  
+  // Set status message
   function setStatusMessage(message, isError = false, isLive = false) {
     if (isLive) {
       statusSpan.innerHTML = `<span class="live-pulse"></span>${message}`;
@@ -526,303 +419,223 @@
     statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
   }
   
-  function updatePeersDisplay(count) {
-    peerCountSpan.innerText = count;
-  }
-  
-  function updateRemoteVideo(connectId, stream, metadata) {
-    let videoWrapper = document.getElementById(`remote_${connectId}`);
-    if (!videoWrapper && stream) {
-      videoWrapper = document.createElement('div');
-      videoWrapper.className = 'video-wrapper';
-      videoWrapper.id = `remote_${connectId}`;
-      const videoEl = document.createElement('video');
-      videoEl.id = `video_${connectId}`;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-      videoEl.controls = true;
-      const label = document.createElement('div');
-      label.className = 'video-label';
-      label.id = `label_${connectId}`;
-      label.innerText = `👤 Viewer`;
-      videoWrapper.appendChild(videoEl);
-      videoWrapper.appendChild(label);
-      remoteVideosContainer.appendChild(videoWrapper);
-    }
+  // ==================== WEB CONNECT SIGNALING ====================
+  function initSignaling() {
+    console.log("Initializing webConnect signaling...");
     
-    if (stream && videoWrapper) {
-      const videoEl = document.getElementById(`video_${connectId}`);
-      if (videoEl && videoEl.srcObject !== stream) {
-        videoEl.srcObject = stream;
-        videoEl.play().catch(e => console.log("autoplay blocked"));
+    signaling = webconnect({
+      appName: "EnticeChat-P2P",
+      channelName: CHANNEL
+    });
+    
+    signaling.getMyId((attr) => {
+      console.log("My peer ID:", attr.connectId);
+      setStatusMessage(`✅ Connected to P2P network · ${currentStreamUrl ? 'Ready' : 'Enter stream URL'}`, false);
+    });
+    
+    signaling.onConnect((attribute) => {
+      console.log("✅ New peer connected:", attribute.connectId);
+      peerList.set(attribute.connectId, { connected: true });
+      updatePeersList();
+      setStatusMessage(`📡 ${peerList.size} peer(s) connected · P2P sharing active`, false);
+    });
+    
+    signaling.onDisconnect((attribute) => {
+      console.log("👋 Peer disconnected:", attribute.connectId);
+      peerList.delete(attribute.connectId);
+      updatePeersList();
+      setStatusMessage(`📡 ${peerList.size} peer(s) connected`, false);
+    });
+    
+    // Update peer count periodically
+    setInterval(() => {
+      if (signaling) {
+        signaling.getConnection((attr) => {
+          const connections = attr.connection || [];
+          if (connections.length !== peerList.size) {
+            peerList.clear();
+            connections.forEach(conn => peerList.set(conn, { connected: true }));
+            updatePeersList();
+          }
+        });
       }
-      activeRemoteStreams.set(connectId, stream);
-    } else if (!stream && videoWrapper) {
-      videoWrapper.remove();
-      activeRemoteStreams.delete(connectId);
+    }, 5000);
+  }
+  
+  // ==================== P2P-HLS SETUP ====================
+  async function initP2PHls(streamUrl) {
+    if (!Hls.isSupported()) {
+      setStatusMessage("❌ HLS not supported in this browser", true);
+      return false;
     }
-  }
-  
-  function clearAllRemoteVideos() {
-    remoteVideosContainer.innerHTML = '';
-    activeRemoteStreams.clear();
-  }
-  
-  // ==================== BROADCASTER LOGIC ====================
-  async function startBroadcaster() {
-    if (isBroadcasting) return;
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    myRole = 'broadcaster';
-    chatRoleBadge.innerHTML = '🎙️ Broadcaster';
     
-    setStatusMessage("🎙️ Requesting camera & microphone...");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
-        audio: { echoCancellation: true, noiseSuppression: true }
+      setStatusMessage(`🎬 Loading stream: ${streamUrl}`);
+      
+      // Create p2p-hls instance
+      p2phls = new P2Phls(streamUrl);
+      
+      // Get HLS.js instance
+      hls = p2phls.getHlsPlayer();
+      
+      // Listen for byte change events (traffic stats)
+      p2phls.on('bytechange', (data) => {
+        totalHttp = data.http || 0;
+        totalP2p = data.p2p || 0;
+        updateStats();
       });
       
-      localStream = stream;
-      localVideo.srcObject = stream;
-      localVideoWrapper.style.display = "block";
-      localVideoLabel.innerText = `🎙️ ${myName} (Broadcaster)`;
-      
-      setStatusMessage("🟡 Connecting to P2P mesh network...");
-      
-      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
-      
-      webConnect.getMyId((attr) => {
-        myConnectId = attr.connectId;
-        setStatusMessage("🔴 Broadcasting LIVE", false, true);
-        isBroadcasting = true;
-        controlBar.style.display = "flex";
-        updateBroadcasterUI();
+      // Listen for peer changes
+      p2phls.on('peers', (num, peer) => {
+        console.log(`P2P internal peers: ${num}`);
       });
       
-      webConnect.onConnect(async (attribute) => {
-        console.log("✅ Peer connected:", attribute.connectId);
-        setStatusMessage(`📡 Peer joined`, false);
-        
-        if (localStream && isBroadcasting) {
-          webConnect.openStreaming(localStream, { 
-            connectId: attribute.connectId,
-            metadata: { name: myName, role: "broadcaster" }
-          });
+      // Attach to video
+      hls.attachMedia(video);
+      
+      // Handle HLS errors
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          console.error("HLS fatal error:", data);
+          setStatusMessage("⚠️ Stream error - Check if OBS is broadcasting", true);
         }
-        
-        // Send peer info and also request their info
-        sendPeerInfo(attribute.connectId);
-        
-        webConnect.getConnection((connAttr) => {
-          updatePeersDisplay(connAttr.connection?.length || 0);
-        });
       });
       
-      webConnect.onDisconnect((attribute) => {
-        console.log("👋 Peer disconnected:", attribute.connectId);
-        updateRemoteVideo(attribute.connectId, null);
-        webConnect.getConnection((connAttr) => {
-          updatePeersDisplay(connAttr.connection?.length || 0);
-        });
-        addMessageToUI("System", `A viewer left the room`, false);
+      // On manifest loaded
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("HLS manifest loaded, playing...");
+        setStatusMessage("✅ LIVE · P2P CDN Active", false, true);
+        video.play().catch(e => console.log("Autoplay prevented:", e));
       });
       
-      webConnect.onStreaming((stream, attribute) => {
-        // Viewers don't broadcast video, but just in case
-        console.log("Received stream from:", attribute.connectId);
-      });
+      // Load the stream
+      hls.loadSource(streamUrl);
       
-      webConnect.onReceive((data, attribute) => {
-        handleReceiveData(data, attribute);
-      });
-      
-      webConnect.getConnection((connAttr) => {
-        updatePeersDisplay(connAttr.connection?.length || 0);
-      });
-      
-      addMessageToUI("System", `You are now LIVE as "${myName}". Viewers can join and chat!`, false);
+      return true;
       
     } catch (err) {
-      console.error("Broadcaster error:", err);
-      setStatusMessage(`❌ Failed: ${err.message.slice(0, 80)}`, true);
-      await stopBroadcasting();
+      console.error("P2P-HLS init error:", err);
+      setStatusMessage(`❌ Failed: ${err.message}`, true);
+      return false;
     }
   }
   
-  function updateBroadcasterUI() {
-    if (!localStream) return;
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
-    const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+  // Bridge webConnect with p2p-hls
+  function bridgeSignalingToP2P() {
+    if (!signaling || !p2phls) return;
+    
+    signaling.onConnect(async (attribute) => {
+      const peerId = attribute.connectId;
+      console.log(`Bridging: New peer ${peerId} for video P2P`);
+      if (p2phls && p2phls.addPeer) p2phls.addPeer(peerId);
+    });
+    
+    signaling.onDisconnect((attribute) => {
+      const peerId = attribute.connectId;
+      if (p2phls && p2phls.removePeer) p2phls.removePeer(peerId);
+    });
   }
   
-  async function stopBroadcasting() {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
+  // ==================== MAIN INITIALIZATION ====================
+  async function startP2PStreaming() {
+    if (isPlaying) {
+      stopP2PStreaming();
     }
-    localVideo.srcObject = null;
-    localVideoWrapper.style.display = "none";
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    isBroadcasting = false;
-    controlBar.style.display = "none";
-    setStatusMessage("⏹️ Broadcast ended");
-    peerCountSpan.innerText = "0";
-    myRole = null;
-    chatRoleBadge.innerHTML = '';
-  }
-  
-  function toggleMute() {
-    if (!isBroadcasting || !localStream) return;
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
-      setStatusMessage(`🔴 ${audioTrack.enabled ? "Mic active" : "Mic muted"}`, false, true);
-    }
-  }
-  
-  function toggleCamera() {
-    if (!isBroadcasting || !localStream) return;
-    const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
-      setStatusMessage(`🔴 ${videoTrack.enabled ? "Camera on" : "Camera paused"}`, false, true);
-    }
-  }
-  
-  // ==================== VIEWER LOGIC ====================
-  async function startViewer() {
-    if (isBroadcasting) {
-      setStatusMessage("⚠️ Stop broadcasting first to become viewer", false);
+    
+    // Get stream URL from input
+    currentStreamUrl = streamUrlInput.value.trim();
+    if (!currentStreamUrl) {
+      setStatusMessage("❌ Please enter an HLS stream URL", true);
       return;
     }
     
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    localVideoWrapper.style.display = "none";
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = null;
-    }
+    setStatusMessage("🔄 Connecting to P2P network...");
     
-    myRole = 'viewer';
-    chatRoleBadge.innerHTML = '👁️ Viewer';
-    setStatusMessage("👁️ Joining as viewer...");
+    // Reset stats
+    totalHttp = 0;
+    totalP2p = 0;
+    updateStats();
     
-    try {
-      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+    // Initialize webConnect for peer discovery
+    initSignaling();
+    
+    // Wait a moment for signaling to initialize
+    await new Promise(r => setTimeout(r, 500));
+    
+    // Initialize p2p-hls for video playback
+    const success = await initP2PHls(currentStreamUrl);
+    
+    if (success) {
+      isPlaying = true;
+      playBtn.innerText = "⏹️ Stop Streaming";
+      reconnectBtn.disabled = false;
       
-      webConnect.getMyId((attr) => {
-        myConnectId = attr.connectId;
-        setStatusMessage("👁️ Connected · Waiting for broadcaster...");
-        sendPeerInfo(); // announce ourselves
-      });
-      
-      webConnect.onConnect(async (attribute) => {
-        console.log("📡 Peer connected:", attribute.connectId);
-        setStatusMessage(`📡 Connected to broadcaster`);
-        sendPeerInfo(attribute.connectId);
-      });
-      
-      webConnect.onStreaming((stream, attribute) => {
-        console.log("🎬 Received broadcast stream");
-        updateRemoteVideo(attribute.connectId, stream, attribute.metadata);
-        setStatusMessage("✅ LIVE · Watching broadcast", false, true);
-        // Update label with broadcaster name if we have it stored
-        const label = document.getElementById(`label_${attribute.connectId}`);
-        if (label) label.innerText = `🎙️ Broadcaster`;
-      });
-      
-      webConnect.onReceive((data, attribute) => {
-        handleReceiveData(data, attribute);
-      });
-      
-      webConnect.onDisconnect((attribute) => {
-        console.log("Peer disconnected:", attribute.connectId);
-        updateRemoteVideo(attribute.connectId, null);
-        if (activeRemoteStreams.size === 0) {
-          setStatusMessage("📡 Broadcaster left. Waiting...");
-          addMessageToUI("System", "Broadcaster has ended the stream", false);
-        }
-      });
-      
-      webConnect.getConnection((connAttr) => {
-        updatePeersDisplay(connAttr.connection?.length || 0);
-      });
-      
-      addMessageToUI("System", `You joined as "${myName}". Chat with others!`, false);
-      
-      setTimeout(() => {
-        if (webConnect && activeRemoteStreams.size === 0) {
-          setStatusMessage("⏳ No broadcaster yet. Waiting for host...", false);
-        }
-      }, 4000);
-      
-    } catch (err) {
-      console.error("Viewer error:", err);
-      setStatusMessage(`❌ Viewer error: ${err.message.slice(0, 80)}`, true);
+      // Bridge them together
+      setTimeout(() => bridgeSignalingToP2P(), 1000);
     }
   }
   
-  async function stopViewer() {
-    if (webConnect) { webConnect.Disconnect(); webConnect = null; }
-    clearAllRemoteVideos();
-    setStatusMessage("👋 Left the channel");
-    peerCountSpan.innerText = "0";
-    myRole = null;
-    chatRoleBadge.innerHTML = '';
+  function reconnectStream() {
+    if (hls && currentStreamUrl) {
+      setStatusMessage("🔄 Reconnecting to stream...");
+      hls.loadSource(currentStreamUrl);
+    }
+  }
+  
+  function stopP2PStreaming() {
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+    if (p2phls) {
+      p2phls = null;
+    }
+    if (signaling) {
+      signaling.Disconnect();
+      signaling = null;
+    }
+    video.pause();
+    video.srcObject = null;
+    peerList.clear();
+    updatePeersList();
+    isPlaying = false;
+    playBtn.innerText = "▶️ Start P2P Streaming";
+    reconnectBtn.disabled = true;
+    setStatusMessage("⚡ Disconnected. Enter URL and click Start");
   }
   
   // ==================== EVENT HANDLERS ====================
-  startBroadcastBtn.addEventListener('click', () => {
-    if (isBroadcasting) stopBroadcasting();
-    else startBroadcaster();
+  playBtn.addEventListener('click', () => {
+    if (isPlaying) {
+      stopP2PStreaming();
+    } else {
+      startP2PStreaming();
+    }
   });
   
-  joinViewerBtn.addEventListener('click', () => {
-    if (isBroadcasting) setStatusMessage("⚠️ Stop broadcasting first", false);
-    else startViewer();
-  });
-  
-  stopBroadcastBtn.addEventListener('click', () => {
-    if (isBroadcasting) stopBroadcasting();
-    else stopViewer();
-  });
-  
-  muteMicBtn.addEventListener('click', toggleMute);
-  toggleCamBtn.addEventListener('click', toggleCamera);
-  
-  sendChatBtn.addEventListener('click', () => sendChatMessage(chatInput.value));
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendChatMessage(chatInput.value);
+  reconnectBtn.addEventListener('click', () => {
+    reconnectStream();
   });
   
   channelDisplay.innerText = CHANNEL;
   channelDisplay.addEventListener('click', () => {
     navigator.clipboard.writeText(CHANNEL);
-    setStatusMessage("📋 Channel copied!", false);
+    setStatusMessage("📋 Channel name copied!", false);
   });
   
+  // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    if (webConnect) webConnect.Disconnect();
+    if (hls) hls.destroy();
+    if (signaling) signaling.Disconnect();
   });
   
-  if (!navigator.mediaDevices?.getUserMedia) {
-    setStatusMessage("⚠️ Browser not supported", true);
-    startBroadcastBtn.disabled = true;
+  // Auto-start if URL has ?auto
+  if (window.location.search.includes('auto')) {
+    setTimeout(() => startP2PStreaming(), 500);
   }
   
-  // Auto-start from URL params
-  if (urlParams.has("broadcast")) setTimeout(() => startBroadcaster(), 500);
-  else if (urlParams.has("view")) setTimeout(() => startViewer(), 500);
-  
-  console.log("✅ EnticeChat Live with Chat & Names");
+  console.log("✅ EnticeChat Live with nginx-rtmp-hls + webConnect.js + p2p-hls");
+  console.log("📡 Configure OBS: rtmp://localhost/live with key 'enticechat'");
 </script>
 </body>
 </html>
