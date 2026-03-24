@@ -20,7 +20,7 @@
   <h1>EnticeChat Live Broadcast</h1>
 
   <div class="info">
-    Room: <strong id="roomName">enticechat-oi0pcuhk</strong><br>
+    Room: <strong>enticechat-oi0pcuhk</strong><br>
     <span id="status">Choose your role</span>
   </div>
 
@@ -32,61 +32,50 @@
   </div>
 
   <script>
-    const ROOM = "enticechat-oi0pcuhk";        // Fixed room name
+    const ROOM = "enticechat-oi0pcuhk";
     let vdo = null;
     const video = document.getElementById('video');
 
-    document.getElementById('roomName').textContent = ROOM;
-
-    // ===================== BROADCASTER =====================
+    // ==================== BROADCASTER ====================
     async function startBroadcaster() {
-      document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">You are LIVE as Broadcaster</strong>';
+      document.getElementById('status').innerHTML = '<strong style="color:#e74c3c;">LIVE - You are Broadcaster</strong>';
 
       vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720, frameRate: 30 },
-        audio: true
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 1280, height: 720 }, 
+        audio: true 
       });
 
       video.srcObject = stream;
 
       await vdo.connect();
       await vdo.joinRoom({ room: ROOM });
-
-      await vdo.publish(stream, { 
-        streamID: "main",
-        room: ROOM 
-      });
-
-      console.log("Broadcasting started");
+      await vdo.publish(stream, { streamID: "main" });
     }
 
-    // ===================== VIEWER =====================
+    // ==================== VIEWER ====================
     async function startViewer() {
-      document.getElementById('status').innerHTML = '<strong style="color:#3498db;">Connecting to room...</strong>';
+      document.getElementById('status').innerHTML = '<strong style="color:#3498db;">Joining room...</strong>';
 
       vdo = new VDONinjaSDK({ salt: "vdo.ninja" });
 
       await vdo.connect();
       await vdo.joinRoom({ room: ROOM });
 
-      // Force request the broadcaster's stream
+      // This is the key part that was missing
       vdo.on("stream", (stream) => {
         video.srcObject = stream;
-        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Broadcaster Video</strong>';
-        console.log("Viewer successfully received video stream");
+        document.getElementById('status').innerHTML = '<strong style="color:#2ecc71;">✅ Receiving Video from Broadcaster</strong>';
       });
 
-      // Extra safety: request specific stream
+      // Force request the main stream after joining
       setTimeout(() => {
-        if (vdo.requestStream) {
-          vdo.requestStream("main");
-        }
-      }, 2000);
+        vdo.requestStream("main");
+      }, 1500);
     }
 
-    // Auto join as viewer if URL has ?view
+    // Auto-join as viewer if link has ?view
     if (window.location.search.includes("view")) {
       startViewer();
     }
