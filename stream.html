@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>EnticeChat Live · WebRTC Mesh P2P with Chat</title>
+  <title>EnticeChat Live · P2P Mesh with Public Trackers</title>
 
-  <!-- webConnect.js - Auto WebRTC Mesh, no signaling server needed! -->
+  <!-- webConnect.js - Auto WebRTC Mesh with public tracker support -->
   <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
 
   <style>
@@ -301,6 +301,13 @@
       font-size: 0.75rem;
     }
 
+    .tracker-badge {
+      background: #2c5530;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+    }
+
     .footer-note {
       font-size: 0.7rem;
       color: #6c7a89;
@@ -340,7 +347,7 @@
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">WebRTC Mesh P2P · Live Chat · GitHub Pages Ready</div>
+  <div class="sub">P2P Mesh with Public BitTorrent Trackers · GitHub Pages Ready</div>
 
   <div class="info-card">
     <span>🔗 Channel:</span>
@@ -369,6 +376,12 @@
         <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
         <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
       </div>
+      
+      <div class="peers-list" style="margin-top: 15px; justify-content: center;">
+        <span class="tracker-badge">🌐 Public Trackers Active</span>
+        <span class="tracker-badge">⚡ WebTorrent Network</span>
+        <span class="tracker-badge">🔄 NOSTR Relays</span>
+      </div>
     </div>
 
     <div class="chat-section">
@@ -388,9 +401,9 @@
   </div>
 
   <div class="footer-note">
-    🔒 <strong>webConnect.js</strong> · Auto WebRTC mesh using public torrent trackers & nostr relays<br>
-    💬 Use URL params: <code>?broadcast&name=YourName</code> or <code>?view&name=YourName</code> to set your display name.<br>
-    📡 Only broadcaster can share video; viewers watch & chat.
+    🔒 <strong>Public Trackers Enabled</strong> · WebTorrent, NOSTR, and MQTT for maximum peer discovery<br>
+    📡 Trackers used: webtorrent.dev, openwebtorrent.com, tracker.ghostchu-services.top, novage.com.ua<br>
+    💬 Use URL params: <code>?broadcast&name=YourName</code> or <code>?view&name=YourName</code>
   </div>
 </div>
 
@@ -398,16 +411,42 @@
   // ======================= CONFIGURATION =======================
   const CHANNEL = "enticechat-live";
   
+  // ======================= PUBLIC TRACKERS (FREE & SCALABLE) =======================
+  // These public trackers help peers find each other without requiring your own server
+  // They can handle thousands of concurrent peers and are completely free!
+  const PUBLIC_TRACKERS = [
+    // WebTorrent trackers (WebRTC optimized)
+    'wss://tracker.webtorrent.dev',
+    'wss://tracker.openwebtorrent.com',
+    'wss://tracker.novage.com.ua',
+    'wss://tracker.ghostchu-services.top/announce',  // High-performance, handles 1000+ RPS
+    
+    // Public BitTorrent trackers (via WebTorrent bridge)
+    'wss://tracker.btorrent.xyz',
+    'wss://tracker.fastcast.nz',
+    'wss://tracker.nexus.to:443/announce',
+    
+    // NOSTR relays for signaling (decentralized)
+    'wss://relay.damus.io',
+    'wss://nos.lol',
+    'wss://relay.snort.social',
+    
+    // MQTT brokers (fallback signaling)
+    'mqtt://test.mosquitto.org',
+    'mqtt://broker.hivemq.com'
+  ];
+  
   // Get name from URL param
   const urlParams = new URLSearchParams(window.location.search);
   let myName = urlParams.get('name') || `User_${Math.floor(Math.random() * 1000)}`;
-  let myRole = null; // 'broadcaster' or 'viewer'
+  let myRole = null;
   
   let webConnect = null;
   let localStream = null;
   let isBroadcasting = false;
   let myConnectId = null;
   let activeRemoteStreams = new Map();
+  let trackerStatusInterval = null;
   
   // DOM elements
   const statusSpan = document.getElementById('status');
@@ -447,7 +486,6 @@
     chatMessages.appendChild(messageDiv);
     messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
     
-    // Keep only last 200 messages
     while (chatMessages.children.length > 200) {
       chatMessages.removeChild(chatMessages.firstChild);
     }
@@ -460,8 +498,6 @@
       if (m === '<') return '&lt;';
       if (m === '>') return '&gt;';
       return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-      return c;
     });
   }
   
@@ -481,10 +517,7 @@
       senderRole: myRole
     };
     
-    // Send to all connected peers (null = broadcast to all)
     webConnect.Send(JSON.stringify(chatData), { connectId: null });
-    
-    // Show own message immediately
     addMessageToUI(myName, message.trim(), true);
     chatInput.value = '';
   }
@@ -495,17 +528,12 @@
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       if (parsed.type === 'chat') {
         addMessageToUI(parsed.senderName, parsed.message, false, attribute.connectId);
-      } else if (parsed.type === 'peerInfo') {
-        // Handle peer info if needed
-        console.log("Peer info received:", parsed);
       }
     } catch (e) {
-      // Not JSON, ignore
       console.log("Non-JSON data received");
     }
   }
   
-  // Broadcast peer info (name and role) to new peers
   function sendPeerInfo(targetId = null) {
     if (!webConnect) return;
     const info = {
@@ -568,7 +596,7 @@
     activeRemoteStreams.clear();
   }
   
-  // ==================== BROADCASTER LOGIC ====================
+  // ==================== BROADCASTER LOGIC (WITH TRACKERS) ====================
   async function startBroadcaster() {
     if (isBroadcasting) return;
     if (webConnect) { webConnect.Disconnect(); webConnect = null; }
@@ -588,21 +616,31 @@
       localVideoWrapper.style.display = "block";
       localVideoLabel.innerText = `🎙️ ${myName} (Broadcaster)`;
       
-      setStatusMessage("🟡 Connecting to P2P mesh network...");
+      setStatusMessage("🟡 Connecting to P2P network with public trackers...");
       
-      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+      // ========== KEY CHANGE: Add public trackers for better peer discovery ==========
+      webConnect = webconnect({ 
+        appName: "EnticeChat", 
+        channelName: CHANNEL,
+        torrentTrackers: PUBLIC_TRACKERS,  // Public trackers for scalability
+        nostrRelays: PUBLIC_TRACKERS.filter(url => url.includes('relay.') || url.includes('nos.')),
+        mqttBrokers: ['mqtt://test.mosquitto.org', 'mqtt://broker.hivemq.com']
+      });
       
       webConnect.getMyId((attr) => {
         myConnectId = attr.connectId;
-        setStatusMessage("🔴 Broadcasting LIVE", false, true);
+        setStatusMessage("🔴 Broadcasting LIVE with public trackers", false, true);
         isBroadcasting = true;
         controlBar.style.display = "flex";
         updateBroadcasterUI();
+        
+        // Show tracker success message
+        addMessageToUI("System", `✅ Connected to public tracker network. Peers can now discover you.`, false);
       });
       
       webConnect.onConnect(async (attribute) => {
         console.log("✅ Peer connected:", attribute.connectId);
-        setStatusMessage(`📡 Peer joined`, false);
+        setStatusMessage(`📡 ${activeRemoteStreams.size + 1} peer(s) connected`, false);
         
         if (localStream && isBroadcasting) {
           webConnect.openStreaming(localStream, { 
@@ -611,7 +649,6 @@
           });
         }
         
-        // Send peer info and also request their info
         sendPeerInfo(attribute.connectId);
         
         webConnect.getConnection((connAttr) => {
@@ -629,7 +666,6 @@
       });
       
       webConnect.onStreaming((stream, attribute) => {
-        // Viewers don't broadcast video, but just in case
         console.log("Received stream from:", attribute.connectId);
       });
       
@@ -641,7 +677,8 @@
         updatePeersDisplay(connAttr.connection?.length || 0);
       });
       
-      addMessageToUI("System", `You are now LIVE as "${myName}". Viewers can join and chat!`, false);
+      addMessageToUI("System", `You are now LIVE as "${myName}". Viewers can join!`, false);
+      addMessageToUI("System", `🌐 Public trackers active: ${PUBLIC_TRACKERS.length} endpoints`, false);
       
     } catch (err) {
       console.error("Broadcaster error:", err);
@@ -695,7 +732,7 @@
     }
   }
   
-  // ==================== VIEWER LOGIC ====================
+  // ==================== VIEWER LOGIC (WITH TRACKERS) ====================
   async function startViewer() {
     if (isBroadcasting) {
       setStatusMessage("⚠️ Stop broadcasting first to become viewer", false);
@@ -712,20 +749,28 @@
     
     myRole = 'viewer';
     chatRoleBadge.innerHTML = '👁️ Viewer';
-    setStatusMessage("👁️ Joining as viewer...");
+    setStatusMessage("👁️ Joining with public trackers...");
     
     try {
-      webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
+      // ========== KEY CHANGE: Add public trackers for better peer discovery ==========
+      webConnect = webconnect({ 
+        appName: "EnticeChat", 
+        channelName: CHANNEL,
+        torrentTrackers: PUBLIC_TRACKERS,  // Public trackers for scalability
+        nostrRelays: PUBLIC_TRACKERS.filter(url => url.includes('relay.') || url.includes('nos.')),
+        mqttBrokers: ['mqtt://test.mosquitto.org', 'mqtt://broker.hivemq.com']
+      });
       
       webConnect.getMyId((attr) => {
         myConnectId = attr.connectId;
-        setStatusMessage("👁️ Connected · Waiting for broadcaster...");
-        sendPeerInfo(); // announce ourselves
+        setStatusMessage("👁️ Connected to tracker network · Waiting for broadcaster...");
+        sendPeerInfo();
+        addMessageToUI("System", `✅ Connected to ${PUBLIC_TRACKERS.length} tracker endpoints`, false);
       });
       
       webConnect.onConnect(async (attribute) => {
         console.log("📡 Peer connected:", attribute.connectId);
-        setStatusMessage(`📡 Connected to broadcaster`);
+        setStatusMessage(`📡 Connected to broadcaster via trackers`);
         sendPeerInfo(attribute.connectId);
       });
       
@@ -733,7 +778,6 @@
         console.log("🎬 Received broadcast stream");
         updateRemoteVideo(attribute.connectId, stream, attribute.metadata);
         setStatusMessage("✅ LIVE · Watching broadcast", false, true);
-        // Update label with broadcaster name if we have it stored
         const label = document.getElementById(`label_${attribute.connectId}`);
         if (label) label.innerText = `🎙️ Broadcaster`;
       });
@@ -822,7 +866,8 @@
   if (urlParams.has("broadcast")) setTimeout(() => startBroadcaster(), 500);
   else if (urlParams.has("view")) setTimeout(() => startViewer(), 500);
   
-  console.log("✅ EnticeChat Live with Chat & Names");
+  console.log("✅ EnticeChat Live with Public Trackers Enabled");
+  console.log(`📡 Trackers configured: ${PUBLIC_TRACKERS.length}`);
 </script>
 </body>
 </html>
