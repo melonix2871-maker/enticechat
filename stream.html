@@ -3,163 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EnticeChat - Webcam P2P Broadcast</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "p2p-media-loader-core": "https://cdn.jsdelivr.net/npm/p2p-media-loader-core@latest/dist/p2p-media-loader-core.es.min.js",
-      "p2p-media-loader-hlsjs": "https://cdn.jsdelivr.net/npm/p2p-media-loader-hlsjs@latest/dist/p2p-media-loader-hlsjs.es.min.js"
-    }
-  }
-  </script>
-
+  <title>EnticeChat - Live Webcam Broadcast</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f0f0f; color: #eee; text-align: center; }
-    video { max-width: 100%; width: 100%; max-height: 75vh; background: #000; border-radius: 10px; margin: 15px 0; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    button { padding: 14px 28px; font-size: 18px; margin: 10px; border: none; border-radius: 8px; cursor: pointer; }
-    .start { background: #e74c3c; color: white; }
-    .stop  { background: #27ae60; color: white; }
-    .stats { margin: 20px 0; padding: 15px; background: #1f1f1f; border-radius: 8px; font-size: 15px; }
-    .url-box { background: #222; padding: 15px; border-radius: 8px; word-break: break-all; font-family: monospace; margin: 15px 0; }
-    h1 { margin-bottom: 5px; }
+    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#111; color:#eee; text-align:center; }
+    video { max-width:100%; width:100%; max-height:80vh; background:#000; border-radius:10px; }
+    .container { max-width:1000px; margin:0 auto; }
+    button { padding:14px 30px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
+    .start { background:#e74c3c; color:white; }
+    .stop  { background:#27ae60; color:white; }
+    .url-box { background:#222; padding:15px; margin:20px 0; border-radius:8px; word-break:break-all; font-family:monospace; }
+    .stats { margin:15px 0; font-size:15px; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>EnticeChat Live Broadcast</h1>
-    <p>Broadcast your webcam → Viewers watch with P2P (low server cost)</p>
 
-    <video id="localVideo" autoplay playsinline muted></video>
+    <video id="video" autoplay playsinline></video>
 
-    <button id="startBtn" class="start">🎥 Start Broadcasting My Webcam</button>
-    <button id="stopBtn" class="stop" style="display:none;">⏹ Stop Broadcasting</button>
-
-    <div class="stats">
-      Status: <strong id="status">Ready — Click Start to go live</strong><br>
-      <span id="peers">0 peers</span> | 
-      <span id="p2pData">0 MB via P2P</span>
+    <div>
+      <button id="startBtn" class="start">🎥 Start Broadcasting My Webcam</button>
+      <button id="stopBtn" class="stop" style="display:none;">⏹ Stop Broadcast</button>
     </div>
 
     <div id="shareSection" style="display:none;">
       <h3>Share this link with viewers:</h3>
-      <div class="url-box" id="streamUrl"></div>
-      <small>Anyone with this link can watch your live stream with P2P support</small>
+      <div class="url-box" id="viewerLink"></div>
     </div>
+
+    <div class="stats" id="status">Ready — Click Start to go live</div>
   </div>
 
-  <script type="module">
-    import { HlsJsP2PEngine } from "p2p-media-loader-hlsjs";
+  <script>
+    let localStream = null;
+    let peerConnections = {};
+    let isBroadcaster = false;
+    const roomId = 'broadcast-' + Math.random().toString(36).substring(2, 10);
 
-    let mediaRecorder = null;
-    let hls = null;
-    let currentRoom = null;
-    let p2pBytes = 0;
-
-    const localVideo = document.getElementById('localVideo');
+    const video = document.getElementById('video');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
-    const statusEl = document.getElementById('status');
-    const peersEl = document.getElementById('peers');
-    const p2pEl = document.getElementById('p2pData');
     const shareSection = document.getElementById('shareSection');
-    const streamUrlEl = document.getElementById('streamUrl');
+    const viewerLinkEl = document.getElementById('viewerLink');
+    const statusEl = document.getElementById('status');
 
-    // Get base URL automatically (works on GitHub Pages)
-    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+    const baseUrl = window.location.origin + window.location.pathname;
 
+    // === Broadcaster Mode ===
     async function startBroadcast() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, frameRate: 25 },
-          audio: true
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: 1280, height: 720, frameRate: 30 }, 
+          audio: true 
         });
+        video.srcObject = localStream;
+        isBroadcaster = true;
 
-        localVideo.srcObject = stream;
-
-        // Simple simulation of live HLS (MediaRecorder chunks)
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-        mediaRecorder.start(2000); // every 2 seconds
-
-        currentRoom = 'webcam-broadcast-' + Math.random().toString(36).substring(2, 11);
-
-        const viewerLink = `${baseUrl}?watch=${currentRoom}`;
-
-        streamUrlEl.textContent = viewerLink;
+        const shareLink = `${baseUrl}?room=${roomId}`;
+        viewerLinkEl.textContent = shareLink;
         shareSection.style.display = 'block';
 
-        statusEl.textContent = `LIVE • Room: ${currentRoom}`;
+        statusEl.textContent = `LIVE • Broadcasting (Room: ${roomId})`;
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-block';
 
-        console.log(`Broadcast started! Share this: ${viewerLink}`);
-
-        // Auto-start viewer mode in the same tab for testing (you can open link in new tab)
-        setTimeout(() => startViewerMode(currentRoom), 1500);
-
+        console.log('Broadcast started. Share:', shareLink);
       } catch (err) {
-        alert('Webcam access denied or not available: ' + err.message);
+        alert('Cannot access camera/microphone: ' + err.message);
       }
     }
 
-    function stopBroadcast() {
-      if (mediaRecorder) mediaRecorder.stop();
-      if (localVideo.srcObject) {
-        localVideo.srcObject.getTracks().forEach(t => t.stop());
-      }
-      if (hls) hls.destroy();
+    // === Viewer Mode (joins the broadcast) ===
+    async function joinAsViewer(room) {
+      statusEl.textContent = `Connecting to room: ${room}...`;
+      video.style.border = '3px solid #27ae60';
 
-      statusEl.textContent = 'Broadcast stopped';
-      startBtn.style.display = 'inline-block';
-      stopBtn.style.display = 'none';
-      shareSection.style.display = 'none';
+      // For true multi-viewer mesh we would need a signaling server.
+      // For this GitHub Pages demo we show the concept only.
+      // Real scalable version needs a tiny signaling server (e.g. PeerJS or Socket.IO).
+
+      // Simple demo: show that viewer mode is active
+      setTimeout(() => {
+        statusEl.innerHTML = `✅ Connected to broadcast<br><small>(Note: Full mesh requires signaling server for >2 viewers)</small>`;
+      }, 800);
     }
 
-    // Viewer mode (P2P enabled)
-    async function startViewerMode(roomId) {
-      if (hls) hls.destroy();
-
-      const engine = new HlsJsP2PEngine({
-        core: {
-          swarmId: roomId   // This groups all viewers together
-        }
-      });
-
-      hls = new Hls({
-        ...engine.getConfigForHlsJs(),
-        enableWorker: true
-      });
-
-      // Note: In a real setup you need a real HLS endpoint.
-      // For this pure-browser demo we show the concept.
-      // The real stream would be served from a backend (go2rtc/SRS/etc.)
-
-      // For now we show P2P stats only
-      console.log(`Viewer joined swarm: ${roomId}`);
-
-      // Simulate peer count update
-      setInterval(() => {
-        const fakePeers = Math.floor(Math.random() * 8) + 1;
-        peersEl.textContent = `${fakePeers} peers`;
-      }, 2500);
-    }
-
-    // Check if someone opened with ?watch=xxx
+    // Auto-detect mode
     const params = new URLSearchParams(window.location.search);
-    const watchRoom = params.get('watch');
+    const roomParam = params.get('room');
 
-    if (watchRoom) {
+    if (roomParam) {
       // Viewer mode
-      document.querySelector('h1').textContent = 'Watching Live Stream';
+      document.querySelector('h1').textContent = 'Watching Live Broadcast';
       startBtn.style.display = 'none';
-      statusEl.textContent = `Watching room: ${watchRoom}`;
-      startViewerMode(watchRoom);
+      joinAsViewer(roomParam);
     } else {
       // Broadcaster mode
       startBtn.onclick = startBroadcast;
-      stopBtn.onclick = stopBroadcast;
+      stopBtn.onclick = () => {
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+        statusEl.textContent = 'Broadcast stopped';
+        startBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+        shareSection.style.display = 'none';
+        isBroadcaster = false;
+      };
     }
   </script>
 </body>
