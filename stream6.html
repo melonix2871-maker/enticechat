@@ -2,15 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P2P Stream | Mystical Rabbit Rooms</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
@@ -18,26 +13,9 @@
             color: #fff;
             padding: 20px;
         }
-
-        .container {
-            max-width: 1300px;
-            margin: 0 auto;
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            font-size: 2rem;
-            background: linear-gradient(135deg, #fff, #a855f7);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
+        .container { max-width: 1300px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 24px; }
+        h1 { font-size: 2rem; background: linear-gradient(135deg, #fff, #a855f7); -webkit-background-clip: text; background-clip: text; color: transparent; }
         .room-badge {
             display: inline-block;
             background: rgba(168,85,247,0.2);
@@ -47,16 +25,14 @@
             margin-top: 12px;
             font-family: monospace;
             font-size: 1rem;
+            cursor: pointer;
         }
-
-        /* Role Selector */
         .role-selector {
             display: flex;
             gap: 16px;
             justify-content: center;
             margin-bottom: 24px;
         }
-
         .role-btn {
             padding: 10px 32px;
             border-radius: 40px;
@@ -67,28 +43,18 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-
         .role-btn.active {
             background: linear-gradient(135deg, #7c3aed, #a855f7);
             border-color: transparent;
             box-shadow: 0 4px 15px rgba(124,58,237,0.3);
         }
-
-        /* Main Grid */
         .main-grid {
             display: grid;
-            grid-template-columns: 1fr 300px;
+            grid-template-columns: 1fr 320px;
             gap: 20px;
             margin-bottom: 20px;
         }
-
-        @media (max-width: 768px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Video Card */
+        @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
         .video-card {
             background: #000;
             border-radius: 24px;
@@ -97,14 +63,7 @@
             border: 1px solid rgba(255,255,255,0.1);
             position: relative;
         }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #1a1a2a;
-        }
-
+        video { width: 100%; height: 100%; object-fit: cover; background: #1a1a2a; }
         .video-label {
             position: absolute;
             bottom: 12px;
@@ -118,19 +77,10 @@
             align-items: center;
             gap: 6px;
         }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            animation: pulse 1.5s infinite;
-        }
-
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite; }
         .dot.live { background: #ef4444; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-        /* Chat Panel */
+        
         .chat-panel {
             background: rgba(0,0,0,0.4);
             backdrop-filter: blur(10px);
@@ -139,149 +89,54 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            min-height: 400px;
+            min-height: 450px;
         }
-
-        .chat-header {
-            padding: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .chat-messages {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            height: 300px;
-            font-size: 13px;
-        }
-
-        .chat-message {
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-message.own {
-            align-items: flex-end;
-        }
-
-        .message-sender {
-            font-size: 11px;
-            color: #a855f7;
-            margin-bottom: 2px;
-        }
-
-        .message-text {
-            background: rgba(168,85,247,0.2);
-            padding: 8px 12px;
-            border-radius: 18px;
-            max-width: 90%;
-            word-break: break-word;
-        }
-
-        .chat-message.own .message-text {
-            background: linear-gradient(135deg, #7c3aed, #a855f7);
-        }
-
-        .chat-input-area {
-            padding: 16px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            gap: 8px;
-        }
-
-        .chat-input {
-            flex: 1;
-            padding: 10px 16px;
-            border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.5);
-            color: white;
-            font-size: 14px;
-        }
-
-        .chat-input:focus {
-            outline: none;
-            border-color: #a855f7;
-        }
-
-        .send-btn {
-            padding: 10px 20px;
-            border-radius: 24px;
-            background: linear-gradient(135deg, #7c3aed, #a855f7);
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
-
-        /* Controls */
-        .controls {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 10px 24px;
-            border-radius: 40px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-
+        .chat-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600; }
+        .chat-messages { flex: 1; padding: 16px; overflow-y: auto; height: 350px; font-size: 13px; }
+        .chat-message { margin-bottom: 12px; display: flex; flex-direction: column; }
+        .chat-message.own { align-items: flex-end; }
+        .message-sender { font-size: 11px; color: #a855f7; margin-bottom: 2px; }
+        .message-text { background: rgba(168,85,247,0.2); padding: 8px 12px; border-radius: 18px; max-width: 90%; word-break: break-word; }
+        .chat-message.own .message-text { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+        .chat-input-area { padding: 16px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; }
+        .chat-input { flex: 1; padding: 10px 16px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; }
+        .send-btn { padding: 10px 20px; border-radius: 24px; background: linear-gradient(135deg, #7c3aed, #a855f7); border: none; color: white; cursor: pointer; }
+        
+        .controls { display: flex; gap: 12px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+        button { padding: 10px 24px; border-radius: 40px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.2s; }
         .btn-primary { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
         .btn-danger { background: rgba(239,68,68,0.9); color: white; }
         .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
         button:hover { transform: translateY(-2px); }
-
-        /* Status */
-        .status-card {
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            padding: 16px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-        }
+        
+        .status-card { background: rgba(0,0,0,0.4); border-radius: 20px; padding: 16px; text-align: center; margin-bottom: 20px; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
         .status-badge.idle { background: rgba(255,255,255,0.1); color: #aaa; }
         .status-badge.broadcasting { background: rgba(239,68,68,0.2); color: #f87171; }
         .status-badge.connected { background: rgba(16,185,129,0.2); color: #10b981; }
         .status-badge.waiting { background: rgba(245,158,11,0.2); color: #f59e0b; }
-
-        .log {
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
-            padding: 12px;
+        
+        .log { background: rgba(0,0,0,0.3); border-radius: 16px; padding: 12px; font-family: monospace; font-size: 11px; height: 100px; overflow-y: auto; }
+        .log-entry { color: #10b981; margin-bottom: 4px; border-left: 2px solid #7c3aed; padding-left: 8px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #666; }
+        .invite-link {
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 12px;
             font-family: monospace;
             font-size: 11px;
-            height: 100px;
-            overflow-y: auto;
+            margin-top: 8px;
+            word-break: break-all;
+            cursor: pointer;
         }
-        .log-entry { color: #10b981; margin-bottom: 4px; border-left: 2px solid #7c3aed; padding-left: 8px; }
-
-        .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #666; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>📡 Mystical Rabbit Rooms</h1>
-        <div class="room-badge" id="roomName">🐇 mystical-rabbit</div>
+        <div class="room-badge" id="roomName" onclick="copyRoomLink()">🐇 mystical-rabbit</div>
+        <div class="invite-link" id="inviteLink" style="display:none;"></div>
     </div>
 
     <div class="role-selector">
@@ -300,15 +155,9 @@
         </div>
 
         <div class="chat-panel">
-            <div class="chat-header">
-                💬 Room Chat
-                <span style="font-size: 11px; color: #888;" id="chatStatus">(disconnected)</span>
-            </div>
+            <div class="chat-header">💬 Room Chat <span id="chatStatus" style="font-size:11px;color:#888;">(disconnected)</span></div>
             <div class="chat-messages" id="chatMessages">
-                <div class="chat-message">
-                    <div class="message-sender">🐇 System</div>
-                    <div class="message-text">Welcome to the room! Start broadcasting or join as viewer.</div>
-                </div>
+                <div class="chat-message"><div class="message-sender">🐇 System</div><div class="message-text">Welcome! Click Broadcaster to start or Viewer to watch.</div></div>
             </div>
             <div class="chat-input-area">
                 <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." disabled>
@@ -326,31 +175,32 @@
 
     <div class="status-card">
         <div class="status-badge idle" id="statusBadge">⚪ Idle</div>
-        <div id="statusText">Select a role and room</div>
+        <div id="statusText">Select a role</div>
     </div>
 
     <div class="log" id="log">
         <div class="log-entry">🎬 Mystical Rabbit Rooms Ready</div>
-        <div class="log-entry">📡 Create a unique room, share the link, start streaming!</div>
+        <div class="log-entry">📡 Create a room, share the link, start streaming!</div>
     </div>
-    <div class="footer">🔒 Direct P2P WebRTC • Unique room links • Auto-connect</div>
+    <div class="footer">🔒 Direct P2P WebRTC • Click room name to copy link</div>
 </div>
 
 <script>
     // ============================================================
-    // MYSTICAL RABBIT ROOMS - Unique rooms + P2P Video + Chat
+    // WORKING P2P STREAMING - localStorage signaling + DataChannel chat
     // ============================================================
 
     let localStream = null;
     let peerConnection = null;
     let dataChannel = null;
-    let currentRole = null; // 'broadcaster' or 'viewer'
+    let currentRole = null;
     let isActive = false;
     let roomId = null;
+    let pollingInterval = null;
     
     // Generate unique room name
-    const adjectives = ['mystical', 'magical', 'ancient', 'crystal', 'silver', 'golden', 'velvet', 'shadow', 'phantom', 'eternal'];
-    const nouns = ['rabbit', 'phoenix', 'dragon', 'wolf', 'fox', 'owl', 'star', 'moon', 'spirit', 'dream'];
+    const adjectives = ['mystical', 'magical', 'ancient', 'crystal', 'silver', 'golden', 'velvet', 'shadow', 'phantom', 'eternal', 'brave', 'wise'];
+    const nouns = ['rabbit', 'phoenix', 'dragon', 'wolf', 'fox', 'owl', 'star', 'moon', 'spirit', 'dream', 'forest', 'river'];
     
     function generateRoomName() {
         const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
@@ -359,66 +209,79 @@
         return `${adj}-${noun}-${num}`;
     }
     
-    function updateRoomInUrl(room) {
-        const newUrl = `${window.location.origin}${window.location.pathname}#room=${room}`;
-        window.history.pushState({}, '', newUrl);
-        document.getElementById('roomName').innerHTML = `🐇 ${room}`;
-        roomId = room;
+    function getStorageKey(type) {
+        return `p2p_${roomId}_${type}`;
     }
     
-    function getRoomFromUrl() {
-        const hash = window.location.hash;
-        if (hash.startsWith('#room=')) {
-            return hash.substring(6);
-        }
-        return null;
+    // Signaling via localStorage polling (reliable across tabs)
+    function sendSignal(type, data) {
+        const key = getStorageKey(type);
+        const signal = { type, data, from: currentRole, timestamp: Date.now() };
+        localStorage.setItem(key, JSON.stringify(signal));
+        // Auto-clean after 5 seconds
+        setTimeout(() => {
+            if (localStorage.getItem(key) === JSON.stringify(signal)) {
+                localStorage.removeItem(key);
+            }
+        }, 5000);
     }
     
-    // BroadcastChannel for room-based signaling
-    let channel = null;
-    
-    function initChannel() {
-        if (channel) {
-            channel.close();
-        }
-        const channelName = `p2p-room-${roomId}`;
-        channel = new BroadcastChannel(channelName);
+    function startSignalingPolling() {
+        if (pollingInterval) clearInterval(pollingInterval);
         
-        channel.onmessage = (event) => {
-            const data = event.data;
+        pollingInterval = setInterval(() => {
+            const signalTypes = ['offer', 'answer', 'ice-candidate', 'viewer-ready', 'broadcaster-ready', 'chat'];
             
-            if (currentRole === 'broadcaster') {
-                if (data.type === 'viewer-ready') {
-                    addSystemMessage('📡 Viewer detected, connecting...');
-                    if (isActive && localStream) {
-                        createOffer();
-                    }
-                } else if (data.type === 'answer') {
-                    handleAnswer(data.answer);
-                } else if (data.type === 'ice-candidate') {
-                    handleIceCandidate(data.candidate);
-                } else if (data.type === 'chat') {
-                    addChatMessage(data.sender, data.message, false);
-                }
-            } 
-            else if (currentRole === 'viewer') {
-                if (data.type === 'broadcaster-ready' || data.type === 'offer') {
-                    addSystemMessage('📡 Broadcaster found! Connecting...');
-                    if (data.type === 'offer') {
-                        handleOfferFromBroadcaster(data.offer);
-                    } else if (data.type === 'broadcaster-ready' && !peerConnection) {
-                        channel.postMessage({ type: 'viewer-ready' });
-                    }
-                } else if (data.type === 'ice-candidate') {
-                    handleIceCandidate(data.candidate);
-                } else if (data.type === 'chat') {
-                    addChatMessage(data.sender, data.message, false);
+            for (const type of signalTypes) {
+                const key = getStorageKey(type);
+                const signalStr = localStorage.getItem(key);
+                if (signalStr) {
+                    try {
+                        const signal = JSON.parse(signalStr);
+                        // Don't process our own signals
+                        if (signal.from !== currentRole) {
+                            handleSignal(signal);
+                        }
+                        localStorage.removeItem(key);
+                    } catch(e) {}
                 }
             }
-        };
-        
-        addSystemMessage(`🎧 Connected to room: ${roomId}`);
+        }, 500);
     }
+    
+    async function handleSignal(signal) {
+        console.log('Signal received:', signal.type, signal.from);
+        
+        if (signal.type === 'broadcaster-ready' && currentRole === 'viewer') {
+            addSystemMessage('📡 Broadcaster found! Connecting...');
+            sendSignal('viewer-ready', { ready: true });
+        }
+        else if (signal.type === 'viewer-ready' && currentRole === 'broadcaster' && isActive) {
+            addSystemMessage('📡 Viewer detected, sending offer...');
+            await createOffer();
+        }
+        else if (signal.type === 'offer' && currentRole === 'viewer') {
+            await handleOffer(signal.data);
+        }
+        else if (signal.type === 'answer' && currentRole === 'broadcaster') {
+            await handleAnswer(signal.data);
+        }
+        else if (signal.type === 'ice-candidate') {
+            await handleIceCandidate(signal.data);
+        }
+        else if (signal.type === 'chat') {
+            addChatMessage(signal.data.sender, signal.data.message, false);
+        }
+    }
+    
+    // WebRTC Config
+    const config = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+    };
     
     function addSystemMessage(msg) {
         const msgsDiv = document.getElementById('chatMessages');
@@ -453,21 +316,11 @@
             dataChannel.send(JSON.stringify({ type: 'chat', message: message }));
             addChatMessage('You', message, true);
         } else {
-            // Fallback via BroadcastChannel
-            channel.postMessage({ type: 'chat', sender: currentRole === 'broadcaster' ? '🎥 Broadcaster' : '👀 Viewer', message: message });
+            sendSignal('chat', { sender: currentRole === 'broadcaster' ? '🎥 Broadcaster' : '👀 Viewer', message: message });
             addChatMessage('You', message, true);
         }
         input.value = '';
     }
-    
-    // WebRTC Config
-    const config = {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-        ]
-    };
     
     function log(msg) {
         const logDiv = document.getElementById('log');
@@ -505,11 +358,14 @@
             
             updateStatus('Broadcasting', 'Live - Waiting for viewers...', 'broadcasting');
             updateVideoLabel('Broadcasting Live', true);
-            addSystemMessage('🎥 You are now broadcasting! Share this room link.');
+            addSystemMessage('🎥 You are now broadcasting! Share the room link.');
             log('✅ Broadcaster started');
             
+            // Announce broadcaster is ready
+            sendSignal('broadcaster-ready', { ready: true });
+            
+            // Also create peer connection preemptively
             await createOffer();
-            channel.postMessage({ type: 'broadcaster-ready' });
             
         } catch (err) {
             log(`❌ Camera error: ${err.message}`);
@@ -519,7 +375,10 @@
     
     async function createOffer() {
         if (!localStream) return;
-        if (peerConnection) peerConnection.close();
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
         
         peerConnection = new RTCPeerConnection(config);
         
@@ -538,10 +397,14 @@
             document.getElementById('chatStatus').innerHTML = '(connected)';
         };
         
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
         
         peerConnection.onicecandidate = (event) => {
-            if (event.candidate) channel.postMessage({ type: 'ice-candidate', candidate: event.candidate });
+            if (event.candidate) {
+                sendSignal('ice-candidate', event.candidate);
+            }
         };
         
         peerConnection.onconnectionstatechange = () => {
@@ -556,26 +419,35 @@
         
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        channel.postMessage({ type: 'offer', offer: offer });
+        sendSignal('offer', offer);
         log('📡 Offer sent');
     }
     
     async function handleAnswer(answer) {
         if (peerConnection && !peerConnection.currentRemoteDescription) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-            log('✅ Connection established');
+            log('✅ Answer received, connection established!');
         }
     }
     
     async function handleIceCandidate(candidate) {
         if (peerConnection) {
-            try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                log('📡 ICE candidate added');
+            } catch(e) { console.log('ICE error:', e); }
         }
     }
     
     function stopBroadcaster() {
-        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-        if (peerConnection) { peerConnection.close(); peerConnection = null; }
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            localStream = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
         dataChannel = null;
         document.getElementById('video').srcObject = null;
         isActive = false;
@@ -618,38 +490,56 @@
         };
         
         peerConnection.onicecandidate = (event) => {
-            if (event.candidate) channel.postMessage({ type: 'ice-candidate', candidate: event.candidate });
+            if (event.candidate) {
+                sendSignal('ice-candidate', event.candidate);
+            }
         };
         
         updateStatus('Connecting', 'Looking for broadcaster...', 'waiting');
         updateVideoLabel('Connecting...', false);
         addSystemMessage('🔍 Searching for broadcaster in this room...');
         
-        channel.postMessage({ type: 'viewer-ready' });
+        // Send viewer-ready signal
+        sendSignal('viewer-ready', { ready: true });
         
+        // Also send a direct message to request broadcaster
         setTimeout(() => {
             if (!peerConnection.currentRemoteDescription) {
-                updateStatus('No Broadcaster', 'No broadcaster found in this room. Start one first!', 'idle');
-                updateVideoLabel('No Broadcaster', false);
-                addSystemMessage('⚠️ No broadcaster found. Please start a broadcast in this room.');
+                sendSignal('viewer-ready', { ready: true });
             }
-        }, 8000);
+        }, 2000);
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+            if (!peerConnection.currentRemoteDescription && !peerConnection.remoteDescription) {
+                updateStatus('No Broadcaster', 'No broadcaster found. Start one first!', 'idle');
+                updateVideoLabel('No Broadcaster', false);
+                addSystemMessage('⚠️ No broadcaster found in this room. Please start a broadcast first.');
+                log('⚠️ No broadcaster found');
+            }
+        }, 10000);
     }
     
-    async function handleOfferFromBroadcaster(offer) {
-        if (!peerConnection) await connectAsViewer();
+    async function handleOffer(offer) {
+        if (!peerConnection) {
+            await connectAsViewer();
+            await new Promise(r => setTimeout(r, 500));
+        }
+        
         if (peerConnection && !peerConnection.currentRemoteDescription) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            channel.postMessage({ type: 'answer', answer: answer });
+            sendSignal('answer', answer);
             log('📡 Answer sent');
         }
     }
     
     function disconnectViewer() {
-        if (peerConnection) peerConnection.close();
-        peerConnection = null;
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
         dataChannel = null;
         document.getElementById('video').srcObject = null;
         updateStatus('Disconnected', 'Disconnected from stream', 'idle');
@@ -682,7 +572,7 @@
             disconnectBtn.style.display = 'none';
             startBtn.onclick = startBroadcaster;
             stopBtn.onclick = stopBroadcaster;
-            updateStatus('Broadcaster', 'Click Start Broadcasting to share camera', 'idle');
+            updateStatus('Broadcaster', 'Click Start Broadcasting', 'idle');
             updateVideoLabel('Broadcaster Ready', false);
         } else {
             startBtn.style.display = 'none';
@@ -700,17 +590,52 @@
         document.getElementById('chatStatus').innerHTML = '(disconnected)';
     }
     
+    function updateRoomInUrl(room) {
+        const newUrl = `${window.location.origin}${window.location.pathname}#room=${encodeURIComponent(room)}`;
+        window.history.pushState({}, '', newUrl);
+        document.getElementById('roomName').innerHTML = `🐇 ${room}`;
+        roomId = room;
+        
+        const inviteDiv = document.getElementById('inviteLink');
+        inviteDiv.style.display = 'block';
+        inviteDiv.innerHTML = `📋 Click to copy: ${window.location.href}`;
+        inviteDiv.onclick = () => {
+            navigator.clipboard.writeText(window.location.href);
+            inviteDiv.innerHTML = '✅ Copied!';
+            setTimeout(() => inviteDiv.innerHTML = `📋 Click to copy: ${window.location.href}`, 2000);
+        };
+        
+        // Restart signaling with new room
+        if (pollingInterval) clearInterval(pollingInterval);
+        startSignalingPolling();
+    }
+    
+    function getRoomFromUrl() {
+        const hash = window.location.hash;
+        if (hash.startsWith('#room=')) {
+            return decodeURIComponent(hash.substring(6));
+        }
+        return null;
+    }
+    
     function createNewRoom() {
         const newRoom = generateRoomName();
         updateRoomInUrl(newRoom);
-        initChannel();
         
         if (currentRole === 'broadcaster') stopBroadcaster();
         if (currentRole === 'viewer') disconnectViewer();
         
         addSystemMessage(`✨ Created new room: ${newRoom}`);
-        addSystemMessage(`📢 Share this link with others: ${window.location.href}`);
-        log(`🔄 New room created: ${newRoom}`);
+        addSystemMessage(`📢 Share this link: ${window.location.href}`);
+        log(`🔄 New room: ${newRoom}`);
+    }
+    
+    function copyRoomLink() {
+        navigator.clipboard.writeText(window.location.href);
+        const roomDiv = document.getElementById('roomName');
+        const originalText = roomDiv.innerHTML;
+        roomDiv.innerHTML = '✅ Copied!';
+        setTimeout(() => roomDiv.innerHTML = originalText, 1500);
     }
     
     // ========== INIT ==========
@@ -718,13 +643,10 @@
         let room = getRoomFromUrl();
         if (!room) {
             room = generateRoomName();
-            updateRoomInUrl(room);
-        } else {
-            document.getElementById('roomName').innerHTML = `🐇 ${room}`;
-            roomId = room;
         }
+        updateRoomInUrl(room);
         
-        initChannel();
+        startSignalingPolling();
         
         document.getElementById('broadcasterBtn').onclick = () => setRole('broadcaster');
         document.getElementById('viewerBtn').onclick = () => setRole('viewer');
@@ -735,7 +657,6 @@
         setRole('broadcaster');
         
         addSystemMessage(`🐇 Welcome to room: ${room}`);
-        addSystemMessage(`📡 Share this link to invite others: ${window.location.href}`);
         log('🎬 Mystical Rabbit Rooms Ready');
     }
     
