@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Live Stream | Broadcaster → Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>P2P Stream | Auto-Connect Live Broadcasting</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
@@ -13,15 +18,38 @@
             color: #fff;
             padding: 24px;
         }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 24px; }
-        h1 { font-size: 1.8rem; background: linear-gradient(135deg, #fff, #a855f7); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #fff, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+
         .role-selector {
             display: flex;
             gap: 16px;
             justify-content: center;
             margin-bottom: 24px;
         }
+
         .role-btn {
             padding: 10px 32px;
             border-radius: 40px;
@@ -32,11 +60,13 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+
         .role-btn.active {
             background: linear-gradient(135deg, #7c3aed, #a855f7);
             border-color: transparent;
             box-shadow: 0 4px 15px rgba(124,58,237,0.3);
         }
+
         .video-card {
             background: #000;
             border-radius: 24px;
@@ -44,13 +74,47 @@
             aspect-ratio: 16/9;
             margin-bottom: 20px;
             border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
         }
+
         video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             background: #1a1a2a;
         }
+
+        .video-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 1.5s infinite;
+        }
+
+        .dot.live {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
         .controls {
             display: flex;
             gap: 12px;
@@ -58,6 +122,7 @@
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
+
         button {
             padding: 10px 24px;
             border-radius: 40px;
@@ -67,17 +132,36 @@
             border: none;
             transition: all 0.2s;
         }
-        .btn-primary { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
-        .btn-danger { background: rgba(239,68,68,0.8); color: white; }
-        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
-        button:hover { transform: translateY(-2px); }
-        .status {
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: white;
+        }
+
+        .btn-danger {
+            background: rgba(239,68,68,0.9);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .status-card {
             background: rgba(0,0,0,0.4);
-            border-radius: 16px;
-            padding: 12px 20px;
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 16px;
             text-align: center;
             margin-bottom: 20px;
         }
+
         .status-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -86,8 +170,12 @@
             font-weight: 500;
             margin-bottom: 8px;
         }
-        .status-badge.live { background: rgba(239,68,68,0.2); color: #f87171; }
+
+        .status-badge.idle { background: rgba(255,255,255,0.1); color: #aaa; }
+        .status-badge.broadcasting { background: rgba(239,68,68,0.2); color: #f87171; }
         .status-badge.connected { background: rgba(16,185,129,0.2); color: #10b981; }
+        .status-badge.waiting { background: rgba(245,158,11,0.2); color: #f59e0b; }
+
         .log {
             background: rgba(0,0,0,0.3);
             border-radius: 16px;
@@ -97,25 +185,42 @@
             height: 120px;
             overflow-y: auto;
         }
-        .log-entry { color: #10b981; margin-bottom: 4px; border-left: 2px solid #7c3aed; padding-left: 8px; }
-        .url-box {
-            background: rgba(0,0,0,0.5);
+
+        .log-entry {
+            color: #10b981;
+            margin-bottom: 4px;
+            border-left: 2px solid #7c3aed;
+            padding-left: 8px;
+        }
+
+        .log-entry.warning {
+            color: #f59e0b;
+            border-left-color: #f59e0b;
+        }
+
+        .connection-info {
+            background: rgba(0,0,0,0.3);
             border-radius: 12px;
             padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             text-align: center;
             margin-top: 12px;
-            word-break: break-all;
+            color: #888;
         }
-        .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #666; }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>📡 P2P Live Stream</h1>
-        <p style="color: #888; font-size: 14px;">Broadcaster shares camera | Viewer watches (no camera needed)</p>
+        <div class="subtitle">Auto-connect • Direct P2P • No copy/paste needed</div>
     </div>
 
     <div class="role-selector">
@@ -125,110 +230,154 @@
 
     <div class="video-card">
         <video id="video" autoplay playsinline muted></video>
+        <div class="video-label" id="videoLabel">
+            <span class="dot" id="dot"></span>
+            <span id="labelText">Ready</span>
+        </div>
     </div>
 
     <div class="controls">
         <button id="startBtn" class="btn-primary" style="display:none;">🎥 Start Broadcasting</button>
         <button id="stopBtn" class="btn-danger" style="display:none;">⏹️ Stop</button>
-        <button id="connectBtn" class="btn-primary" style="display:none;">🔗 Connect to Broadcaster</button>
+        <button id="connectBtn" class="btn-primary" style="display:none;">🔗 Auto-Connect to Broadcaster</button>
         <button id="disconnectBtn" class="btn-secondary" style="display:none;">🚪 Disconnect</button>
     </div>
 
-    <div class="status">
-        <div class="status-badge" id="statusBadge">⚪ Idle</div>
+    <div class="status-card">
+        <div class="status-badge idle" id="statusBadge">⚪ Idle</div>
         <div id="statusText">Select a role to begin</div>
-        <div class="url-box" id="urlBox" style="display:none;"></div>
+        <div class="connection-info" id="connectionInfo"></div>
     </div>
 
     <div class="log" id="log">
         <div class="log-entry">🎬 P2P Streaming System Ready</div>
         <div class="log-entry">📌 Open two tabs: one as Broadcaster, one as Viewer</div>
-        <div class="log-entry">📌 Broadcaster: Share camera | Viewer: Watch (no camera needed)</div>
+        <div class="log-entry">📡 Auto-connect works automatically when both tabs are open!</div>
     </div>
-    <div class="footer">🔒 Direct P2P WebRTC connection • Video never passes through a server</div>
+    <div class="footer">🔒 Direct P2P WebRTC • Video never passes through a server • Auto-connect using BroadcastChannel</div>
 </div>
 
 <script>
     // ============================================================
-    // WORKING P2P STREAMING - Video actually transfers!
+    // AUTO-CONNECT P2P STREAMING - No copy/paste needed!
+    // Uses BroadcastChannel API for automatic cross-tab signaling
     // ============================================================
 
     let localStream = null;
     let peerConnection = null;
     let currentRole = null; // 'broadcaster' or 'viewer'
+    let isActive = false;
+    
+    // BroadcastChannel for cross-tab communication (auto-connect!)
+    const channel = new BroadcastChannel('p2p-live-stream');
     
     // WebRTC config
     const config = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-        ]
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' }
+        ],
+        iceCandidatePoolSize: 10
     };
     
-    function log(msg) {
+    function log(msg, isWarning = false) {
         const logDiv = document.getElementById('log');
         const entry = document.createElement('div');
-        entry.className = 'log-entry';
+        entry.className = `log-entry ${isWarning ? 'warning' : ''}`;
         entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
         logDiv.appendChild(entry);
         entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        while (logDiv.children.length > 40) logDiv.removeChild(logDiv.firstChild);
+        while (logDiv.children.length > 50) logDiv.removeChild(logDiv.firstChild);
         console.log(msg);
     }
     
-    function updateStatus(text, isConnected = false, isLive = false) {
+    function updateStatus(status, text, connectionType = 'idle') {
         const badge = document.getElementById('statusBadge');
         const statusText = document.getElementById('statusText');
-        badge.innerHTML = isConnected ? '🔗 CONNECTED' : (isLive ? '🎥 LIVE' : '⚪ IDLE');
-        badge.className = `status-badge ${isConnected ? 'connected' : (isLive ? 'live' : '')}`;
-        statusText.innerText = text;
+        badge.className = `status-badge ${connectionType}`;
+        
+        const statusMap = {
+            idle: '⚪ Idle',
+            broadcasting: '🎥 LIVE',
+            connected: '🔗 CONNECTED',
+            waiting: '⏳ WAITING'
+        };
+        
+        badge.innerHTML = statusMap[connectionType] || status;
+        statusText.innerHTML = text;
+    }
+    
+    function updateVideoLabel(text, isLive = false) {
+        const labelText = document.getElementById('labelText');
+        const dot = document.getElementById('dot');
+        labelText.innerText = text;
+        if (isLive) {
+            dot.classList.add('live');
+        } else {
+            dot.classList.remove('live');
+        }
+    }
+    
+    function updateConnectionInfo(text) {
+        document.getElementById('connectionInfo').innerHTML = text;
     }
     
     // ========== BROADCASTER ==========
     async function startBroadcaster() {
         try {
-            // Get camera
             localStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720 },
+                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: true
             });
             
-            // Show local video
             const video = document.getElementById('video');
             video.srcObject = localStream;
             video.muted = true;
             
-            updateStatus('Broadcasting - Waiting for viewer to connect...', false, true);
-            log('✅ Camera active! Broadcasting started');
+            isActive = true;
+            updateStatus('Broadcasting', 'Broadcasting live - Waiting for viewer to connect...', 'broadcasting');
+            updateVideoLabel('Broadcasting Live', true);
+            updateConnectionInfo('📡 Waiting for viewer to auto-connect...');
+            log('✅ Broadcaster started! Camera active');
             
             // Create offer and wait for viewer
             await createOffer();
             
+            // Announce broadcaster is ready
+            channel.postMessage({ type: 'broadcaster-ready', timestamp: Date.now() });
+            
         } catch (err) {
-            log(`❌ Camera error: ${err.message}`);
-            updateStatus('Camera access denied - please allow camera');
+            log(`❌ Camera error: ${err.message}`, true);
+            updateStatus('Error', 'Camera access denied. Please allow camera access.', 'idle');
+            updateVideoLabel('Camera Error', false);
         }
     }
     
     async function createOffer() {
         if (!localStream) return;
-        if (peerConnection) peerConnection.close();
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
         
         peerConnection = new RTCPeerConnection(config);
         
         // Add all tracks to connection
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
-            log(`📹 Added ${track.kind} track to connection`);
+            log(`📹 Added ${track.kind} track`);
         });
         
-        // Handle ICE candidates
+        // Handle ICE candidates - send via BroadcastChannel
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                // Send candidate via URL parameter or clipboard
-                const candidateStr = JSON.stringify(event.candidate);
-                showUrl(`candidate:${encodeURIComponent(candidateStr)}`);
+                channel.postMessage({
+                    type: 'ice-candidate',
+                    candidate: event.candidate
+                });
+                log(`📡 Sent ICE candidate`);
             }
         };
         
@@ -236,45 +385,50 @@
         peerConnection.onconnectionstatechange = () => {
             log(`Connection state: ${peerConnection.connectionState}`);
             if (peerConnection.connectionState === 'connected') {
-                updateStatus('Viewer connected! Stream is live', true, true);
+                updateStatus('Connected', 'Viewer connected! Stream is live', 'connected');
+                updateVideoLabel('Live - Viewer Connected', true);
+                updateConnectionInfo('✅ Connected to viewer! Stream is active');
             } else if (peerConnection.connectionState === 'disconnected') {
-                updateStatus('Broadcasting - Waiting for viewer...', false, true);
+                updateStatus('Broadcasting', 'Broadcasting - Waiting for viewer...', 'broadcasting');
+                updateVideoLabel('Broadcasting Live', true);
+                updateConnectionInfo('📡 Waiting for viewer to connect...');
+            } else if (peerConnection.connectionState === 'failed') {
+                log('Connection failed, attempting to reconnect...', true);
+                setTimeout(() => createOffer(), 2000);
             }
         };
         
-        // Create and send offer
+        // Create and send offer via BroadcastChannel
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         
-        // Show offer URL for viewer to copy
-        const offerStr = JSON.stringify(offer);
-        showUrl(`offer:${encodeURIComponent(offerStr)}`);
+        channel.postMessage({
+            type: 'offer',
+            offer: offer
+        });
         
-        log('📡 Offer created - share this URL with viewer');
+        log('📡 Offer sent via BroadcastChannel');
     }
     
-    // Handle answer from viewer
-    async function handleAnswerFromUrl(answerStr) {
-        if (!peerConnection) return;
-        try {
-            const answer = JSON.parse(decodeURIComponent(answerStr));
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-            log('✅ Answer received, connection established!');
-            updateStatus('Connected! Viewer is watching', true, true);
-            document.getElementById('urlBox').style.display = 'none';
-        } catch (err) {
-            log(`❌ Error setting answer: ${err.message}`);
+    async function handleAnswer(answer) {
+        if (peerConnection && peerConnection.currentRemoteDescription === null) {
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                log('✅ Answer received, connection established!');
+            } catch (err) {
+                log(`❌ Error setting answer: ${err.message}`, true);
+            }
         }
     }
     
-    async function handleCandidateFromUrl(candidateStr) {
-        if (!peerConnection) return;
-        try {
-            const candidate = JSON.parse(decodeURIComponent(candidateStr));
-            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-            log('📡 ICE candidate added');
-        } catch (err) {
-            log(`❌ Error adding candidate: ${err.message}`);
+    async function handleIceCandidate(candidate) {
+        if (peerConnection) {
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                log('📡 ICE candidate added');
+            } catch (err) {
+                // Ignore candidate errors
+            }
         }
     }
     
@@ -288,64 +442,107 @@
             peerConnection = null;
         }
         document.getElementById('video').srcObject = null;
-        updateStatus('Broadcast stopped');
-        document.getElementById('urlBox').style.display = 'none';
+        isActive = false;
+        updateStatus('Stopped', 'Broadcast ended', 'idle');
+        updateVideoLabel('Broadcast Ended', false);
+        updateConnectionInfo('');
         log('⏹️ Broadcast stopped');
+        
+        // Announce broadcaster stopped
+        channel.postMessage({ type: 'broadcaster-stopped' });
     }
     
     // ========== VIEWER (no camera needed) ==========
     async function connectAsViewer() {
-        // Clean up
-        if (peerConnection) peerConnection.close();
+        // Clean up existing connection
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
         
-        peerConnection = new RTCPeerConnection(config);
+        updateStatus('Connecting', 'Attempting to auto-connect to broadcaster...', 'waiting');
+        updateVideoLabel('Connecting...', false);
+        updateConnectionInfo('🔍 Searching for broadcaster...');
+        log('👀 Viewer mode active - waiting for broadcaster signal');
         
-        // Handle incoming video - THIS IS WHERE VIDEO ARRIVES!
-        peerConnection.ontrack = (event) => {
-            const video = document.getElementById('video');
-            if (video.srcObject !== event.streams[0]) {
-                video.srcObject = event.streams[0];
-                log('🎬 VIDEO RECEIVED! Playing broadcaster stream');
-                updateStatus('Connected! Watching live stream', true);
-                document.getElementById('urlBox').style.display = 'none';
+        // Request broadcaster to send offer
+        channel.postMessage({ type: 'viewer-ready', timestamp: Date.now() });
+        
+        // Also send periodic requests in case broadcaster wasn't ready
+        const interval = setInterval(() => {
+            if (!peerConnection || peerConnection.connectionState !== 'connected') {
+                channel.postMessage({ type: 'viewer-ready', timestamp: Date.now() });
+            } else {
+                clearInterval(interval);
             }
-        };
+        }, 3000);
         
-        // Handle ICE candidates
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                const candidateStr = JSON.stringify(event.candidate);
-                showUrl(`candidate:${encodeURIComponent(candidateStr)}`, 'Viewer Candidate');
+        // Timeout after 30 seconds
+        setTimeout(() => {
+            if (!peerConnection || peerConnection.connectionState !== 'connected') {
+                updateStatus('Timeout', 'No broadcaster found. Start broadcaster first.', 'idle');
+                updateVideoLabel('No Broadcaster', false);
+                updateConnectionInfo('❌ No broadcaster detected. Please start broadcaster tab first.');
+                log('⚠️ No broadcaster found after 30 seconds', true);
+                clearInterval(interval);
             }
-        };
-        
-        peerConnection.onconnectionstatechange = () => {
-            log(`Connection state: ${peerConnection.connectionState}`);
-        };
-        
-        updateStatus('Enter the broadcaster\'s offer URL below');
-        
-        // Show input for broadcaster's offer
-        showUrlInput();
+        }, 30000);
     }
     
-    async function acceptOffer(offerStr) {
-        if (!peerConnection) return;
-        try {
-            const offer = JSON.parse(decodeURIComponent(offerStr));
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+    async function handleOfferFromBroadcaster(offer) {
+        if (!peerConnection && currentRole === 'viewer') {
+            // Create peer connection for viewer
+            peerConnection = new RTCPeerConnection(config);
             
-            // Create answer
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
+            // Handle incoming video - THIS IS WHERE VIDEO ARRIVES!
+            peerConnection.ontrack = (event) => {
+                const video = document.getElementById('video');
+                if (video.srcObject !== event.streams[0]) {
+                    video.srcObject = event.streams[0];
+                    log('🎬 VIDEO RECEIVED! Playing broadcaster stream');
+                    updateStatus('Connected', 'Watching live stream from broadcaster', 'connected');
+                    updateVideoLabel('Watching Live', true);
+                    updateConnectionInfo('✅ Connected! Live stream is playing');
+                }
+            };
             
-            // Show answer URL for broadcaster
-            const answerStr = JSON.stringify(answer);
-            showUrl(`answer:${encodeURIComponent(answerStr)}`, 'Send this back to broadcaster');
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    channel.postMessage({
+                        type: 'ice-candidate',
+                        candidate: event.candidate
+                    });
+                    log(`📡 Sent ICE candidate from viewer`);
+                }
+            };
             
-            log('📡 Answer created - share with broadcaster');
-        } catch (err) {
-            log(`❌ Error accepting offer: ${err.message}`);
+            peerConnection.onconnectionstatechange = () => {
+                log(`Viewer connection state: ${peerConnection.connectionState}`);
+                if (peerConnection.connectionState === 'connected') {
+                    updateStatus('Connected', 'Connected to broadcaster!', 'connected');
+                } else if (peerConnection.connectionState === 'failed') {
+                    updateStatus('Failed', 'Connection failed. Try refreshing.', 'idle');
+                    updateVideoLabel('Connection Failed', false);
+                }
+            };
+        }
+        
+        if (peerConnection && peerConnection.currentRemoteDescription === null) {
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                channel.postMessage({
+                    type: 'answer',
+                    answer: answer
+                });
+                
+                log('📡 Answer sent to broadcaster');
+            } catch (err) {
+                log(`❌ Error handling offer: ${err.message}`, true);
+            }
         }
     }
     
@@ -354,77 +551,49 @@
             peerConnection.close();
             peerConnection = null;
         }
-        document.getElementById('video').srcObject = null;
-        updateStatus('Disconnected');
-        document.getElementById('urlBox').style.display = 'none';
+        const video = document.getElementById('video');
+        video.srcObject = null;
+        updateStatus('Disconnected', 'Disconnected from stream', 'idle');
+        updateVideoLabel('Disconnected', false);
+        updateConnectionInfo('');
         log('👋 Disconnected from stream');
     }
     
-    // ========== UI Helpers ==========
-    function showUrl(data, label = 'Share this URL') {
-        const urlBox = document.getElementById('urlBox');
-        urlBox.style.display = 'block';
-        urlBox.innerHTML = `
-            <strong>📋 ${label}</strong><br>
-            <code style="font-size: 11px; word-break: break-all;">${data.substring(0, 100)}${data.length > 100 ? '...' : ''}</code><br>
-            <button id="copyUrlBtn" style="margin-top: 8px; padding: 4px 12px; font-size: 11px;">📋 Copy</button>
-        `;
-        const copyBtn = document.getElementById('copyUrlBtn');
-        if (copyBtn) {
-            copyBtn.onclick = () => {
-                navigator.clipboard.writeText(data);
-                copyBtn.innerText = '✅ Copied!';
-                setTimeout(() => copyBtn.innerText = '📋 Copy', 1500);
-            };
-        }
-    }
-    
-    function showUrlInput() {
-        const urlBox = document.getElementById('urlBox');
-        urlBox.style.display = 'block';
-        urlBox.innerHTML = `
-            <strong>📋 Paste Broadcaster's Offer URL</strong><br>
-            <input type="text" id="offerInput" placeholder="Paste the offer URL here..." style="width: 100%; padding: 8px; margin: 8px 0; border-radius: 8px; border: none; background: #2a2a3a; color: white; font-family: monospace; font-size: 11px;">
-            <button id="submitOfferBtn" style="padding: 6px 16px;">🔗 Connect</button>
-        `;
-        const submitBtn = document.getElementById('submitOfferBtn');
-        if (submitBtn) {
-            submitBtn.onclick = () => {
-                const input = document.getElementById('offerInput');
-                const value = input.value.trim();
-                if (value.startsWith('offer:')) {
-                    acceptOffer(value.substring(6));
-                } else if (value.startsWith('candidate:')) {
-                    handleCandidateFromUrl(value.substring(10));
-                } else {
-                    log('Please paste a valid offer URL starting with "offer:"');
+    // ========== BROADCASTCHANNEL SIGNALING ==========
+    function setupBroadcastChannel() {
+        channel.onmessage = (event) => {
+            const data = event.data;
+            
+            if (currentRole === 'broadcaster') {
+                if (data.type === 'viewer-ready') {
+                    log('📡 Viewer ready signal received - sending offer');
+                    if (isActive && localStream) {
+                        createOffer();
+                    } else {
+                        log('⚠️ Viewer wants to connect but broadcaster not active', true);
+                    }
+                } else if (data.type === 'answer') {
+                    handleAnswer(data.answer);
+                } else if (data.type === 'ice-candidate') {
+                    handleIceCandidate(data.candidate);
                 }
-            };
-        }
-    }
-    
-    // Parse URL parameters on load
-    function parseUrlParams() {
-        const hash = window.location.hash.substring(1);
-        if (hash) {
-            if (hash.startsWith('offer:')) {
-                if (currentRole === 'viewer') {
-                    acceptOffer(hash.substring(6));
-                }
-            } else if (hash.startsWith('answer:')) {
-                if (currentRole === 'broadcaster') {
-                    handleAnswerFromUrl(hash.substring(7));
-                }
-            } else if (hash.startsWith('candidate:')) {
-                const candidateStr = hash.substring(10);
-                if (currentRole === 'broadcaster') {
-                    handleCandidateFromUrl(candidateStr);
-                } else if (currentRole === 'viewer') {
-                    handleCandidateFromUrl(candidateStr);
+            } 
+            else if (currentRole === 'viewer') {
+                if (data.type === 'broadcaster-ready' || data.type === 'offer') {
+                    log('📡 Broadcaster detected - connecting automatically');
+                    if (data.type === 'offer') {
+                        handleOfferFromBroadcaster(data.offer);
+                    } else if (data.type === 'broadcaster-ready' && !peerConnection) {
+                        // Request offer
+                        channel.postMessage({ type: 'viewer-ready' });
+                    }
+                } else if (data.type === 'ice-candidate') {
+                    handleIceCandidate(data.candidate);
                 }
             }
-            window.location.hash = '';
-        }
+        };
+        
+        log('📡 BroadcastChannel signaling established');
     }
     
     // ========== UI MODE ==========
@@ -450,7 +619,9 @@
             disconnectBtn.style.display = 'none';
             startBtn.onclick = startBroadcaster;
             stopBtn.onclick = stopBroadcaster;
-            updateStatus('Broadcaster mode - Click "Start Broadcasting"');
+            updateStatus('Broadcaster', 'Broadcaster mode - Click "Start Broadcasting"', 'idle');
+            updateVideoLabel('Broadcaster Ready', false);
+            updateConnectionInfo('🎥 Click Start Broadcasting to share your camera');
         } else {
             startBtn.style.display = 'none';
             stopBtn.style.display = 'none';
@@ -458,26 +629,25 @@
             disconnectBtn.style.display = 'inline-block';
             connectBtn.onclick = connectAsViewer;
             disconnectBtn.onclick = disconnectViewer;
-            updateStatus('Viewer mode - Click "Connect to Broadcaster"');
+            updateStatus('Viewer', 'Viewer mode - Click "Auto-Connect" to watch', 'idle');
+            updateVideoLabel('Viewer Ready', false);
+            updateConnectionInfo('👀 Click Auto-Connect to find and watch broadcaster');
         }
-        
-        document.getElementById('urlBox').style.display = 'none';
     }
     
     // ========== INIT ==========
     document.getElementById('broadcasterBtn').onclick = () => setRole('broadcaster');
     document.getElementById('viewerBtn').onclick = () => setRole('viewer');
+    
+    setupBroadcastChannel();
     setRole('broadcaster');
     
-    // Check URL params
-    window.addEventListener('load', parseUrlParams);
-    window.addEventListener('hashchange', parseUrlParams);
-    
-    log('🎬 P2P Streaming Ready');
+    log('🎬 Auto-Connect P2P Streaming Ready');
     log('📡 How to use:');
-    log('   1. Broadcaster: Start Broadcasting → Copy offer URL');
-    log('   2. Viewer: Connect → Paste offer URL → Connect');
-    log('   3. Video will appear in viewer!');
+    log('   1. Open two tabs with this page');
+    log('   2. Tab 1: Broadcaster → Start Broadcasting');
+    log('   3. Tab 2: Viewer → Auto-Connect to Broadcaster');
+    log('   4. Video connects automatically! No copy/paste needed');
 </script>
 </body>
 </html>
