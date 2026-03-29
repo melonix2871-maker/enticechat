@@ -68,143 +68,116 @@
 </div>
 
 <script>
-  const CHANNEL = "enticechat-live";
-  let webConnect = null;
-  let localStream = null;
-  let myRole = null; // "origin", "relay", "viewer"
-  let myConnectId = null;
-  let myName = `User_${Math.random().toString(36).slice(2,8)}`;
-  let currentHops = 0;
-  let forwardedTo = new Set();
+const CHANNEL = "enticechat-live";
 
-  const statusEl = document.getElementById("status");
-  const peerCountEl = document.getElementById("peerCount");
-  const hopStatEl = document.getElementById("hopStat");
-  const relayCountEl = document.getElementById("relayCount");
-  const nodeRoleStat = document.getElementById("nodeRoleStat");
+let webConnect = null;
+let localStream = null;
+let myRole = null;
+let myConnectId = null;
 
-  function setStatus(msg, live = false) {
-    statusEl.innerHTML = live ? `<span class="live-pulse"></span>${msg}` : msg;
-  }
+let myName = `User_${Math.random().toString(36).slice(2,8)}`;
+let forwardedTo = new Set();
 
-  async function startBroadcast() {
-    await stopAll();
-    myRole = "origin";
-    nodeRoleStat.textContent = "Origin";
-    document.getElementById("controlBar").style.display = "flex";
+let currentHops = 0;
+let maxChildren = 4; // dynamic later
+let MAX_DEPTH = 8;
 
-    const quality = document.getElementById("qualitySelect").value;
-    const constraints = quality === "high" ? {video:{width:1280,height:720}, audio:true} : 
-                       quality === "medium" ? {video:{width:960,height:540}, audio:true} : 
-                       {video:{width:640,height:360}, audio:true};
+function isStrongDevice() {
+  return navigator.hardwareConcurrency >= 8;
+}
 
-    localStream = await navigator.mediaDevices.getUserMedia(constraints);
-    document.getElementById("localVideo").srcObject = localStream;
-    document.getElementById("localVideoWrapper").style.display = "block";
+function calculateCapacity() {
+  if (navigator.hardwareConcurrency >= 12) return 12;
+  if (navigator.hardwareConcurrency >= 8) return 8;
+  if (navigator.hardwareConcurrency >= 4) return 4;
+  return 2;
+}
 
-    webConnect = webconnect({appName: "EnticeChat", channelName: CHANNEL});
+function setStatus(msg) {
+  document.getElementById("status").innerText = msg;
+}
 
-    webConnect.getMyId(attr => {
-      myConnectId = attr.connectId;
-      setStatus("🔴 Broadcasting (DHT-Hop mode)", true);
-    });
+async function startBroadcast() {
+  await stopAll();
 
-    webConnect.onConnect(() => updateCounts());
+  myRole = "origin";
+  maxChildren = calculateCapacity();
 
-    // Forward stream to new peers (origin pushes)
-    webConnect.onConnect(attr => {
-      if (localStream) {
-        try {
-          webConnect.openStreaming(localStream, {connectId: attr.connectId});
-          forwardedTo.add(attr.connectId);
-          relayCountEl.textContent = forwardedTo.size;
-        } catch(e){}
-      }
-    });
-  }
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 960, height: 540 },
+    audio: true
+  });
 
-  async function joinAsViewer() {
-    await stopAll();
-    myRole = "viewer";
-    nodeRoleStat.textContent = "Viewer";
-    document.getElementById("controlBar").style.display = "flex";
+  document.getElementById("localVideo").srcObject = localStream;
+  document.getElementById("localVideoWrapper").style.display = "block";
 
-    webConnect = webconnect({appName: "EnticeChat", channelName: CHANNEL});
+  webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
 
-    webConnect.getMyId(attr => myConnectId = attr.connectId);
+  webConnect.getMyId(attr => {
+    myConnectId = attr.connectId;
+    setStatus("🔴 Broadcasting (Relay Tree Mode)");
+  });
 
-    webConnect.onStreaming((stream, attr) => {
-      document.getElementById("mainRemoteVideo").srcObject = stream;
-      document.getElementById("mainRemoteWrapper").style.display = "block";
-      setStatus("✅ Receiving via P2P hops", true);
+  webConnect.onConnect(attr => {
+    if (forwardedTo.size >= maxChildren) return;
 
-      // Become relay if capable (simulate DHT hop forwarding)
-      if (navigator.hardwareConcurrency >= 4 && !/Mobi|Android/i.test(navigator.userAgent)) {
-        setTimeout(() => becomeRelay(stream), 2000);
-      }
-    });
+    try {
+      webConnect.openStreaming(localStream, { connectId: attr.connectId });
+      forwardedTo.add(attr.connectId);
+    } catch(e) {}
+  });
+}
 
-    webConnect.onConnect(() => updateCounts());
-  }
+async function joinViewer() {
+  await stopAll();
 
-  function becomeRelay(sourceStream) {
-    if (myRole === "relay") return;
-    myRole = "relay";
-    nodeRoleStat.textContent = "Relay";
-    setStatus("🔁 Acting as DHT hop relay");
+  myRole = "viewer";
+  maxChildren = calculateCapacity();
 
-    webConnect.onConnect(attr => {
-      try {
-        webConnect.openStreaming(sourceStream, {connectId: attr.connectId});
-        forwardedTo.add(attr.connectId);
-        relayCountEl.textContent = forwardedTo.size;
-        currentHops = Math.max(currentHops, 2); // rough hop estimate
-        hopStatEl.textContent = currentHops;
-      } catch(e){}
-    });
-  }
+  webConnect = webconnect({ appName: "EnticeChat", channelName: CHANNEL });
 
-  function updateCounts() {
-    if (webConnect && typeof webConnect.getConnection === "function") {
-      webConnect.getConnection(attr => {
-        peerCountEl.textContent = attr.connection?.length || 1;
-      });
+  webConnect.onStreaming((stream) => {
+    document.getElementById("mainRemoteVideo").srcObject = stream;
+    document.getElementById("mainRemoteWrapper").style.display = "block";
+
+    setStatus("✅ Receiving stream");
+
+    if (isStrongDevice()) {
+      setTimeout(() => promoteToRelay(stream), 1000);
     }
-  }
+  });
+}
 
-  async function stopAll() {
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    if (webConnect) try { webConnect.Disconnect(); } catch(e){}
-    localStream = null;
-    webConnect = null;
-    myRole = null;
-    forwardedTo.clear();
-    document.getElementById("localVideoWrapper").style.display = "none";
-    document.getElementById("mainRemoteWrapper").style.display = "none";
-    setStatus("Choose role");
-    peerCountEl.textContent = "0";
-    relayCountEl.textContent = "0";
-    hopStatEl.textContent = "0";
-    document.getElementById("controlBar").style.display = "none";
-  }
+function promoteToRelay(stream) {
+  if (myRole === "relay") return;
 
-  // Chat + buttons (add your full event listeners here)
-  document.getElementById("startBroadcastBtn").onclick = startBroadcast;
-  document.getElementById("joinViewerBtn").onclick = joinAsViewer;
-  document.getElementById("stopBtn").onclick = stopAll;
+  myRole = "relay";
+  setStatus("🔁 Acting as relay node");
 
-  // Simple chat forwarding via data channel
-  document.getElementById("sendChatBtn").onclick = () => {
-    const input = document.getElementById("chatInput");
-    if (input.value && webConnect) {
-      webConnect.Send(JSON.stringify({type:"chat", sender:myName, text:input.value}));
-      input.value = "";
-    }
-  };
+  webConnect.onConnect(attr => {
+    if (forwardedTo.size >= maxChildren) return;
 
-  document.getElementById("channelDisplay").onclick = () => navigator.clipboard.writeText(CHANNEL);
+    try {
+      webConnect.openStreaming(stream, { connectId: attr.connectId });
+      forwardedTo.add(attr.connectId);
+    } catch(e) {}
+  });
+}
 
-  window.addEventListener("beforeunload", stopAll);
+async function stopAll() {
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  if (webConnect) try { webConnect.Disconnect(); } catch(e){}
+
+  localStream = null;
+  webConnect = null;
+  forwardedTo.clear();
+
+  document.getElementById("localVideoWrapper").style.display = "none";
+  document.getElementById("mainRemoteWrapper").style.display = "none";
+}
+
+document.getElementById("startBroadcastBtn").onclick = startBroadcast;
+document.getElementById("joinViewerBtn").onclick = joinViewer;
 </script>
 </body>
 </html>
