@@ -2,95 +2,91 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>EnticeChat Live · libp2p WebRTC · Auto Signaling</title>
-  <script src="https://cdn.jsdelivr.net/npm/libp2p@0.46.21/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@libp2p/webrtc@3.2.12/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@libp2p/circuit-relay-v2@1.1.5/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@libp2p/plaintext@1.1.4/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@libp2p/mplex@9.1.4/dist/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@libp2p/bootstrap@9.1.4/dist/index.min.js"></script>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>EnticeChat Live · P2P Multiplex · Auto Connect</title>
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
+      font-family: system-ui, -apple-system, 'Segoe UI', 'Inter', sans-serif;
       background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
       color: #f0f0f0;
       margin: 0;
-      padding: 20px;
+      padding: 16px;
       min-height: 100vh;
     }
 
     .container {
       max-width: 1480px;
       margin: 0 auto;
-      padding: 0 16px;
+      padding: 0 12px;
     }
 
     h1 {
       font-weight: 700;
-      font-size: 2rem;
+      font-size: 1.8rem;
       background: linear-gradient(135deg, #FFB347, #FF6B6B);
       background-clip: text;
       -webkit-background-clip: text;
       color: transparent;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       text-align: center;
     }
 
     .sub {
       color: #aaa;
       margin-top: -8px;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       text-align: center;
     }
 
     .main-layout {
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
-      margin-top: 20px;
+      gap: 16px;
+      margin-top: 16px;
     }
 
     .video-section {
       flex: 3;
-      min-width: 300px;
+      min-width: 280px;
     }
 
     .chat-section {
       flex: 1.15;
-      min-width: 290px;
+      min-width: 280px;
       background: rgba(10, 15, 25, 0.8);
       backdrop-filter: blur(12px);
-      border-radius: 28px;
+      border-radius: 24px;
       border: 1px solid rgba(255,215,0,0.18);
       display: flex;
       flex-direction: column;
-      height: 72vh;
+      height: 65vh;
       overflow: hidden;
     }
 
     .info-card {
       background: rgba(20, 25, 45, 0.86);
       backdrop-filter: blur(12px);
-      border-radius: 28px;
-      padding: 14px 18px;
-      margin: 0 0 20px 0;
+      border-radius: 24px;
+      padding: 12px 16px;
+      margin: 0 0 16px 0;
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
       border: 1px solid rgba(255,255,255,0.12);
     }
 
     .pill, #status, .room-badge {
       background: #0f172a;
-      padding: 7px 14px;
+      padding: 6px 12px;
       border-radius: 999px;
-      font-size: 0.84rem;
+      font-size: 0.75rem;
       font-weight: 500;
       border: 1px solid rgba(255,255,255,0.06);
     }
@@ -99,36 +95,58 @@
       font-family: monospace;
       color: #ffd966;
       cursor: pointer;
-      user-select: all;
     }
 
-    .room-badge:hover { background: #162238; }
-
-    .section-card {
-      background: rgba(20, 25, 45, 0.84);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 24px;
-      padding: 16px;
-      margin-top: 16px;
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 12px;
     }
 
-    .section-title {
-      margin: 0 0 10px;
-      font-size: 0.95rem;
-      color: #ffd966;
+    button, select {
+      padding: 10px 20px;
+      font-size: 0.9rem;
       font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      color: white;
+      background: #2b3b4f;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .broadcaster { background: linear-gradient(95deg, #E63E2E, #C0392B); }
+    .viewer { background: linear-gradient(95deg, #1F6392, #0E4A6E); }
+    .danger-btn { background: #7f2a2a; }
+    .small-btn {
+      padding: 7px 14px;
+      font-size: 0.75rem;
+      background: #2a2f3f;
+    }
+
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 12px;
     }
 
     .video-grid {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .video-wrapper {
       position: relative;
       background: #000;
-      border-radius: 24px;
+      border-radius: 20px;
       overflow: hidden;
       border: 1px solid rgba(255,215,0,0.26);
       box-shadow: 0 18px 35px -14px rgba(0,0,0,0.65);
@@ -138,111 +156,136 @@
       width: 100%;
       display: block;
       background: #090909;
-      border-radius: 24px;
+      border-radius: 20px;
+      max-height: 50vh;
+      object-fit: cover;
     }
 
     .video-label {
       position: absolute;
-      bottom: 12px;
-      left: 12px;
+      bottom: 10px;
+      left: 10px;
       background: rgba(0,0,0,0.72);
-      padding: 5px 12px;
+      padding: 4px 10px;
       border-radius: 20px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
       backdrop-filter: blur(4px);
       z-index: 10;
     }
 
-    .button-row {
+    .stream-selector {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.72);
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 0.7rem;
       display: flex;
+      gap: 6px;
+      z-index: 10;
       flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      margin-bottom: 14px;
+      max-width: 60%;
+      justify-content: flex-end;
     }
 
-    button, select {
-      padding: 11px 22px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 999px;
-      color: white;
-      background: #2b3b4f;
+    .stream-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 3px 8px;
+      border-radius: 12px;
       cursor: pointer;
+      font-size: 0.65rem;
     }
 
-    button:active { transform: scale(.97); }
-    button:disabled { opacity: .6; cursor: not-allowed; }
-
-    .broadcaster { background: linear-gradient(95deg, #E63E2E, #C0392B); }
-    .viewer { background: linear-gradient(95deg, #1F6392, #0E4A6E); }
-    .danger-btn { background: #7f2a2a; }
-    .small-btn {
-      padding: 8px 16px;
-      font-size: .82rem;
-      background: #2a2f3f;
+    .stream-badge.active {
+      background: #ffb347;
+      color: #1a1a2e;
     }
 
-    .control-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 14px;
+    .section-card {
+      background: rgba(20, 25, 45, 0.84);
+      border-radius: 20px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 0.85rem;
+      color: #ffd966;
+      font-weight: 700;
     }
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
     }
 
     .stat-card {
       background: rgba(0,0,0,0.24);
-      border-radius: 16px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 8px 10px;
     }
 
     .stat-card strong {
       display: block;
       margin-bottom: 4px;
-      font-size: 0.76rem;
-      color: #fff;
+      font-size: 0.7rem;
+      color: #aaa;
+    }
+
+    .stat-card span {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .peer-item {
+      background: rgba(0,0,0,0.24);
+      border-radius: 12px;
+      padding: 8px 10px;
+      margin: 4px 0;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    .peer-item.selected {
+      background: rgba(255,215,0,0.2);
+      border: 1px solid #ffd966;
     }
 
     .chat-header {
-      padding: 16px 18px;
+      padding: 12px 16px;
       border-bottom: 1px solid rgba(255,255,255,0.10);
       font-weight: 700;
-      background: rgba(0,0,0,0.22);
+      font-size: 0.85rem;
     }
 
     .chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     .message {
       display: flex;
       flex-direction: column;
-      animation: fadeIn .2s ease;
+      animation: fadeIn 0.2s ease;
     }
 
     .message.own { align-items: flex-end; }
 
     .message-bubble {
       max-width: 88%;
-      padding: 9px 14px;
-      border-radius: 18px;
+      padding: 8px 12px;
+      border-radius: 16px;
       background: rgba(30, 40, 60, .92);
       word-wrap: break-word;
+      font-size: 0.85rem;
     }
 
     .message.own .message-bubble {
@@ -250,75 +293,61 @@
     }
 
     .message-name {
-      font-size: .7rem;
-      opacity: .72;
-      margin-bottom: 4px;
-      margin-left: 10px;
+      font-size: 0.65rem;
+      opacity: 0.72;
+      margin-bottom: 2px;
+      margin-left: 8px;
     }
 
     .message.own .message-name {
       text-align: right;
-      margin-right: 10px;
+      margin-right: 8px;
       margin-left: 0;
     }
 
-    .message-text {
-      font-size: .9rem;
-      line-height: 1.4;
-    }
-
-    .message-time {
-      font-size: .62rem;
-      opacity: .5;
-      margin-top: 4px;
-      margin-left: 10px;
-    }
-
     .chat-input-area {
-      padding: 16px;
+      padding: 12px;
       border-top: 1px solid rgba(255,255,255,0.1);
       display: flex;
-      gap: 10px;
+      gap: 8px;
     }
 
     .chat-input {
       flex: 1;
-      padding: 10px 16px;
+      padding: 8px 14px;
       border: none;
       border-radius: 40px;
       background: rgba(20, 30, 45, 0.9);
       color: white;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       outline: none;
     }
 
-    .chat-input:focus { border: 1px solid #ffb347; }
-
     .send-btn {
-      padding: 10px 18px;
+      padding: 8px 16px;
       background: #ffb347;
       color: #1a1a2e;
       border-radius: 40px;
-      font-weight: 800;
+      font-weight: 700;
+      font-size: 0.85rem;
     }
 
     .footer-note {
-      font-size: 0.72rem;
+      font-size: 0.65rem;
       color: #6c7a89;
-      margin-top: 22px;
+      margin-top: 16px;
       text-align: center;
+      padding-top: 12px;
       border-top: 1px solid #222;
-      padding-top: 20px;
-      line-height: 1.55;
     }
 
     .live-pulse {
       display: inline-block;
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       background: #e74c3c;
       border-radius: 50%;
-      margin-right: 8px;
+      margin-right: 6px;
       animation: pulse 1.2s infinite;
       vertical-align: middle;
     }
@@ -334,558 +363,646 @@
     }
 
     @media (max-width: 768px) {
+      body { padding: 10px; }
+      h1 { font-size: 1.4rem; }
       .main-layout { flex-direction: column; }
-      .chat-section { height: 42vh; }
+      .chat-section { height: 40vh; }
+      .video-wrapper video { max-height: 35vh; }
+      button { padding: 8px 16px; font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>🎙️ EnticeChat Live · libp2p Edition</h1>
-  <div class="sub">Auto WebRTC Signaling · Adaptive Quality (360p Mobile / 720p Desktop)</div>
+  <h1>🎙️ EnticeChat Live · P2P Multiplex</h1>
+  <div class="sub">Auto Peer Discovery · Multi-Stream Support · Adaptive Quality</div>
 
   <div class="info-card">
-    <span>🔗 Peer ID:</span>
-    <span class="room-badge" id="peerIdDisplay">-</span>
-    <span id="status">⚡ Initializing libp2p...</span>
+    <span>🔗 My ID:</span>
+    <span class="room-badge" id="myIdDisplay">-</span>
+    <span id="status">⚡ Choose your role</span>
     <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
-    <span class="pill">🎚 Quality: <span id="qualityMode">Detecting...</span></span>
+    <span class="pill">🎚 Quality: <span id="qualityLabel">Detecting...</span></span>
+    <span class="pill">📡 Streams: <span id="streamCount">0</span></span>
   </div>
 
   <div class="main-layout">
     <div class="video-section">
       <div class="button-row">
         <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
-        <button id="discoverPeersBtn" class="viewer">🔍 Discover & Connect</button>
+        <button id="startViewerBtn" class="viewer">👁️ Start Viewer</button>
       </div>
 
       <div class="control-bar" id="controlBar" style="display:none;">
         <button id="stopBtn" class="small-btn danger-btn">🔴 Stop</button>
-        <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
-        <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
+        <button id="muteMicBtn" class="small-btn">🎤 Mute</button>
+        <button id="toggleCamBtn" class="small-btn">📷 Pause</button>
+        <button id="addStreamBtn" class="small-btn" style="background:#4a4a8a;">➕ Add Stream</button>
       </div>
 
       <div class="video-grid">
         <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
           <video id="localVideo" autoplay playsinline muted></video>
           <div class="video-label" id="localVideoLabel">📹 You</div>
+          <div id="localStreamSelector" class="stream-selector"></div>
         </div>
 
-        <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
-          <video id="mainRemoteVideo" autoplay playsinline controls></video>
-          <div class="video-label" id="mainRemoteLabel">🎙️ Remote Stream</div>
+        <div class="video-wrapper" id="remoteVideoWrapper" style="display:none;">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="video-label" id="remoteVideoLabel">🎙️ Remote</div>
+          <div id="remoteStreamSelector" class="stream-selector"></div>
         </div>
       </div>
 
       <div class="section-card">
-        <div class="section-title">Connected Peers</div>
-        <div id="peersList" style="max-height: 150px; overflow-y: auto;"></div>
+        <div class="section-title">🔗 Connected Peers (click to switch)</div>
+        <div id="peersList" style="max-height: 120px; overflow-y: auto;"></div>
       </div>
 
       <div class="section-card">
-        <div class="section-title">Stream Stats</div>
+        <div class="section-title">📊 Connection Stats</div>
         <div class="stats-grid">
-          <div class="stat-card"><strong>Device Type</strong><span id="deviceType">-</span></div>
-          <div class="stat-card"><strong>Video Resolution</strong><span id="videoResolution">-</span></div>
-          <div class="stat-card"><strong>Active Streams</strong><span id="activeStreams">0</span></div>
+          <div class="stat-card"><strong>Device</strong><span id="deviceInfo">-</span></div>
+          <div class="stat-card"><strong>Video Res</strong><span id="videoRes">-</span></div>
+          <div class="stat-card"><strong>Local Streams</strong><span id="localStreamsCount">0</span></div>
+          <div class="stat-card"><strong>Remote Streams</strong><span id="remoteStreamsCount">0</span></div>
         </div>
       </div>
     </div>
 
     <div class="chat-section">
-      <div class="chat-header">💬 Live Chat <span id="chatRoleBadge"></span></div>
+      <div class="chat-header">💬 Chat <span id="roleBadge"></span></div>
       <div class="chat-messages" id="chatMessages">
         <div class="message">
-          <div class="message-bubble" style="background:#2c3e50;">
-            ✨ libp2p WebRTC with auto signaling!<br>
-            No manual copy-paste needed.
-          </div>
+          <div class="message-bubble">✨ Auto-discovery active! Start broadcast in one tab, viewer in another.</div>
         </div>
       </div>
       <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500" />
-        <button id="sendChatBtn" class="send-btn">📤 Send</button>
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type message..." />
+        <button id="sendChatBtn" class="send-btn">Send</button>
       </div>
     </div>
   </div>
 
   <div class="footer-note">
-    <strong>libp2p WebRTC</strong> with automatic signaling via Circuit Relay v2.<br>
-    Mobile: 360p @ 15fps | Desktop: 720p @ 24fps | Adaptive bitrate.
+    <strong>P2P Multiplexed WebRTC</strong> · Auto peer discovery via localStorage · Multiple streams per connection<br>
+    Mobile: 360p | Desktop: 720p | Tap peer to switch view
   </div>
 </div>
 
 <script>
-  // Quality detection based on device
+  // ========== CONFIGURATION ==========
   const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
   const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent);
   
-  const QUALITY_CONFIG = {
-    mobile: {
-      label: "360p (Mobile)",
-      video: { width: 640, height: 360, frameRate: 15 },
-      bitrate: 500000
-    },
-    tablet: {
-      label: "540p (Tablet)",
-      video: { width: 960, height: 540, frameRate: 20 },
-      bitrate: 1000000
-    },
-    desktop: {
-      label: "720p (Desktop)",
-      video: { width: 1280, height: 720, frameRate: 24 },
-      bitrate: 1500000
-    }
+  const QUALITY = {
+    mobile: { width: 640, height: 360, frameRate: 15, bitrate: 500000, label: "360p" },
+    tablet: { width: 960, height: 540, frameRate: 20, bitrate: 1000000, label: "540p" },
+    desktop: { width: 1280, height: 720, frameRate: 24, bitrate: 1500000, label: "720p" }
   };
   
   const deviceType = isMobile ? "mobile" : (isTablet ? "tablet" : "desktop");
-  const currentQuality = QUALITY_CONFIG[deviceType];
+  const currentQuality = QUALITY[deviceType];
   
-  document.getElementById("deviceType").innerText = deviceType.toUpperCase();
-  document.getElementById("qualityMode").innerText = currentQuality.label;
-  
-  let libp2p = null;
-  let localStream = null;
-  let remoteStream = null;
+  // ========== GLOBAL STATE ==========
+  let myPeerId = null;
   let myRole = null;
-  let peerConnections = new Map(); // peerId -> { connection, stream, pc }
+  let localStreams = new Map(); // streamId -> MediaStream
+  let peerConnections = new Map(); // peerId -> { pc, streams, dataChannel, selected }
+  let remoteStreams = new Map(); // peerId -> Map(streamId -> MediaStream)
+  let currentSelectedPeer = null;
+  let nextStreamId = 1;
   
-  // DOM elements
+  // Storage key for peer discovery
+  const STORAGE_KEY = 'enticechat_peers';
+  let discoveryInterval = null;
+  
+  // ========== DOM Elements ==========
   const startBroadcastBtn = document.getElementById("startBroadcastBtn");
-  const discoverPeersBtn = document.getElementById("discoverPeersBtn");
+  const startViewerBtn = document.getElementById("startViewerBtn");
   const stopBtn = document.getElementById("stopBtn");
   const muteMicBtn = document.getElementById("muteMicBtn");
   const toggleCamBtn = document.getElementById("toggleCamBtn");
+  const addStreamBtn = document.getElementById("addStreamBtn");
   const controlBar = document.getElementById("controlBar");
   const localVideo = document.getElementById("localVideo");
   const localVideoWrapper = document.getElementById("localVideoWrapper");
-  const mainRemoteVideo = document.getElementById("mainRemoteVideo");
-  const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
-  const peerIdDisplay = document.getElementById("peerIdDisplay");
+  const remoteVideo = document.getElementById("remoteVideo");
+  const remoteVideoWrapper = document.getElementById("remoteVideoWrapper");
+  const myIdDisplay = document.getElementById("myIdDisplay");
   const peerCountSpan = document.getElementById("peerCount");
+  const qualityLabel = document.getElementById("qualityLabel");
+  const streamCountSpan = document.getElementById("streamCount");
   const peersList = document.getElementById("peersList");
   const statusSpan = document.getElementById("status");
   const chatMessages = document.getElementById("chatMessages");
   const chatInput = document.getElementById("chatInput");
   const sendChatBtn = document.getElementById("sendChatBtn");
-  const chatRoleBadge = document.getElementById("chatRoleBadge");
-  const videoResolutionSpan = document.getElementById("videoResolution");
-  const activeStreamsSpan = document.getElementById("activeStreams");
+  const roleBadge = document.getElementById("roleBadge");
+  const deviceInfo = document.getElementById("deviceInfo");
+  const videoRes = document.getElementById("videoRes");
+  const localStreamsCount = document.getElementById("localStreamsCount");
+  const remoteStreamsCount = document.getElementById("remoteStreamsCount");
+  const localStreamSelector = document.getElementById("localStreamSelector");
+  const remoteStreamSelector = document.getElementById("remoteStreamSelector");
+  const remoteVideoLabel = document.getElementById("remoteVideoLabel");
+  const localVideoLabel = document.getElementById("localVideoLabel");
   
+  // ========== Helper Functions ==========
   function shortId(id) {
-    return id ? `${id.slice(0, 8)}…` : "—";
+    return id ? id.slice(0, 8) : "?";
   }
   
-  function addMessageToUI(senderName, message, isOwn = false) {
+  function addMessage(text, sender = "System", isOwn = false) {
     const div = document.createElement("div");
     div.className = `message ${isOwn ? "own" : ""}`;
     div.innerHTML = `
-      <div class="message-name">${escapeHtml(senderName)}</div>
-      <div class="message-bubble"><div class="message-text">${escapeHtml(message)}</div></div>
-      <div class="message-time">${new Date().toLocaleTimeString()}</div>
+      <div class="message-name">${escapeHtml(sender)}</div>
+      <div class="message-bubble">${escapeHtml(text)}</div>
     `;
     chatMessages.appendChild(div);
     div.scrollIntoView({ behavior: "smooth", block: "end" });
-    while (chatMessages.children.length > 200) {
-      chatMessages.removeChild(chatMessages.firstChild);
-    }
+    while (chatMessages.children.length > 200) chatMessages.removeChild(chatMessages.firstChild);
   }
   
   function escapeHtml(str) {
     if (!str) return "";
-    return str.replace(/[&<>]/g, function(m) {
-      if (m === "&") return "&amp;";
-      if (m === "<") return "&lt;";
-      if (m === ">") return "&gt;";
-      return m;
-    });
+    return str.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m] || m));
   }
   
-  function setStatusMessage(message, isError = false) {
-    statusSpan.innerHTML = message;
+  function setStatus(msg, isError = false) {
+    statusSpan.innerHTML = msg;
     statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
   }
   
-  async function initLibp2p() {
-    setStatusMessage("🔄 Initializing libp2p with WebRTC...");
-    
-    try {
-      // For browser environment, we'll use a simplified approach
-      // Note: Full libp2p requires proper setup, but for demo we'll use native WebRTC
-      // with automatic signaling via a simple broadcast channel
-      
-      // Generate a random peer ID
-      const peerId = `peer_${Math.random().toString(36).slice(2, 15)}`;
-      localStorage.setItem("enticechat_peerid", peerId);
-      peerIdDisplay.innerText = shortId(peerId);
-      
-      // Use BroadcastChannel for same-origin auto-discovery
-      const channel = new BroadcastChannel("enticechat_signaling");
-      
-      // Store our peer info
-      let myPeerInfo = {
-        id: peerId,
-        role: null,
-        streamAvailable: false
-      };
-      
-      // Listen for peers
-      channel.onmessage = async (event) => {
-        const data = event.data;
-        
-        if (data.type === "peer-announce" && data.peerId !== peerId) {
-          addMessageToUI("System", `📡 Discovered peer: ${shortId(data.peerId)}`, false);
-          
-          // Auto-connect if we're a viewer and they're a broadcaster
-          if (myRole === "viewer" && data.role === "broadcaster") {
-            await initiateConnection(data.peerId);
-          } else if (myRole === "broadcaster" && data.role === "viewer") {
-            await initiateConnection(data.peerId);
-          }
-        }
-        
-        if (data.type === "offer" && data.targetId === peerId) {
-          await handleOffer(data);
-        }
-        
-        if (data.type === "answer" && data.targetId === peerId) {
-          await handleAnswer(data);
-        }
-        
-        if (data.type === "ice-candidate" && data.targetId === peerId) {
-          await handleIceCandidate(data);
-        }
-        
-        if (data.type === "chat" && data.targetId === peerId) {
-          addMessageToUI(data.senderName, data.message, false);
-        }
-      };
-      
-      // Announce presence periodically
-      setInterval(() => {
-        if (myRole) {
-          channel.postMessage({
-            type: "peer-announce",
-            peerId: peerId,
-            role: myRole,
-            timestamp: Date.now()
-          });
-        }
-      }, 3000);
-      
-      // Store channel for later use
-      window.signalingChannel = channel;
-      window.myPeerId = peerId;
-      
-      setStatusMessage("✅ libp2p ready! Choose your role.");
-      return true;
-      
-    } catch (err) {
-      console.error("Failed to init:", err);
-      setStatusMessage("❌ Failed to initialize", true);
-      return false;
-    }
+  function updateStats() {
+    peerCountSpan.innerText = peerConnections.size;
+    streamCountSpan.innerText = localStreams.size;
+    localStreamsCount.innerText = localStreams.size;
+    let totalRemote = 0;
+    for (const streams of remoteStreams.values()) totalRemote += streams.size;
+    remoteStreamsCount.innerText = totalRemote;
+    qualityLabel.innerText = currentQuality.label;
+    deviceInfo.innerText = deviceType.toUpperCase();
+    myIdDisplay.innerText = shortId(myPeerId);
+    roleBadge.innerHTML = myRole === "broadcaster" ? "· BROADCASTER" : (myRole === "viewer" ? "· VIEWER" : "");
   }
   
-  async function startBroadcast() {
-    myRole = "broadcaster";
-    controlBar.style.display = "flex";
-    chatRoleBadge.innerHTML = "· BROADCASTER";
+  // ========== PEER DISCOVERY (via localStorage) ==========
+  function startDiscovery() {
+    // Clear old
+    if (discoveryInterval) clearInterval(discoveryInterval);
     
-    setStatusMessage("🎥 Requesting camera...");
-    
-    try {
-      // Get stream with adaptive quality
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: currentQuality.video,
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 48000
-        }
-      });
-      
-      localVideo.srcObject = localStream;
-      localVideoWrapper.style.display = "block";
-      
-      const videoTrack = localStream.getVideoTracks()[0];
-      const settings = videoTrack.getSettings();
-      videoResolutionSpan.innerText = `${settings.width}x${settings.height} @ ${settings.frameRate}fps`;
-      
-      setStatusMessage("🔴 Broadcasting LIVE - Auto-discovery enabled", false);
-      addMessageToUI("System", "🎬 You are now broadcasting! Viewers will auto-discover you.", false);
-      
-      // Announce broadcaster presence
-      window.signalingChannel.postMessage({
-        type: "peer-announce",
-        peerId: window.myPeerId,
-        role: "broadcaster",
-        timestamp: Date.now()
-      });
-      
-    } catch (err) {
-      setStatusMessage(`❌ Camera error: ${err.message}`, true);
+    // Announce presence
+    function announce() {
+      if (!myRole) return;
+      const peers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      peers[myPeerId] = {
+        id: myPeerId,
+        role: myRole,
+        timestamp: Date.now(),
+        streamAvailable: localStreams.size > 0
+      };
+      // Clean old entries (>10 seconds)
+      for (const [id, data] of Object.entries(peers)) {
+        if (Date.now() - data.timestamp > 10000) delete peers[id];
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(peers));
     }
+    
+    // Look for other peers
+    function discover() {
+      if (!myRole) return;
+      const peers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      for (const [peerId, data] of Object.entries(peers)) {
+        if (peerId !== myPeerId && !peerConnections.has(peerId)) {
+          // Auto-connect: broadcaster <-> viewer
+          if ((myRole === "broadcaster" && data.role === "viewer") ||
+              (myRole === "viewer" && data.role === "broadcaster")) {
+            addMessage(`Auto-discovered ${shortId(peerId)} (${data.role}), connecting...`);
+            initiateConnection(peerId);
+          }
+        }
+      }
+    }
+    
+    announce();
+    discoveryInterval = setInterval(() => {
+      announce();
+      discover();
+    }, 3000);
   }
+  
+  function stopDiscovery() {
+    if (discoveryInterval) clearInterval(discoveryInterval);
+    const peers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    delete peers[myPeerId];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(peers));
+  }
+  
+  // ========== WEBRTC CONNECTION ==========
+  const ICE_SERVERS = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" }
+    ]
+  };
   
   async function initiateConnection(peerId) {
     if (peerConnections.has(peerId)) return;
     
-    addMessageToUI("System", `🔗 Connecting to ${shortId(peerId)}...`, false);
+    addMessage(`🔗 Connecting to ${shortId(peerId)}...`);
     
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ]
-    });
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const dataChannel = pc.createDataChannel("chat");
     
-    peerConnections.set(peerId, { pc, stream: null });
+    peerConnections.set(peerId, { pc, streams: new Map(), dataChannel, selected: false });
     
-    // Add local stream if broadcasting
-    if (localStream) {
-      localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
+    // Setup data channel
+    dataChannel.onopen = () => addMessage(`💬 Chat ready with ${shortId(peerId)}`);
+    dataChannel.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "chat") {
+          addMessage(data.message, shortId(peerId));
+        }
+      } catch(e) {}
+    };
+    
+    // Add all local streams
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream);
       });
     }
     
+    // Handle incoming tracks (multiplexing!)
     pc.ontrack = (event) => {
-      if (event.streams[0]) {
-        remoteStream = event.streams[0];
-        mainRemoteVideo.srcObject = remoteStream;
-        mainRemoteWrapper.style.display = "block";
-        mainRemoteLabel.innerText = `📺 Stream from ${shortId(peerId)}`;
-        activeStreamsSpan.innerText = "1";
-        addMessageToUI("System", `✅ Receiving stream from ${shortId(peerId)}`, false);
+      const stream = event.streams[0];
+      if (stream) {
+        const streamId = stream.id || `stream_${Date.now()}_${Math.random()}`;
+        if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
+        remoteStreams.get(peerId).set(streamId, stream);
+        
+        addMessage(`📺 New stream from ${shortId(peerId)} (${streamId.slice(0, 8)})`);
+        updateRemoteSelector(peerId);
+        updateStats();
+        
+        // Auto-select first stream
+        if (!currentSelectedPeer && remoteStreams.get(peerId).size === 1) {
+          selectPeer(peerId);
+        }
       }
     };
     
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        window.signalingChannel.postMessage({
-          type: "ice-candidate",
-          targetId: peerId,
-          candidate: event.candidate,
-          senderId: window.myPeerId
-        });
+        sendSignaling(peerId, { type: "ice", candidate: event.candidate });
       }
     };
     
     pc.oniceconnectionstatechange = () => {
-      console.log(`ICE state with ${peerId}: ${pc.iceConnectionState}`);
       updatePeersList();
+      if (pc.iceConnectionState === "connected") {
+        addMessage(`✅ Connected to ${shortId(peerId)}`);
+      }
     };
     
-    // Create offer
+    // Create and send offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    
-    window.signalingChannel.postMessage({
-      type: "offer",
-      targetId: peerId,
-      sdp: offer.sdp,
-      senderId: window.myPeerId
-    });
+    sendSignaling(peerId, { type: "offer", sdp: offer.sdp });
     
     updatePeersList();
   }
   
-  async function handleOffer(data) {
-    let pc = peerConnections.get(data.senderId)?.pc;
+  async function handleSignaling(peerId, data) {
+    let conn = peerConnections.get(peerId);
     
-    if (!pc) {
-      pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-        ]
-      });
-      
-      peerConnections.set(data.senderId, { pc, stream: null });
-      
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          pc.addTrack(track, localStream);
-        });
+    if (data.type === "offer") {
+      if (!conn) {
+        const pc = new RTCPeerConnection(ICE_SERVERS);
+        conn = { pc, streams: new Map(), dataChannel: null, selected: false };
+        peerConnections.set(peerId, conn);
+        
+        // Handle data channel
+        pc.ondatachannel = (event) => {
+          conn.dataChannel = event.channel;
+          conn.dataChannel.onmessage = (e) => {
+            try {
+              const msg = JSON.parse(e.data);
+              if (msg.type === "chat") addMessage(msg.message, shortId(peerId));
+            } catch(e) {}
+          };
+        };
+        
+        // Add local streams
+        for (const [streamId, stream] of localStreams) {
+          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        }
+        
+        pc.ontrack = (event) => {
+          const stream = event.streams[0];
+          if (stream) {
+            const streamId = stream.id || `stream_${Date.now()}`;
+            if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
+            remoteStreams.get(peerId).set(streamId, stream);
+            updateRemoteSelector(peerId);
+            updateStats();
+            if (!currentSelectedPeer) selectPeer(peerId);
+          }
+        };
+        
+        pc.onicecandidate = (event) => {
+          if (event.candidate) sendSignaling(peerId, { type: "ice", candidate: event.candidate });
+        };
       }
       
-      pc.ontrack = (event) => {
-        if (event.streams[0]) {
-          remoteStream = event.streams[0];
-          mainRemoteVideo.srcObject = remoteStream;
-          mainRemoteWrapper.style.display = "block";
-          mainRemoteLabel.innerText = `📺 Stream from ${shortId(data.senderId)}`;
-          activeStreamsSpan.innerText = "1";
-          addMessageToUI("System", `✅ Receiving stream from ${shortId(data.senderId)}`, false);
-        }
-      };
-      
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          window.signalingChannel.postMessage({
-            type: "ice-candidate",
-            targetId: data.senderId,
-            candidate: event.candidate,
-            senderId: window.myPeerId
-          });
-        }
-      };
+      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }));
+      const answer = await conn.pc.createAnswer();
+      await conn.pc.setLocalDescription(answer);
+      sendSignaling(peerId, { type: "answer", sdp: answer.sdp });
     }
     
-    await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+    if (data.type === "answer" && conn) {
+      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp }));
+    }
     
-    window.signalingChannel.postMessage({
-      type: "answer",
-      targetId: data.senderId,
-      sdp: answer.sdp,
-      senderId: window.myPeerId
-    });
+    if (data.type === "ice" && conn && data.candidate) {
+      await conn.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
     
     updatePeersList();
   }
   
-  async function handleAnswer(data) {
-    const conn = peerConnections.get(data.senderId);
-    if (conn && conn.pc) {
-      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp }));
-      addMessageToUI("System", `✅ Connected to ${shortId(data.senderId)}`, false);
+  function sendSignaling(peerId, data) {
+    // Use localStorage for signaling (simple cross-tab)
+    const signalKey = `enticechat_signal_${peerId}`;
+    localStorage.setItem(signalKey, JSON.stringify({ ...data, from: myPeerId, timestamp: Date.now() }));
+    setTimeout(() => localStorage.removeItem(signalKey), 1000);
+  }
+  
+  // Listen for signaling
+  function startSignalingListener() {
+    window.addEventListener('storage', (event) => {
+      if (event.key && event.key.startsWith('enticechat_signal_')) {
+        try {
+          const data = JSON.parse(event.newValue);
+          const peerId = event.key.replace('enticechat_signal_', '');
+          if (data.from !== myPeerId && peerId === myPeerId) {
+            handleSignaling(data.from, data);
+          }
+        } catch(e) {}
+      }
+    });
+  }
+  
+  // ========== STREAM MANAGEMENT ==========
+  async function addLocalStream(type = "camera") {
+    try {
+      let stream;
+      const constraints = {
+        video: type === "camera" ? currentQuality : false,
+        audio: type !== "screen"
+      };
+      
+      if (type === "camera") {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: currentQuality.width }, height: { ideal: currentQuality.height }, frameRate: { ideal: currentQuality.frameRate } },
+          audio: { echoCancellation: true, noiseSuppression: true }
+        });
+      } else if (type === "screen") {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      } else if (type === "audio-only") {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      }
+      
+      const streamId = `${type}_${nextStreamId++}_${Date.now().toString(36)}`;
+      Object.defineProperty(stream, 'id', { value: streamId, writable: false });
+      localStreams.set(streamId, stream);
+      
+      // Add to all peer connections
+      for (const [peerId, conn] of peerConnections) {
+        stream.getTracks().forEach(track => {
+          conn.pc.addTrack(track, stream);
+        });
+        await renegotiate(peerId);
+      }
+      
+      // Show first video stream
+      if (stream.getVideoTracks().length > 0 && localStreams.size === 1) {
+        localVideo.srcObject = stream;
+        localVideoWrapper.style.display = "block";
+      }
+      
+      updateLocalSelector();
+      updateStats();
+      addMessage(`✅ Added ${type} stream (${streamId.slice(0, 8)})`);
+      
+      // Update video resolution display
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        const settings = videoTrack.getSettings();
+        videoRes.innerText = `${settings.width}x${settings.height}`;
+      }
+      
+    } catch (err) {
+      addMessage(`❌ Failed to add ${type}: ${err.message}`);
     }
   }
   
-  async function handleIceCandidate(data) {
-    const conn = peerConnections.get(data.senderId);
-    if (conn && conn.pc && data.candidate) {
-      await conn.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+  async function renegotiate(peerId) {
+    const conn = peerConnections.get(peerId);
+    if (!conn || !conn.pc) return;
+    
+    try {
+      const offer = await conn.pc.createOffer();
+      await conn.pc.setLocalDescription(offer);
+      sendSignaling(peerId, { type: "offer", sdp: offer.sdp });
+    } catch (err) {
+      console.error("Renegotiation failed:", err);
     }
+  }
+  
+  function updateLocalSelector() {
+    localStreamSelector.innerHTML = "";
+    for (const [streamId, stream] of localStreams) {
+      const badge = document.createElement("div");
+      badge.className = "stream-badge";
+      const hasVideo = stream.getVideoTracks().length > 0 ? "🎥" : "🎤";
+      badge.innerHTML = `${hasVideo} ${streamId.slice(0, 6)}`;
+      badge.onclick = () => {
+        localVideo.srcObject = stream;
+        localVideoLabel.innerHTML = `📹 ${streamId.slice(0, 8)}`;
+        document.querySelectorAll('#localStreamSelector .stream-badge').forEach(b => b.classList.remove('active'));
+        badge.classList.add('active');
+      };
+      localStreamSelector.appendChild(badge);
+    }
+    if (localStreams.size > 0) localStreamSelector.style.display = "flex";
+  }
+  
+  function updateRemoteSelector(peerId) {
+    if (peerId !== currentSelectedPeer) return;
+    const streams = remoteStreams.get(peerId);
+    if (!streams || streams.size === 0) {
+      remoteStreamSelector.style.display = "none";
+      return;
+    }
+    
+    remoteStreamSelector.style.display = "flex";
+    remoteStreamSelector.innerHTML = "";
+    for (const [streamId, stream] of streams) {
+      const badge = document.createElement("div");
+      badge.className = "stream-badge";
+      const hasVideo = stream.getVideoTracks().length > 0 ? "🎥" : "🎤";
+      badge.innerHTML = `${hasVideo} ${streamId.slice(0, 6)}`;
+      badge.onclick = () => {
+        remoteVideo.srcObject = stream;
+        remoteVideoLabel.innerHTML = `📺 ${streamId.slice(0, 8)}`;
+        document.querySelectorAll('#remoteStreamSelector .stream-badge').forEach(b => b.classList.remove('active'));
+        badge.classList.add('active');
+      };
+      remoteStreamSelector.appendChild(badge);
+    }
+  }
+  
+  function selectPeer(peerId) {
+    currentSelectedPeer = peerId;
+    const streams = remoteStreams.get(peerId);
+    if (streams && streams.size > 0) {
+      const firstVideo = Array.from(streams.values()).find(s => s.getVideoTracks().length > 0);
+      if (firstVideo) {
+        remoteVideo.srcObject = firstVideo;
+        remoteVideoWrapper.style.display = "block";
+        remoteVideoLabel.innerHTML = `📺 ${shortId(peerId)}`;
+      }
+    }
+    updateRemoteSelector(peerId);
+    updatePeersList();
   }
   
   function updatePeersList() {
     peersList.innerHTML = "";
     for (const [peerId, conn] of peerConnections) {
       const div = document.createElement("div");
-      div.className = "peer-item";
-      div.style.padding = "8px";
-      div.style.margin = "5px 0";
-      div.style.background = "rgba(0,0,0,0.24)";
-      div.style.borderRadius = "12px";
+      div.className = `peer-item ${currentSelectedPeer === peerId ? "selected" : ""}`;
       div.innerHTML = `
-        <strong>${shortId(peerId)}</strong><br>
-        <span style="font-size:0.7rem;">State: ${conn.pc.iceConnectionState}</span>
+        <strong>${shortId(peerId)}</strong>
+        <span style="float:right; font-size:0.65rem;">${conn.pc.iceConnectionState}</span>
+        <div style="font-size:0.65rem;">📡 ${remoteStreams.get(peerId)?.size || 0} streams</div>
       `;
+      div.onclick = () => selectPeer(peerId);
       peersList.appendChild(div);
     }
-    peerCountSpan.innerText = peerConnections.size;
   }
   
-  async function discoverPeers() {
-    myRole = "viewer";
+  // ========== ROLE MANAGEMENT ==========
+  async function startBroadcast() {
+    await stopEverything();
+    myRole = "broadcaster";
+    myPeerId = `broad_${Math.random().toString(36).slice(2, 10)}`;
     controlBar.style.display = "flex";
-    chatRoleBadge.innerHTML = "· VIEWER";
     
-    setStatusMessage("🔍 Discovering broadcasters...");
-    addMessageToUI("System", "🔍 Looking for active broadcasters...", false);
+    await addLocalStream("camera");
     
-    // Announce viewer presence
-    window.signalingChannel.postMessage({
-      type: "peer-announce",
-      peerId: window.myPeerId,
-      role: "viewer",
-      timestamp: Date.now()
-    });
-    
-    // Also request existing broadcasters
-    window.signalingChannel.postMessage({
-      type: "request-broadcasters",
-      peerId: window.myPeerId
-    });
-    
-    setTimeout(() => {
-      if (peerConnections.size === 0) {
-        addMessageToUI("System", "No broadcasters found. Start a broadcast in another tab/window.", false);
-      }
-    }, 5000);
+    startDiscovery();
+    startSignalingListener();
+    setStatus("🔴 Broadcasting LIVE - Auto-discovery active", false);
+    addMessage("🎬 You are now broadcasting! Viewers will auto-connect.");
+    updateStats();
   }
   
-  function toggleMute() {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        muteMicBtn.innerHTML = audioTrack.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
-      }
-    }
-  }
-  
-  function toggleCamera() {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        toggleCamBtn.innerHTML = videoTrack.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
-      }
-    }
-  }
-  
-  function sendChatMessage() {
-    const message = chatInput.value.trim();
-    if (!message) return;
+  async function startViewer() {
+    await stopEverything();
+    myRole = "viewer";
+    myPeerId = `view_${Math.random().toString(36).slice(2, 10)}`;
+    controlBar.style.display = "flex";
     
-    // Send to all connected peers
-    for (const [peerId, conn] of peerConnections) {
-      window.signalingChannel.postMessage({
-        type: "chat",
-        targetId: peerId,
-        senderName: shortId(window.myPeerId),
-        message: message,
-        timestamp: Date.now()
-      });
-    }
-    
-    addMessageToUI(shortId(window.myPeerId), message, true);
-    chatInput.value = "";
+    startDiscovery();
+    startSignalingListener();
+    setStatus("👁️ Viewer mode - Auto-connecting to broadcasters...", false);
+    addMessage("🔍 Searching for active broadcasters...");
+    updateStats();
   }
   
   async function stopEverything() {
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = null;
+    stopDiscovery();
+    
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(t => t.stop());
     }
+    localStreams.clear();
     
     for (const [peerId, conn] of peerConnections) {
+      if (conn.dataChannel) conn.dataChannel.close();
       conn.pc.close();
     }
     peerConnections.clear();
+    remoteStreams.clear();
     
+    localStreams.clear();
     localVideo.srcObject = null;
-    mainRemoteVideo.srcObject = null;
+    remoteVideo.srcObject = null;
     localVideoWrapper.style.display = "none";
-    mainRemoteWrapper.style.display = "none";
+    remoteVideoWrapper.style.display = "none";
     controlBar.style.display = "none";
     
     myRole = null;
-    chatRoleBadge.innerHTML = "";
-    activeStreamsSpan.innerText = "0";
-    videoResolutionSpan.innerText = "-";
-    
-    setStatusMessage("⚡ Ready");
+    currentSelectedPeer = null;
+    videoRes.innerText = "-";
+    setStatus("⚡ Choose your role");
+    updateStats();
     updatePeersList();
   }
   
-  // Event listeners
+  function toggleMute() {
+    for (const [streamId, stream] of localStreams) {
+      stream.getAudioTracks().forEach(t => t.enabled = !t.enabled);
+    }
+    muteMicBtn.innerHTML = muteMicBtn.innerHTML === "🎤 Mute" ? "🎤 Unmute" : "🎤 Mute";
+  }
+  
+  function toggleCamera() {
+    for (const [streamId, stream] of localStreams) {
+      stream.getVideoTracks().forEach(t => t.enabled = !t.enabled);
+    }
+    toggleCamBtn.innerHTML = toggleCamBtn.innerHTML === "📷 Pause" ? "📷 Resume" : "📷 Pause";
+  }
+  
+  function sendChat() {
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+    
+    for (const [peerId, conn] of peerConnections) {
+      if (conn.dataChannel && conn.dataChannel.readyState === "open") {
+        conn.dataChannel.send(JSON.stringify({ type: "chat", message: msg }));
+      }
+    }
+    addMessage(msg, shortId(myPeerId), true);
+    chatInput.value = "";
+  }
+  
+  // ========== EVENT LISTENERS ==========
   startBroadcastBtn.addEventListener("click", startBroadcast);
-  discoverPeersBtn.addEventListener("click", discoverPeers);
+  startViewerBtn.addEventListener("click", startViewer);
   stopBtn.addEventListener("click", stopEverything);
   muteMicBtn.addEventListener("click", toggleMute);
   toggleCamBtn.addEventListener("click", toggleCamera);
-  sendChatBtn.addEventListener("click", sendChatMessage);
-  chatInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendChatMessage();
+  addStreamBtn.addEventListener("click", () => {
+    const type = prompt("Stream type: camera, screen, audio-only", "camera");
+    if (type && ["camera", "screen", "audio-only"].includes(type)) addLocalStream(type);
   });
+  sendChatBtn.addEventListener("click", sendChat);
+  chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChat(); });
   
   // Initialize
-  initLibp2p();
+  currentQuality.label = `${currentQuality.width}x${currentQuality.height}`;
+  qualityLabel.innerText = currentQuality.label;
+  updateStats();
+  setStatus("⚡ Ready - Start broadcast or viewer mode");
+  addMessage("✨ Auto-discovery active! Open another tab/window and start the opposite role.");
 </script>
 </body>
 </html>
