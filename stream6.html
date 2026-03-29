@@ -403,6 +403,8 @@
   <div class="sub">Multiple Signaling Servers · Works Anywhere · Multi-Stream</div>
 
   <div class="info-card">
+    <span>🔗 My ID:</span>
+    <span class="pill" id="myIdDisplay">-</span>
     <span>🔗 Room:</span>
     <input type="text" id="roomInput" class="room-input" value="enticechat-live" maxlength="50" />
     <span>📡 Server:</span>
@@ -487,7 +489,6 @@
 
 <script>
   // ========== CONFIGURATION ==========
-  // Multiple signaling servers (like XRPL public servers)
   const SIGNALING_SERVERS = {
     "wss://broadcastchannel.glitch.me/ws": "Default (Glitch)",
     "wss://xrplcluster.com/": "XRPL Cluster",
@@ -521,20 +522,20 @@
   let nextStreamId = 1;
   let reconnectTimer = null;
   
-  // ========== DOM Elements with null checks ==========
+  // ========== Safe DOM Helpers ==========
   function getElement(id) {
     const el = document.getElementById(id);
-    if (!el) console.warn(`Element not found: ${id}`);
+    if (!el && id !== "myIdDisplay") {
+      console.warn(`Element not found: ${id}`);
+    }
     return el;
   }
   
-  // Safe text setter
   function setText(id, value) {
     const el = getElement(id);
     if (el) el.innerText = value;
   }
   
-  // Safe style setter
   function setDisplay(id, display) {
     const el = getElement(id);
     if (el) el.style.display = display;
@@ -596,7 +597,8 @@
     setText("remoteStreamsCountSpan", totalRemote);
     setText("qualityLabelSpan", currentQuality.label);
     setText("deviceInfoSpan", deviceType.toUpperCase());
-    setText("myIdDisplay", shortId(myPeerId));
+    
+    if (myPeerId) setText("myIdDisplay", shortId(myPeerId));
     
     const roleBadge = getElement("roleBadgeSpan");
     if (roleBadge) roleBadge.innerHTML = myRole === "broadcaster" ? "· BROADCASTER" : (myRole === "viewer" ? "· VIEWER" : "");
@@ -617,7 +619,6 @@
         updateConnectionStatus(true);
         setStatus("Connected! Choose your role");
         
-        // Join room
         if (myPeerId && myRole) {
           ws.send(JSON.stringify({
             type: "join",
@@ -686,14 +687,16 @@
   async function handleSignaling(data) {
     switch (data.type) {
       case "peers":
-        for (const peerId of data.peers) {
-          if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-            if (data.roles && data.roles[peerId]) {
-              const peerRole = data.roles[peerId];
-              if ((myRole === "broadcaster" && peerRole === "viewer") ||
-                  (myRole === "viewer" && peerRole === "broadcaster")) {
-                addMessage(`Auto-connecting to ${shortId(peerId)} (${peerRole})`);
-                await initiateConnection(peerId);
+        if (data.peers && Array.isArray(data.peers)) {
+          for (const peerId of data.peers) {
+            if (peerId !== myPeerId && !peerConnections.has(peerId)) {
+              if (data.roles && data.roles[peerId]) {
+                const peerRole = data.roles[peerId];
+                if ((myRole === "broadcaster" && peerRole === "viewer") ||
+                    (myRole === "viewer" && peerRole === "broadcaster")) {
+                  addMessage(`Auto-connecting to ${shortId(peerId)} (${peerRole})`);
+                  await initiateConnection(peerId);
+                }
               }
             }
           }
@@ -701,23 +704,23 @@
         break;
         
       case "offer":
-        await handleOffer(data.from, data.sdp);
+        if (data.from && data.sdp) await handleOffer(data.from, data.sdp);
         break;
         
       case "answer":
-        await handleAnswer(data.from, data.sdp);
+        if (data.from && data.sdp) await handleAnswer(data.from, data.sdp);
         break;
         
       case "ice":
-        await handleIce(data.from, data.candidate);
+        if (data.from && data.candidate) await handleIce(data.from, data.candidate);
         break;
         
       case "chat":
-        addMessage(data.message, shortId(data.from));
+        if (data.from && data.message) addMessage(data.message, shortId(data.from));
         break;
         
       case "peer-left":
-        if (peerConnections.has(data.peerId)) {
+        if (data.peerId && peerConnections.has(data.peerId)) {
           addMessage(`${shortId(data.peerId)} left the room`);
           closePeerConnection(data.peerId);
         }
@@ -1054,7 +1057,7 @@
     }
     
     setStatus("🔴 Broadcasting LIVE - Share the room name!", false);
-    addMessage(`🎬 Broadcasting in room "${currentRoom}" on server ${currentServer}`);
+    addMessage(`🎬 Broadcasting in room "${currentRoom}" on server ${SIGNALING_SERVERS[currentServer] || currentServer}`);
     updateStats();
   }
   
@@ -1102,7 +1105,6 @@
       currentServer = newServer;
       addMessage(`Switched to signaling server: ${SIGNALING_SERVERS[newServer] || newServer}`);
       
-      // Reconnect with new server
       if (ws) {
         ws.close();
         ws = null;
@@ -1229,15 +1231,6 @@
   addMessage("🌍 Share the room name and server with anyone - works anywhere!");
   
   initEventListeners();
-  
-  // Add myIdDisplay element if missing
-  if (!getElement("myIdDisplay")) {
-    const myIdSpan = document.createElement("span");
-    myIdSpan.id = "myIdDisplay";
-    myIdSpan.className = "pill";
-    myIdSpan.style.display = "none";
-    document.querySelector(".info-card")?.appendChild(myIdSpan);
-  }
 </script>
 </body>
 </html>
