@@ -9,7 +9,6 @@
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
     }
-
     body {
       font-family: system-ui, -apple-system, 'Segoe UI', 'Inter', sans-serif;
       background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
@@ -18,13 +17,11 @@
       padding: 16px;
       min-height: 100vh;
     }
-
     .container {
       max-width: 1480px;
       margin: 0 auto;
       padding: 0 12px;
     }
-
     h1 {
       font-weight: 700;
       font-size: 1.8rem;
@@ -35,26 +32,22 @@
       margin-bottom: 4px;
       text-align: center;
     }
-
     .sub {
       color: #aaa;
       margin-top: -8px;
       font-size: 0.85rem;
       text-align: center;
     }
-
     .main-layout {
       display: flex;
       flex-wrap: wrap;
       gap: 16px;
       margin-top: 16px;
     }
-
     .video-section {
       flex: 3;
       min-width: 280px;
     }
-
     .chat-section {
       flex: 1.15;
       min-width: 280px;
@@ -67,7 +60,6 @@
       height: 65vh;
       overflow: hidden;
     }
-
     .info-card {
       background: rgba(20, 25, 45, 0.86);
       backdrop-filter: blur(12px);
@@ -81,7 +73,6 @@
       align-items: center;
       border: 1px solid rgba(255,255,255,0.12);
     }
-
     .pill {
       background: #0f172a;
       padding: 6px 12px;
@@ -90,7 +81,6 @@
       font-weight: 500;
       border: 1px solid rgba(255,255,255,0.06);
     }
-
     .room-input {
       background: #0f172a;
       border: 1px solid #ffb347;
@@ -101,7 +91,6 @@
       font-size: 0.75rem;
       width: 180px;
     }
-
     .button-row {
       display: flex;
       flex-wrap: wrap;
@@ -109,7 +98,6 @@
       justify-content: center;
       margin-bottom: 12px;
     }
-
     button {
       padding: 10px 20px;
       font-size: 0.9rem;
@@ -121,10 +109,8 @@
       cursor: pointer;
       transition: transform 0.1s ease;
     }
-
     button:active { transform: scale(0.97); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-
     .broadcaster { background: linear-gradient(95deg, #E63E2E, #C0392B); }
     .viewer { background: linear-gradient(95deg, #1F6392, #0E4A6E); }
     .danger-btn { background: #7f2a2a; }
@@ -133,7 +119,6 @@
       font-size: 0.75rem;
       background: #2a2f3f;
     }
-
     .control-bar {
       display: flex;
       flex-wrap: wrap;
@@ -141,13 +126,11 @@
       justify-content: center;
       margin-bottom: 12px;
     }
-
     .video-grid {
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
-
     .video-wrapper {
       position: relative;
       background: #000;
@@ -156,7 +139,6 @@
       border: 1px solid rgba(255,215,0,0.26);
       box-shadow: 0 18px 35px -14px rgba(0,0,0,0.65);
     }
-
     .video-wrapper video {
       width: 100%;
       display: block;
@@ -165,7 +147,6 @@
       max-height: 50vh;
       object-fit: cover;
     }
-
     .video-label {
       position: absolute;
       bottom: 10px;
@@ -178,45 +159,38 @@
       backdrop-filter: blur(4px);
       z-index: 10;
     }
-
     .section-card {
       background: rgba(20, 25, 45, 0.84);
       border-radius: 20px;
       padding: 12px;
       margin-top: 12px;
     }
-
     .section-title {
       margin: 0 0 8px;
       font-size: 0.85rem;
       color: #ffd966;
       font-weight: 700;
     }
-
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 8px;
     }
-
     .stat-card {
       background: rgba(0,0,0,0.24);
       border-radius: 14px;
       padding: 8px 10px;
     }
-
     .stat-card strong {
       display: block;
       margin-bottom: 4px;
       font-size: 0.7rem;
       color: #aaa;
     }
-
     .stat-card span {
       font-size: 0.85rem;
       font-weight: 600;
     }
-
     .peer-item {
       background: rgba(0,0,0,0.24);
       border-radius: 12px;
@@ -225,19 +199,16 @@
       cursor: pointer;
       font-size: 0.75rem;
     }
-
     .peer-item.selected {
       background: rgba(255,215,0,0.2);
       border: 1px solid #ffd966;
     }
-
     .chat-header {
       padding: 12px 16px;
       border-bottom: 1px solid rgba(255,255,255,0.10);
       font-weight: 700;
       font-size: 0.85rem;
     }
-
     .chat-messages {
       flex: 1;
       overflow-y: auto;
@@ -246,15 +217,12 @@
       flex-direction: column;
       gap: 10px;
     }
-
     .message {
       display: flex;
       flex-direction: column;
       animation: fadeIn 0.2s ease;
     }
-
     .message.own { align-items: flex-end; }
-
     .message-bubble {
       max-width: 88%;
       padding: 8px 12px;
@@ -263,31 +231,26 @@
       word-wrap: break-word;
       font-size: 0.85rem;
     }
-
     .message.own .message-bubble {
       background: linear-gradient(135deg, #E63E2E, #C0392B);
     }
-
     .message-name {
       font-size: 0.65rem;
       opacity: 0.72;
       margin-bottom: 2px;
       margin-left: 8px;
     }
-
     .message.own .message-name {
       text-align: right;
       margin-right: 8px;
       margin-left: 0;
     }
-
     .chat-input-area {
       padding: 12px;
       border-top: 1px solid rgba(255,255,255,0.1);
       display: flex;
       gap: 8px;
     }
-
     .chat-input {
       flex: 1;
       padding: 8px 14px;
@@ -298,7 +261,6 @@
       font-size: 0.85rem;
       outline: none;
     }
-
     .send-btn {
       padding: 8px 16px;
       background: #ffb347;
@@ -307,7 +269,6 @@
       font-weight: 700;
       font-size: 0.85rem;
     }
-
     .footer-note {
       font-size: 0.65rem;
       color: #6c7a89;
@@ -316,7 +277,6 @@
       padding-top: 12px;
       border-top: 1px solid #222;
     }
-
     .live-pulse {
       display: inline-block;
       width: 8px;
@@ -327,21 +287,17 @@
       animation: pulse 1.2s infinite;
       vertical-align: middle;
     }
-
     .status-connected { background: #0e8f5b; }
     .status-disconnected { background: #7f2a2a; }
     .status-connecting { background: #ffb347; color: #1a1a2e; }
-
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
     }
-
     @keyframes pulse {
       0% { opacity: 0.4; transform: scale(0.8); }
       100% { opacity: 1; transform: scale(1.2); }
     }
-
     @media (max-width: 768px) {
       body { padding: 10px; }
       h1 { font-size: 1.4rem; }
@@ -356,8 +312,8 @@
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live · Working P2P</h1>
-  <div class="sub">Simple Working Broadcast · Works Anywhere</div>
-
+  <div class="sub">Simple One-to-Many P2P Broadcast • Works Anywhere</div>
+  
   <div class="info-card">
     <span>🔗 Room:</span>
     <input type="text" id="roomInput" class="room-input" value="enticechat-live" maxlength="50" />
@@ -378,12 +334,11 @@
       <div class="video-grid">
         <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
           <video id="localVideo" autoplay playsinline muted></video>
-          <div class="video-label">📹 You</div>
+          <div class="video-label">📹 You (Broadcaster)</div>
         </div>
-
         <div class="video-wrapper" id="remoteVideoWrapper" style="display:none;">
           <video id="remoteVideo" autoplay playsinline></video>
-          <div class="video-label">🎙️ Remote</div>
+          <div class="video-label">🎙️ Remote Stream</div>
         </div>
       </div>
 
@@ -403,10 +358,10 @@
     </div>
 
     <div class="chat-section">
-      <div class="chat-header">💬 Chat</div>
+      <div class="chat-header">💬 Chat (P2P Data Channel)</div>
       <div class="chat-messages" id="chatMessages">
         <div class="message">
-          <div class="message-bubble">✨ Working P2P! Connect to a room, then broadcast or view.</div>
+          <div class="message-bubble">✨ Welcome! Connect to a room, then choose Broadcast or Viewer mode.</div>
         </div>
       </div>
       <div class="chat-input-area">
@@ -417,30 +372,30 @@
   </div>
 
   <div class="footer-note">
-    <strong>🌍 Working P2P!</strong> Uses public signaling server. Connect to same room name to connect.<br>
-    Mobile: 360p | Desktop: 720p | Works anywhere in the world!
+    <strong>🌍 True P2P Mesh!</strong> Broadcaster sends to all viewers directly.<br>
+    Mobile: 360p | Desktop: 720p | Public signaling server used.
   </div>
 </div>
 
 <script>
   // ========== CONFIGURATION ==========
-  // Using a reliable public signaling server with proper CORS
-  const SIGNALING_SERVER = "wss://signal.webrtc.zone/ws";
-  
+  const SIGNALING_SERVER = "wss://signal.webrtc.zone/ws";   // Change if this stops working
+
   const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const QUALITY = isMobile 
+  const QUALITY = isMobile
     ? { width: 640, height: 360, frameRate: 15, label: "360p" }
     : { width: 1280, height: 720, frameRate: 24, label: "720p" };
-  
+
   // ========== GLOBAL STATE ==========
   let ws = null;
   let myId = null;
-  let myRole = null;
+  let myRole = null; // 'broadcaster' or 'viewer'
   let roomName = "enticechat-live";
   let localStream = null;
-  let peerConnections = new Map(); // peerId -> RTCPeerConnection
-  let dataChannels = new Map(); // peerId -> RTCDataChannel
-  
+
+  let peerConnections = new Map(); // peerId → RTCPeerConnection
+  let dataChannels = new Map();    // peerId → RTCDataChannel
+
   // ========== DOM Elements ==========
   const roomInput = document.getElementById('roomInput');
   const connectBtn = document.getElementById('connectBtn');
@@ -461,8 +416,8 @@
   const chatMessagesDiv = document.getElementById('chatMessages');
   const chatInput = document.getElementById('chatInput');
   const sendChatBtn = document.getElementById('sendChatBtn');
-  
-  // ========== Helper Functions ==========
+
+  // ========== Helpers ==========
   function addMessage(text, sender = "System", isOwn = false) {
     const div = document.createElement('div');
     div.className = `message ${isOwn ? 'own' : ''}`;
@@ -471,439 +426,367 @@
       <div class="message-bubble">${escapeHtml(text)}</div>
     `;
     chatMessagesDiv.appendChild(div);
-    div.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    while (chatMessagesDiv.children.length > 200) {
-      chatMessagesDiv.removeChild(chatMessagesDiv.firstChild);
-    }
+    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+    if (chatMessagesDiv.children.length > 200) chatMessagesDiv.removeChild(chatMessagesDiv.firstChild);
   }
-  
+
   function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
+    return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
   }
-  
+
   function setStatus(text, isError = false) {
     statusSpan.innerHTML = text;
-    statusSpan.className = `pill ${isError ? 'status-disconnected' : 'status-connected'}`;
+    statusSpan.className = `pill ${isError ? 'status-disconnected' : (text.includes('Connecting') ? 'status-connecting' : 'status-connected')}`;
   }
-  
+
   function updateUI() {
-    peerCountSpan.innerText = peerConnections.size;
-    qualityLabelSpan.innerText = QUALITY.label;
-    deviceInfoSpan.innerText = isMobile ? 'Mobile' : 'Desktop';
-    roleInfoSpan.innerText = myRole || 'None';
-    connStateSpan.innerText = ws && ws.readyState === WebSocket.OPEN ? 'Connected' : 'Disconnected';
-    
-    // Update peers list
+    peerCountSpan.textContent = peerConnections.size;
+    qualityLabelSpan.textContent = QUALITY.label;
+    deviceInfoSpan.textContent = isMobile ? 'Mobile' : 'Desktop';
+    roleInfoSpan.textContent = myRole ? myRole.charAt(0).toUpperCase() + myRole.slice(1) : 'None';
+    connStateSpan.textContent = ws && ws.readyState === WebSocket.OPEN ? 'Connected' : 'Disconnected';
+
     peersListDiv.innerHTML = '';
     for (const [peerId, pc] of peerConnections) {
       const div = document.createElement('div');
       div.className = 'peer-item';
-      div.innerHTML = `
-        <strong>${peerId.slice(0, 8)}</strong>
-        <span style="float:right; font-size:0.65rem;">${pc.iceConnectionState}</span>
-      `;
+      div.innerHTML = `<strong>${peerId.slice(0,8)}...</strong> <span style="float:right;font-size:0.65rem;color:#aaa;">${pc.iceConnectionState}</span>`;
       peersListDiv.appendChild(div);
     }
   }
-  
-  // ========== WebSocket Signaling ==========
+
+  // ========== WebSocket ==========
   function connectWebSocket() {
-    if (ws && ws.readyState === WebSocket.OPEN) return;
-    
-    setStatus('Connecting...');
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+    setStatus('Connecting to signaling...');
     ws = new WebSocket(SIGNALING_SERVER);
-    
+
     ws.onopen = () => {
-      console.log('WebSocket connected');
-      setStatus('Connected');
+      console.log('✅ WebSocket connected');
+      setStatus('Connected to signaling');
       updateUI();
-      
-      // Join room
-      ws.send(JSON.stringify({
-        type: 'join',
-        room: roomName,
-        peerId: myId
-      }));
+
+      if (myId) {
+        ws.send(JSON.stringify({ type: 'join', room: roomName, peerId: myId }));
+      }
     };
-    
+
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
       await handleSignaling(data);
     };
-    
+
     ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      setStatus('Disconnected - reconnecting...', true);
+      console.log('WebSocket closed');
+      setStatus('Disconnected — reconnecting...', true);
       updateUI();
       setTimeout(connectWebSocket, 3000);
     };
-    
+
     ws.onerror = (err) => {
       console.error('WebSocket error:', err);
-      setStatus('Connection error', true);
+      setStatus('Signaling error', true);
     };
   }
-  
+
   async function handleSignaling(data) {
     switch (data.type) {
       case 'peer-joined':
         if (data.peerId !== myId && !peerConnections.has(data.peerId)) {
-          addMessage(`${data.peerId.slice(0, 8)} joined the room`);
+          addMessage(`${data.peerId.slice(0,8)}... joined`);
           if (myRole === 'broadcaster') {
             await createOffer(data.peerId);
           }
         }
         break;
-        
+
       case 'offer':
         await handleOffer(data);
         break;
-        
+
       case 'answer':
         await handleAnswer(data);
         break;
-        
+
       case 'ice-candidate':
         await handleIceCandidate(data);
         break;
-        
+
       case 'peer-left':
         if (peerConnections.has(data.peerId)) {
-          addMessage(`${data.peerId.slice(0, 8)} left`);
+          addMessage(`${data.peerId.slice(0,8)}... left`);
           closePeerConnection(data.peerId);
         }
         break;
-        
+
       case 'chat':
-        addMessage(data.message, data.senderId?.slice(0, 8));
+        addMessage(data.message, data.senderId?.slice(0,8));
         break;
     }
     updateUI();
   }
-  
-  function sendSignal(type, to, data = {}) {
+
+  function sendSignal(type, to, payload = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
-        type: type,
-        to: to,
+        type,
+        to,
         from: myId,
         room: roomName,
-        ...data
+        ...payload
       }));
     }
   }
-  
+
   // ========== WebRTC ==========
   const iceServers = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' }
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:openrelay.metered.ca:80' }   // extra public STUN
     ]
   };
-  
-  async function createOffer(peerId) {
-    console.log('Creating offer for', peerId);
+
+  async function createPeerConnection(peerId) {
     const pc = new RTCPeerConnection(iceServers);
     peerConnections.set(peerId, pc);
-    
-    // Add local stream if broadcasting
+
+    // Add local tracks if broadcasting
     if (localStream) {
-      localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
-      });
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
-    
-    // Create data channel for chat
-    const dc = pc.createDataChannel('chat');
-    dataChannels.set(peerId, dc);
-    dc.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'chat') {
-        addMessage(data.message, peerId.slice(0, 8));
-      }
-    };
-    
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      if (event.streams[0]) {
-        console.log('Received remote stream from', peerId);
-        remoteVideo.srcObject = event.streams[0];
+
+    // Data channel for chat
+    let dc;
+    if (myRole === 'broadcaster') {
+      dc = pc.createDataChannel('chat');
+      setupDataChannel(dc, peerId);
+    } else {
+      pc.ondatachannel = (e) => {
+        dc = e.channel;
+        setupDataChannel(dc, peerId);
+      };
+    }
+
+    // Remote stream
+    pc.ontrack = (e) => {
+      if (e.streams[0]) {
+        remoteVideo.srcObject = e.streams[0];
         remoteVideoWrapper.style.display = 'block';
-        addMessage(`Receiving stream from ${peerId.slice(0, 8)}`);
+        addMessage(`📡 Receiving stream from ${peerId.slice(0,8)}...`);
       }
     };
-    
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        sendSignal('ice-candidate', peerId, { candidate: event.candidate });
-      }
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) sendSignal('ice-candidate', peerId, { candidate: e.candidate });
     };
-    
+
     pc.oniceconnectionstatechange = () => {
-      console.log(`ICE state with ${peerId}: ${pc.iceConnectionState}`);
+      console.log(`ICE ${peerId.slice(0,8)}: ${pc.iceConnectionState}`);
       updateUI();
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        closePeerConnection(peerId);
+      }
     };
-    
-    // Create offer
+
+    return pc;
+  }
+
+  function setupDataChannel(dc, peerId) {
+    dataChannels.set(peerId, dc);
+    dc.onopen = () => console.log(`Data channel open with ${peerId.slice(0,8)}`);
+    dc.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'chat') {
+          addMessage(msg.message, peerId.slice(0,8));
+        }
+      } catch (err) {}
+    };
+    dc.onclose = () => dataChannels.delete(peerId);
+  }
+
+  async function createOffer(peerId) {
+    const pc = await createPeerConnection(peerId);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     sendSignal('offer', peerId, { sdp: offer.sdp });
   }
-  
+
   async function handleOffer(data) {
     const peerId = data.from;
-    console.log('Handling offer from', peerId);
-    
-    const pc = new RTCPeerConnection(iceServers);
-    peerConnections.set(peerId, pc);
-    
-    // Add local stream if broadcasting
-    if (localStream) {
-      localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
-      });
-    }
-    
-    // Handle data channel
-    pc.ondatachannel = (event) => {
-      const dc = event.channel;
-      dataChannels.set(peerId, dc);
-      dc.onmessage = (e) => {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'chat') {
-          addMessage(msg.message, peerId.slice(0, 8));
-        }
-      };
-    };
-    
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      if (event.streams[0]) {
-        console.log('Received remote stream from', peerId);
-        remoteVideo.srcObject = event.streams[0];
-        remoteVideoWrapper.style.display = 'block';
-        addMessage(`Receiving stream from ${peerId.slice(0, 8)}`);
-      }
-    };
-    
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        sendSignal('ice-candidate', peerId, { candidate: event.candidate });
-      }
-    };
-    
-    pc.oniceconnectionstatechange = () => {
-      console.log(`ICE state with ${peerId}: ${pc.iceConnectionState}`);
-      updateUI();
-    };
-    
-    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+    const pc = await createPeerConnection(peerId);
+
+    await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     sendSignal('answer', peerId, { sdp: answer.sdp });
   }
-  
+
   async function handleAnswer(data) {
     const pc = peerConnections.get(data.from);
     if (pc) {
-      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
-      console.log('Answer set for', data.from);
+      await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
     }
   }
-  
+
   async function handleIceCandidate(data) {
     const pc = peerConnections.get(data.from);
     if (pc && data.candidate) {
       await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
     }
   }
-  
+
   function closePeerConnection(peerId) {
     const pc = peerConnections.get(peerId);
-    if (pc) {
-      pc.close();
-      peerConnections.delete(peerId);
-    }
+    if (pc) pc.close();
+    peerConnections.delete(peerId);
+
     const dc = dataChannels.get(peerId);
-    if (dc) {
-      dc.close();
-      dataChannels.delete(peerId);
-    }
+    if (dc) dc.close();
+    dataChannels.delete(peerId);
+
     if (peerConnections.size === 0) {
       remoteVideo.srcObject = null;
       remoteVideoWrapper.style.display = 'none';
     }
     updateUI();
   }
-  
-  // ========== Broadcast/Viewer Functions ==========
+
+  // ========== Role Functions ==========
   async function startBroadcast() {
     myRole = 'broadcaster';
     myId = `broad_${Math.random().toString(36).slice(2, 10)}`;
-    
+
     try {
-      // Get camera/mic with appropriate quality
       localStream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: QUALITY.width }, height: { ideal: QUALITY.height }, frameRate: { ideal: QUALITY.frameRate } },
         audio: true
       });
-      
+
       localVideo.srcObject = localStream;
       localVideoWrapper.style.display = 'block';
-      
+
       broadcastBtn.style.display = 'none';
       viewerBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
-      
+
       setStatus('🔴 Broadcasting LIVE');
-      addMessage('🎬 You are now broadcasting! Share the room name with viewers.');
-      
-      // Connect to signaling if not already
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        connectWebSocket();
-      } else {
-        // Re-announce presence
-        ws.send(JSON.stringify({
-          type: 'join',
-          room: roomName,
-          peerId: myId
-        }));
-      }
-      
+      addMessage('🎥 You are now the broadcaster. Viewers can join the same room.');
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) connectWebSocket();
+      else ws.send(JSON.stringify({ type: 'join', room: roomName, peerId: myId }));
+
       updateUI();
     } catch (err) {
-      console.error('Broadcast error:', err);
-      addMessage(`❌ Failed to start broadcast: ${err.message}`);
-      setStatus('Broadcast failed', true);
+      console.error(err);
+      addMessage(`❌ GetUserMedia failed: ${err.message}`);
+      resetUI();
     }
   }
-  
+
   async function startViewer() {
     myRole = 'viewer';
     myId = `view_${Math.random().toString(36).slice(2, 10)}`;
-    
+
     broadcastBtn.style.display = 'none';
     viewerBtn.style.display = 'none';
     stopBtn.style.display = 'inline-block';
-    
-    setStatus('👁️ Viewer mode - waiting for broadcaster...');
-    addMessage('🔍 Looking for broadcasters in this room...');
-    
-    // Connect to signaling
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      connectWebSocket();
-    } else {
-      ws.send(JSON.stringify({
-        type: 'join',
-        room: roomName,
-        peerId: myId
-      }));
-    }
-    
+
+    setStatus('👁️ Viewer mode — waiting for broadcaster');
+    addMessage('🔍 Waiting for broadcaster in this room...');
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) connectWebSocket();
+    else ws.send(JSON.stringify({ type: 'join', room: roomName, peerId: myId }));
+
     updateUI();
   }
-  
-  async function stop() {
-    // Stop local stream
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
-      localVideo.srcObject = null;
-      localVideoWrapper.style.display = 'none';
-    }
-    
-    // Close all peer connections
-    for (const [peerId, pc] of peerConnections) {
-      pc.close();
-    }
-    peerConnections.clear();
-    dataChannels.clear();
-    
-    // Clear remote video
-    remoteVideo.srcObject = null;
-    remoteVideoWrapper.style.display = 'none';
-    
-    // Leave room
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'leave',
-        room: roomName,
-        peerId: myId
-      }));
-    }
-    
-    myRole = null;
-    myId = null;
-    
+
+  function resetUI() {
     broadcastBtn.style.display = 'inline-block';
     viewerBtn.style.display = 'inline-block';
     stopBtn.style.display = 'none';
-    
-    setStatus('Disconnected');
-    addMessage('Stopped broadcast/viewing');
+  }
+
+  async function stop() {
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+    localVideo.srcObject = null;
+    localVideoWrapper.style.display = 'none';
+
+    for (const peerId of peerConnections.keys()) {
+      closePeerConnection(peerId);
+    }
+
+    remoteVideo.srcObject = null;
+    remoteVideoWrapper.style.display = 'none';
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'leave', room: roomName, peerId: myId }));
+    }
+
+    myRole = null;
+    myId = null;
+
+    resetUI();
+    setStatus('Stopped');
+    addMessage('Session stopped');
     updateUI();
   }
-  
+
   function connectToRoom() {
     const newRoom = roomInput.value.trim();
-    if (newRoom && newRoom !== roomName) {
+    if (!newRoom) return;
+
+    if (newRoom !== roomName) {
       roomName = newRoom;
-      addMessage(`Switched to room: ${roomName}`);
-      
-      // Reconnect if already connected
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'leave',
-          room: roomName,
-          peerId: myId
-        }));
-        ws.send(JSON.stringify({
-          type: 'join',
-          room: roomName,
-          peerId: myId
-        }));
-      }
-    } else if (!ws || ws.readyState !== WebSocket.OPEN) {
+      addMessage(`Switched room to: ${roomName}`);
+    }
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
       connectWebSocket();
+    } else if (myId) {
+      ws.send(JSON.stringify({ type: 'leave', room: roomName, peerId: myId }));
+      setTimeout(() => {
+        ws.send(JSON.stringify({ type: 'join', room: roomName, peerId: myId }));
+      }, 300);
     }
   }
-  
+
   function sendChat() {
     const msg = chatInput.value.trim();
     if (!msg || !myId) return;
-    
-    // Send via data channels
+
+    // Send via all open data channels
     for (const [peerId, dc] of dataChannels) {
       if (dc.readyState === 'open') {
         dc.send(JSON.stringify({ type: 'chat', message: msg }));
       }
     }
-    
-    addMessage(msg, myId.slice(0, 8), true);
+
+    addMessage(msg, myId.slice(0,8), true);
     chatInput.value = '';
   }
-  
+
   // ========== Event Listeners ==========
   connectBtn.addEventListener('click', connectToRoom);
   broadcastBtn.addEventListener('click', startBroadcast);
   viewerBtn.addEventListener('click', startViewer);
   stopBtn.addEventListener('click', stop);
   sendChatBtn.addEventListener('click', sendChat);
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendChat();
-  });
-  
-  // Initialize
+  chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendChat(); });
+
+  // ========== Init ==========
   updateUI();
-  addMessage('✨ Working P2P! Enter a room name and click Connect, then broadcast or view.');
-  addMessage('📱 Mobile = 360p, Desktop = 720p');
-  
-  // Auto-connect to default room
-  setTimeout(() => connectWebSocket(), 500);
+  addMessage('✨ EnticeChat Live ready! Choose a room and start broadcasting or viewing.');
+  addMessage('📱 Mobile uses 360p • Desktop uses 720p');
+
+  // Auto-connect
+  setTimeout(() => connectWebSocket(), 600);
 </script>
 </body>
 </html>
