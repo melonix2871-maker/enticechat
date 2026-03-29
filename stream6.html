@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>EnticeChat Live · P2P Multiplex · Auto Connect</title>
+  <title>EnticeChat Live · Global P2P · Anywhere</title>
   <style>
     * {
       box-sizing: border-box;
@@ -95,6 +95,18 @@
       font-family: monospace;
       color: #ffd966;
       cursor: pointer;
+    }
+
+    .room-input {
+      background: #0f172a;
+      border: 1px solid #ffb347;
+      color: #ffd966;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      width: 180px;
+      text-align: center;
     }
 
     .button-row {
@@ -352,6 +364,17 @@
       vertical-align: middle;
     }
 
+    .connection-status {
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.5);
+    }
+
+    .connection-status.connected { background: #0e8f5b; }
+    .connection-status.disconnected { background: #7f2a2a; }
+    .connection-status.connecting { background: #ffb347; color: #1a1a2e; }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
@@ -369,18 +392,21 @@
       .chat-section { height: 40vh; }
       .video-wrapper video { max-height: 35vh; }
       button { padding: 8px 16px; font-size: 0.8rem; }
+      .room-input { width: 140px; font-size: 0.7rem; }
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>🎙️ EnticeChat Live · P2P Multiplex</h1>
-  <div class="sub">Auto Peer Discovery · Multi-Stream Support · Adaptive Quality</div>
+  <h1>🎙️ EnticeChat Live · Global P2P</h1>
+  <div class="sub">Works Anywhere · Real-time Signaling · Multi-Stream · Adaptive Quality</div>
 
   <div class="info-card">
-    <span>🔗 My ID:</span>
-    <span class="room-badge" id="myIdDisplay">-</span>
-    <span id="status">⚡ Choose your role</span>
+    <span>🔗 Room:</span>
+    <input type="text" id="roomInput" class="room-input" value="enticechat-live" maxlength="50" />
+    <button id="joinRoomBtn" class="small-btn" style="background:#4a4a8a;">Join Room</button>
+    <span id="status">⚡ Choose role</span>
+    <span class="pill" id="connectionStatus">⚪ Disconnected</span>
     <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
     <span class="pill">🎚 Quality: <span id="qualityLabel">Detecting...</span></span>
     <span class="pill">📡 Streams: <span id="streamCount">0</span></span>
@@ -434,7 +460,7 @@
       <div class="chat-header">💬 Chat <span id="roleBadge"></span></div>
       <div class="chat-messages" id="chatMessages">
         <div class="message">
-          <div class="message-bubble">✨ Auto-discovery active! Start broadcast in one tab, viewer in another.</div>
+          <div class="message-bubble">✨ Global P2P! Enter a room name, start broadcast, share the link!</div>
         </div>
       </div>
       <div class="chat-input-area">
@@ -445,13 +471,16 @@
   </div>
 
   <div class="footer-note">
-    <strong>P2P Multiplexed WebRTC</strong> · Auto peer discovery via localStorage · Multiple streams per connection<br>
-    Mobile: 360p | Desktop: 720p | Tap peer to switch view
+    <strong>🌍 Works Anywhere!</strong> Uses free public signaling server. Share the room name with anyone!<br>
+    Mobile: 360p | Desktop: 720p | Add multiple streams (camera + screen share) | Tap peer to switch view
   </div>
 </div>
 
 <script>
   // ========== CONFIGURATION ==========
+  // Free public signaling server (WebSocket)
+  const SIGNALING_SERVER = "wss://broadcastchannel.glitch.me/ws";
+  
   const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
   const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent);
   
@@ -465,21 +494,22 @@
   const currentQuality = QUALITY[deviceType];
   
   // ========== GLOBAL STATE ==========
+  let ws = null;
   let myPeerId = null;
   let myRole = null;
+  let currentRoom = "enticechat-live";
   let localStreams = new Map(); // streamId -> MediaStream
-  let peerConnections = new Map(); // peerId -> { pc, streams, dataChannel, selected }
+  let peerConnections = new Map(); // peerId -> { pc, streams, dataChannel }
   let remoteStreams = new Map(); // peerId -> Map(streamId -> MediaStream)
   let currentSelectedPeer = null;
   let nextStreamId = 1;
-  
-  // Storage key for peer discovery
-  const STORAGE_KEY = 'enticechat_peers';
-  let discoveryInterval = null;
+  let reconnectTimer = null;
   
   // ========== DOM Elements ==========
   const startBroadcastBtn = document.getElementById("startBroadcastBtn");
   const startViewerBtn = document.getElementById("startViewerBtn");
+  const joinRoomBtn = document.getElementById("joinRoomBtn");
+  const roomInput = document.getElementById("roomInput");
   const stopBtn = document.getElementById("stopBtn");
   const muteMicBtn = document.getElementById("muteMicBtn");
   const toggleCamBtn = document.getElementById("toggleCamBtn");
@@ -495,6 +525,7 @@
   const streamCountSpan = document.getElementById("streamCount");
   const peersList = document.getElementById("peersList");
   const statusSpan = document.getElementById("status");
+  const connectionStatusSpan = document.getElementById("connectionStatus");
   const chatMessages = document.getElementById("chatMessages");
   const chatInput = document.getElementById("chatInput");
   const sendChatBtn = document.getElementById("sendChatBtn");
@@ -527,12 +558,22 @@
   
   function escapeHtml(str) {
     if (!str) return "";
-    return str.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m] || m));
+    return str.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">" : "&gt;" }[m] || m));
   }
   
   function setStatus(msg, isError = false) {
     statusSpan.innerHTML = msg;
     statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
+  }
+  
+  function updateConnectionStatus(connected) {
+    if (connected) {
+      connectionStatusSpan.innerHTML = "🟢 Connected";
+      connectionStatusSpan.className = "pill connection-status connected";
+    } else {
+      connectionStatusSpan.innerHTML = "🔴 Disconnected";
+      connectionStatusSpan.className = "pill connection-status disconnected";
+    }
   }
   
   function updateStats() {
@@ -548,56 +589,119 @@
     roleBadge.innerHTML = myRole === "broadcaster" ? "· BROADCASTER" : (myRole === "viewer" ? "· VIEWER" : "");
   }
   
-  // ========== PEER DISCOVERY (via localStorage) ==========
-  function startDiscovery() {
-    // Clear old
-    if (discoveryInterval) clearInterval(discoveryInterval);
+  // ========== SIGNALING (WebSocket) ==========
+  function connectSignaling() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
     
-    // Announce presence
-    function announce() {
-      if (!myRole) return;
-      const peers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      peers[myPeerId] = {
-        id: myPeerId,
-        role: myRole,
-        timestamp: Date.now(),
-        streamAvailable: localStreams.size > 0
-      };
-      // Clean old entries (>10 seconds)
-      for (const [id, data] of Object.entries(peers)) {
-        if (Date.now() - data.timestamp > 10000) delete peers[id];
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(peers));
-    }
+    updateConnectionStatus(false);
+    setStatus("Connecting to signaling server...");
     
-    // Look for other peers
-    function discover() {
-      if (!myRole) return;
-      const peers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      for (const [peerId, data] of Object.entries(peers)) {
-        if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-          // Auto-connect: broadcaster <-> viewer
-          if ((myRole === "broadcaster" && data.role === "viewer") ||
-              (myRole === "viewer" && data.role === "broadcaster")) {
-            addMessage(`Auto-discovered ${shortId(peerId)} (${data.role}), connecting...`);
-            initiateConnection(peerId);
-          }
-        }
-      }
-    }
+    ws = new WebSocket(SIGNALING_SERVER);
     
-    announce();
-    discoveryInterval = setInterval(() => {
-      announce();
-      discover();
-    }, 3000);
+    ws.onopen = () => {
+      console.log("Signaling connected");
+      updateConnectionStatus(true);
+      setStatus("Connected! Choose your role");
+      
+      // Join room
+      ws.send(JSON.stringify({
+        type: "join",
+        room: currentRoom,
+        peerId: myPeerId,
+        role: myRole
+      }));
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleSignaling(data);
+      } catch(e) { console.error("Parse error:", e); }
+    };
+    
+    ws.onclose = () => {
+      console.log("Signaling disconnected");
+      updateConnectionStatus(false);
+      setStatus("Disconnected, reconnecting...", true);
+      
+      // Reconnect after 3 seconds
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => {
+        if (myPeerId) connectSignaling();
+      }, 3000);
+    };
+    
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+      setStatus("Signaling error", true);
+    };
   }
   
-  function stopDiscovery() {
-    if (discoveryInterval) clearInterval(discoveryInterval);
-    const peers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    delete peers[myPeerId];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(peers));
+  function sendSignaling(type, to, data = {}) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    ws.send(JSON.stringify({
+      type: type,
+      from: myPeerId,
+      to: to,
+      room: currentRoom,
+      ...data
+    }));
+  }
+  
+  function broadcastPresence() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({
+      type: "presence",
+      room: currentRoom,
+      peerId: myPeerId,
+      role: myRole,
+      streams: localStreams.size
+    }));
+  }
+  
+  async function handleSignaling(data) {
+    switch (data.type) {
+      case "peers":
+        // Received list of peers in room
+        for (const peerId of data.peers) {
+          if (peerId !== myPeerId && !peerConnections.has(peerId)) {
+            // Auto-connect to peers with opposite role
+            if (data.roles && data.roles[peerId]) {
+              const peerRole = data.roles[peerId];
+              if ((myRole === "broadcaster" && peerRole === "viewer") ||
+                  (myRole === "viewer" && peerRole === "broadcaster")) {
+                addMessage(`Auto-connecting to ${shortId(peerId)} (${peerRole})`);
+                await initiateConnection(peerId);
+              }
+            }
+          }
+        }
+        break;
+        
+      case "offer":
+        await handleOffer(data.from, data.sdp);
+        break;
+        
+      case "answer":
+        await handleAnswer(data.from, data.sdp);
+        break;
+        
+      case "ice":
+        await handleIce(data.from, data.candidate);
+        break;
+        
+      case "chat":
+        addMessage(data.message, shortId(data.from));
+        break;
+        
+      case "peer-left":
+        if (peerConnections.has(data.peerId)) {
+          addMessage(`${shortId(data.peerId)} left the room`);
+          closePeerConnection(data.peerId);
+        }
+        break;
+    }
   }
   
   // ========== WEBRTC CONNECTION ==========
@@ -605,7 +709,8 @@
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" }
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" }
     ]
   };
   
@@ -617,16 +722,14 @@
     const pc = new RTCPeerConnection(ICE_SERVERS);
     const dataChannel = pc.createDataChannel("chat");
     
-    peerConnections.set(peerId, { pc, streams: new Map(), dataChannel, selected: false });
+    peerConnections.set(peerId, { pc, streams: new Map(), dataChannel });
     
     // Setup data channel
     dataChannel.onopen = () => addMessage(`💬 Chat ready with ${shortId(peerId)}`);
     dataChannel.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === "chat") {
-          addMessage(data.message, shortId(peerId));
-        }
+        if (data.type === "chat") addMessage(data.message, shortId(peerId));
       } catch(e) {}
     };
     
@@ -645,7 +748,7 @@
         if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
         remoteStreams.get(peerId).set(streamId, stream);
         
-        addMessage(`📺 New stream from ${shortId(peerId)} (${streamId.slice(0, 8)})`);
+        addMessage(`📺 New stream from ${shortId(peerId)}`);
         updateRemoteSelector(peerId);
         updateStats();
         
@@ -658,7 +761,7 @@
     
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        sendSignaling(peerId, { type: "ice", candidate: event.candidate });
+        sendSignaling("ice", peerId, { candidate: event.candidate });
       }
     };
     
@@ -672,100 +775,95 @@
     // Create and send offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    sendSignaling(peerId, { type: "offer", sdp: offer.sdp });
+    sendSignaling("offer", peerId, { sdp: offer.sdp });
     
     updatePeersList();
   }
   
-  async function handleSignaling(peerId, data) {
-    let conn = peerConnections.get(peerId);
+  async function handleOffer(peerId, sdp) {
+    if (peerConnections.has(peerId)) return;
     
-    if (data.type === "offer") {
-      if (!conn) {
-        const pc = new RTCPeerConnection(ICE_SERVERS);
-        conn = { pc, streams: new Map(), dataChannel: null, selected: false };
-        peerConnections.set(peerId, conn);
-        
-        // Handle data channel
-        pc.ondatachannel = (event) => {
-          conn.dataChannel = event.channel;
-          conn.dataChannel.onmessage = (e) => {
-            try {
-              const msg = JSON.parse(e.data);
-              if (msg.type === "chat") addMessage(msg.message, shortId(peerId));
-            } catch(e) {}
-          };
-        };
-        
-        // Add local streams
-        for (const [streamId, stream] of localStreams) {
-          stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        }
-        
-        pc.ontrack = (event) => {
-          const stream = event.streams[0];
-          if (stream) {
-            const streamId = stream.id || `stream_${Date.now()}`;
-            if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
-            remoteStreams.get(peerId).set(streamId, stream);
-            updateRemoteSelector(peerId);
-            updateStats();
-            if (!currentSelectedPeer) selectPeer(peerId);
-          }
-        };
-        
-        pc.onicecandidate = (event) => {
-          if (event.candidate) sendSignaling(peerId, { type: "ice", candidate: event.candidate });
-        };
-      }
-      
-      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }));
-      const answer = await conn.pc.createAnswer();
-      await conn.pc.setLocalDescription(answer);
-      sendSignaling(peerId, { type: "answer", sdp: answer.sdp });
-    }
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const conn = { pc, streams: new Map(), dataChannel: null };
+    peerConnections.set(peerId, conn);
     
-    if (data.type === "answer" && conn) {
-      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp }));
-    }
-    
-    if (data.type === "ice" && conn && data.candidate) {
-      await conn.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-    }
-    
-    updatePeersList();
-  }
-  
-  function sendSignaling(peerId, data) {
-    // Use localStorage for signaling (simple cross-tab)
-    const signalKey = `enticechat_signal_${peerId}`;
-    localStorage.setItem(signalKey, JSON.stringify({ ...data, from: myPeerId, timestamp: Date.now() }));
-    setTimeout(() => localStorage.removeItem(signalKey), 1000);
-  }
-  
-  // Listen for signaling
-  function startSignalingListener() {
-    window.addEventListener('storage', (event) => {
-      if (event.key && event.key.startsWith('enticechat_signal_')) {
+    // Handle data channel
+    pc.ondatachannel = (event) => {
+      conn.dataChannel = event.channel;
+      conn.dataChannel.onmessage = (e) => {
         try {
-          const data = JSON.parse(event.newValue);
-          const peerId = event.key.replace('enticechat_signal_', '');
-          if (data.from !== myPeerId && peerId === myPeerId) {
-            handleSignaling(data.from, data);
-          }
+          const data = JSON.parse(e.data);
+          if (data.type === "chat") addMessage(data.message, shortId(peerId));
         } catch(e) {}
+      };
+    };
+    
+    // Add local streams
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    }
+    
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+      if (stream) {
+        const streamId = stream.id || `stream_${Date.now()}`;
+        if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
+        remoteStreams.get(peerId).set(streamId, stream);
+        updateRemoteSelector(peerId);
+        updateStats();
+        if (!currentSelectedPeer) selectPeer(peerId);
       }
-    });
+    };
+    
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendSignaling("ice", peerId, { candidate: event.candidate });
+      }
+    };
+    
+    await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: sdp }));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignaling("answer", peerId, { sdp: answer.sdp });
+    
+    updatePeersList();
+  }
+  
+  async function handleAnswer(peerId, sdp) {
+    const conn = peerConnections.get(peerId);
+    if (conn) {
+      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: sdp }));
+    }
+  }
+  
+  async function handleIce(peerId, candidate) {
+    const conn = peerConnections.get(peerId);
+    if (conn && candidate) {
+      await conn.pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  }
+  
+  function closePeerConnection(peerId) {
+    const conn = peerConnections.get(peerId);
+    if (conn) {
+      if (conn.dataChannel) conn.dataChannel.close();
+      conn.pc.close();
+      peerConnections.delete(peerId);
+      remoteStreams.delete(peerId);
+      if (currentSelectedPeer === peerId) {
+        currentSelectedPeer = null;
+        remoteVideo.srcObject = null;
+        remoteVideoWrapper.style.display = "none";
+      }
+      updateStats();
+      updatePeersList();
+    }
   }
   
   // ========== STREAM MANAGEMENT ==========
   async function addLocalStream(type = "camera") {
     try {
       let stream;
-      const constraints = {
-        video: type === "camera" ? currentQuality : false,
-        audio: type !== "screen"
-      };
       
       if (type === "camera") {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -798,7 +896,7 @@
       
       updateLocalSelector();
       updateStats();
-      addMessage(`✅ Added ${type} stream (${streamId.slice(0, 8)})`);
+      addMessage(`✅ Added ${type} stream`);
       
       // Update video resolution display
       const videoTrack = stream.getVideoTracks()[0];
@@ -806,6 +904,9 @@
         const settings = videoTrack.getSettings();
         videoRes.innerText = `${settings.width}x${settings.height}`;
       }
+      
+      // Broadcast presence update
+      broadcastPresence();
       
     } catch (err) {
       addMessage(`❌ Failed to add ${type}: ${err.message}`);
@@ -819,7 +920,7 @@
     try {
       const offer = await conn.pc.createOffer();
       await conn.pc.setLocalDescription(offer);
-      sendSignaling(peerId, { type: "offer", sdp: offer.sdp });
+      sendSignaling("offer", peerId, { sdp: offer.sdp });
     } catch (err) {
       console.error("Renegotiation failed:", err);
     }
@@ -905,12 +1006,26 @@
     myPeerId = `broad_${Math.random().toString(36).slice(2, 10)}`;
     controlBar.style.display = "flex";
     
+    // Connect to signaling if not already
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      connectSignaling();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
     await addLocalStream("camera");
     
-    startDiscovery();
-    startSignalingListener();
-    setStatus("🔴 Broadcasting LIVE - Auto-discovery active", false);
-    addMessage("🎬 You are now broadcasting! Viewers will auto-connect.");
+    // Join room
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "join",
+        room: currentRoom,
+        peerId: myPeerId,
+        role: myRole
+      }));
+    }
+    
+    setStatus("🔴 Broadcasting LIVE - Share the room name!", false);
+    addMessage(`🎬 Broadcasting in room "${currentRoom}". Share this room name with others!`);
     updateStats();
   }
   
@@ -920,21 +1035,50 @@
     myPeerId = `view_${Math.random().toString(36).slice(2, 10)}`;
     controlBar.style.display = "flex";
     
-    startDiscovery();
-    startSignalingListener();
-    setStatus("👁️ Viewer mode - Auto-connecting to broadcasters...", false);
-    addMessage("🔍 Searching for active broadcasters...");
+    // Connect to signaling if not already
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      connectSignaling();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // Join room
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "join",
+        room: currentRoom,
+        peerId: myPeerId,
+        role: myRole
+      }));
+    }
+    
+    setStatus("👁️ Viewer mode - Waiting for broadcaster...", false);
+    addMessage(`🔍 Looking for broadcasters in room "${currentRoom}"...`);
     updateStats();
   }
   
-  async function stopEverything() {
-    stopDiscovery();
-    
-    for (const [streamId, stream] of localStreams) {
-      stream.getTracks().forEach(t => t.stop());
+  function joinRoom() {
+    const newRoom = roomInput.value.trim();
+    if (newRoom && newRoom !== currentRoom) {
+      currentRoom = newRoom;
+      addMessage(`Switched to room: ${currentRoom}`);
+      
+      // Reconnect to new room
+      if (myRole) {
+        // Re-join with current role
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: "join",
+            room: currentRoom,
+            peerId: myPeerId,
+            role: myRole
+          }));
+        }
+      }
     }
-    localStreams.clear();
-    
+  }
+  
+  async function stopEverything() {
+    // Close all peer connections
     for (const [peerId, conn] of peerConnections) {
       if (conn.dataChannel) conn.dataChannel.close();
       conn.pc.close();
@@ -942,7 +1086,13 @@
     peerConnections.clear();
     remoteStreams.clear();
     
+    // Stop all local streams
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(t => t.stop());
+    }
     localStreams.clear();
+    
+    // Clear UI
     localVideo.srcObject = null;
     remoteVideo.srcObject = null;
     localVideoWrapper.style.display = "none";
@@ -952,9 +1102,20 @@
     myRole = null;
     currentSelectedPeer = null;
     videoRes.innerText = "-";
+    
+    // Leave room
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "leave",
+        room: currentRoom,
+        peerId: myPeerId
+      }));
+    }
+    
     setStatus("⚡ Choose your role");
     updateStats();
     updatePeersList();
+    updateLocalSelector();
   }
   
   function toggleMute() {
@@ -975,11 +1136,18 @@
     const msg = chatInput.value.trim();
     if (!msg) return;
     
+    // Send to all connected peers
     for (const [peerId, conn] of peerConnections) {
       if (conn.dataChannel && conn.dataChannel.readyState === "open") {
         conn.dataChannel.send(JSON.stringify({ type: "chat", message: msg }));
       }
     }
+    
+    // Also send via signaling for peers without direct connection
+    for (const [peerId, conn] of peerConnections) {
+      sendSignaling("chat", peerId, { message: msg });
+    }
+    
     addMessage(msg, shortId(myPeerId), true);
     chatInput.value = "";
   }
@@ -987,6 +1155,7 @@
   // ========== EVENT LISTENERS ==========
   startBroadcastBtn.addEventListener("click", startBroadcast);
   startViewerBtn.addEventListener("click", startViewer);
+  joinRoomBtn.addEventListener("click", joinRoom);
   stopBtn.addEventListener("click", stopEverything);
   muteMicBtn.addEventListener("click", toggleMute);
   toggleCamBtn.addEventListener("click", toggleCamera);
@@ -1001,8 +1170,9 @@
   currentQuality.label = `${currentQuality.width}x${currentQuality.height}`;
   qualityLabel.innerText = currentQuality.label;
   updateStats();
-  setStatus("⚡ Ready - Start broadcast or viewer mode");
-  addMessage("✨ Auto-discovery active! Open another tab/window and start the opposite role.");
+  setStatus("Enter a room name and choose your role");
+  addMessage("✨ Enter a room name (e.g., 'myroom'), then start broadcast or viewer mode!");
+  addMessage("🌍 Share the room name with anyone - they can join from anywhere!");
 </script>
 </body>
 </html>
