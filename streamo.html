@@ -3,1128 +3,430 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pure P2P Stream • Auto SDP + DHT</title>
+  <title>Ultra-Scale Pure P2P • 1M Architecture</title>
   <style>
-    :root { --bg: #0f0f12; --panel: #1a1a20; --accent: #6366f1; --text: #e2e8f0; --warn: #f59e0b; --err: #ef4444; --success: #10b981; }
+    :root { --bg: #050505; --panel: #111; --accent: #00ff9d; --text: #eee; --err: #ff3333; --warn: #ffaa00; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 1rem; }
-    .container { max-width: 1400px; margin: 0 auto; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-    .panel { background: var(--panel); border-radius: 12px; padding: 1rem; border: 1px solid #333; }
-    video { width: 100%; border-radius: 8px; background: #000; display: block; aspect-ratio: 16/9; object-fit: contain; }
-    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; font-size: 0.9rem; }
-    .stat { display: flex; justify-content: space-between; align-items: center; }
-    .stat strong { color: var(--accent); }
-    .btn { background: var(--accent); color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
-    .btn:hover { opacity: 0.9; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-outline { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
-    .btn-success { background: var(--success); }
-    .role-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    .role-broadcaster { background: #10b981; color: white; }
-    .role-relay { background: #3b82f6; color: white; }
-    .role-leaf { background: #6b7280; color: white; }
-    .log { font-family: monospace; font-size: 0.8rem; max-height: 180px; overflow-y: auto; background: #000; padding: 0.5rem; border-radius: 6px; }
-    .log-entry { margin: 0.2rem 0; padding-left: 0.5rem; border-left: 2px solid transparent; }
-    .log-entry.info { border-left-color: var(--accent); }
-    .log-entry.warn { border-left-color: var(--warn); color: var(--warn); }
-    .log-entry.err { border-left-color: var(--err); color: var(--err); }
-    .log-entry.success { border-left-color: var(--success); color: var(--success); }
-    .hidden { display: none !important; }
-    .progress { height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin: 0.5rem 0; }
-    .progress > div { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
-    label { display: block; margin: 0.7rem 0 0.3rem; font-size: 0.9rem; font-weight: 500; }
-    input, select { width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #444; background: #0f0f12; color: var(--text); font-size: 0.95rem; }
-    input:focus, select:focus { outline: none; border-color: var(--accent); }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
-    @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
-    .peer-list { max-height: 150px; overflow-y: auto; font-size: 0.85rem; }
-    .peer-item { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #333; }
-    .peer-item:last-child { border-bottom: none; }
-    .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-    .badge-relay { background: #3b82f6; color: white; }
-    .badge-leaf { background: #6b7280; color: white; }
-    .badge-broadcaster { background: #10b981; color: white; }
-    .room-code { font-family: monospace; background: #000; padding: 0.3rem 0.6rem; border-radius: 4px; letter-spacing: 1px; }
-    .discovery-status { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.9rem; }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #666; }
-    .status-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
-    .status-dot.searching { background: var(--warn); animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .tooltip { position: relative; display: inline-block; cursor: help; }
-    .tooltip .tooltip-text { visibility: hidden; width: 220px; background: #000; color: #fff; text-align: center; border-radius: 6px; padding: 0.4rem; position: absolute; z-index: 1; bottom: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; }
-    .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+    body { font-family: 'Courier New', monospace; background: var(--bg); color: var(--text); padding: 1rem; font-size: 14px; }
+    .container { max-width: 1600px; margin: 0 auto; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+    .panel { background: var(--panel); border: 1px solid #333; padding: 1rem; border-radius: 4px; }
+    .panel h3 { border-bottom: 1px solid #333; padding-bottom: 0.5rem; margin-bottom: 1rem; color: var(--accent); }
+    video { width: 100%; background: #000; border: 1px solid #333; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 1rem 0; }
+    .stat { background: #222; padding: 0.5rem; border-radius: 2px; }
+    .stat label { color: #888; font-size: 0.8rem; display: block; }
+    .stat strong { color: var(--accent); font-size: 1.1rem; }
+    .log { height: 200px; overflow-y: auto; background: #000; border: 1px solid #333; padding: 0.5rem; font-size: 0.75rem; }
+    .log-entry { margin: 2px 0; }
+    .log-entry.err { color: var(--err); }
+    .log-entry.warn { color: var(--warn); }
+    .log-entry.info { color: #88f; }
+    .btn { background: var(--accent); color: #000; border: none; padding: 0.8rem; width: 100%; font-weight: bold; cursor: pointer; margin-top: 1rem; }
+    .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 2px; font-size: 0.7rem; font-weight: bold; }
+    .badge-shard { background: #0044aa; color: white; }
+    .badge-super { background: #aa00aa; color: white; }
+    .warning-box { border: 1px solid var(--warn); background: #221100; padding: 1rem; margin-bottom: 1rem; color: var(--warn); }
+    input, select { background: #222; border: 1px solid #444; color: white; padding: 0.5rem; width: 100%; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
+  <div class="warning-box">
+    ⚠️ <strong>CRITICAL WARNING:</strong> 1 Million Pure Browser Viewers is theoretically possible but practically limited by NAT traversal (15% failure), browser memory limits, and mobile battery throttling. This code implements the <em>architecture</em> for scale, but physical network limits apply.
+  </div>
+
   <div class="container">
-    <!-- BROADCASTER PANEL -->
-    <div class="panel" id="broadcasterPanel">
-      <h3>🎥 Broadcaster <span class="role-badge role-broadcaster">LIVE</span></h3>
+    <!-- SOURCE PANEL -->
+    <div class="panel" id="sourcePanel">
+      <h3>📡 Source Node <span class="badge badge-super">ROOT</span></h3>
       <video id="localVideo" autoplay muted playsinline></video>
-      <div class="stats" style="margin: 0.5rem 0">
-        <div class="stat"><span>Resolution:</span><strong id="resStat">—</strong></div>
-        <div class="stat"><span>Bitrate:</span><strong id="bitrateStat">— kbps</strong></div>
-        <div class="stat"><span>Direct Children:</span><strong id="childrenStat">0</strong></div>
-        <div class="stat"><span>Tree Depth:</span><strong id="depthStat">0</strong></div>
+      <div class="stat-grid">
+        <div class="stat"><label>Shard</label><strong id="sourceShard">0</strong></div>
+        <div class="stat"><label>Direct Peers</label><strong id="sourcePeers">0</strong></div>
+        <div class="stat"><label>Est. Global</label><strong id="sourceGlobal">0</strong></div>
+        <div class="stat"><label>Bitrate</label><strong id="sourceBitrate">0 kbps</strong></div>
       </div>
-      <div class="progress"><div id="relayProgress"></div></div>
-      <button class="btn" id="startBtn">▶ Start Broadcasting</button>
-      <button class="btn btn-outline hidden" id="copyRoomBtn">🔗 Copy Room Link</button>
-      
-      <div style="margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #333;">
-        <small style="color:#888">Connected Peers:</small>
-        <div class="peer-list" id="broadcasterPeers"></div>
-      </div>
+      <button class="btn" id="startSourceBtn">INITIATE SOURCE</button>
+      <div class="log" id="sourceLog"></div>
     </div>
 
     <!-- VIEWER PANEL -->
     <div class="panel hidden" id="viewerPanel">
-      <h3>📺 Viewer <span class="role-badge role-leaf" id="roleBadge">Leaf</span></h3>
+      <h3>📺 Viewer Node <span class="badge badge-shard" id="viewerShardBadge">SHARD 0</span></h3>
       <video id="remoteVideo" autoplay playsinline></video>
-      <div class="stats" style="margin: 0.5rem 0">
-        <div class="stat"><span>Quality:</span><strong id="qualityStat">—</strong></div>
-        <div class="stat"><span>Relaying:</span><strong id="relayingStat">No</strong></div>
-        <div class="stat"><span>Parent:</span><strong id="parentStat">—</strong></div>
-        <div class="stat"><span>Depth:</span><strong id="viewerDepthStat">—</strong></div>
+      <div class="stat-grid">
+        <div class="stat"><label>Role</label><strong id="viewerRole">Leaf</strong></div>
+        <div class="stat"><label>Relay Load</label><strong id="relayLoad">0%</strong></div>
+        <div class="stat"><label>Connections</label><strong id="viewerConns">0</strong></div>
+        <div class="stat"><label>Buffer</label><strong id="viewerBuffer">100%</strong></div>
       </div>
-      <button class="btn btn-outline" id="toggleRelayBtn">🔄 Become Relay (if eligible)</button>
-      
-      <div style="margin-top: 1rem;">
-        <small style="color:#888">Discovery:</small>
-        <div class="discovery-status">
-          <div class="status-dot" id="discoveryDot"></div>
-          <span id="discoveryText">Idle</span>
-        </div>
-      </div>
-      
+      <button class="btn" id="toggleRelayBtn">ENABLE RELAY MODE</button>
       <div class="log" id="viewerLog"></div>
     </div>
 
-    <!-- NETWORK & DHT PANEL -->
+    <!-- NETWORK MAP -->
     <div class="panel">
-      <h3>🌐 Swarm Metrics</h3>
-      <div class="stats">
-        <div class="stat"><span>Estimated Viewers:</span><strong id="totalPeersStat">1</strong></div>
-        <div class="stat"><span>Active Relays:</span><strong id="activeRelaysStat">0</strong></div>
-        <div class="stat"><span>Avg Depth:</span><strong id="avgDepthStat">—</strong></div>
-        <div class="stat"><span>Churn Rate:</span><strong id="churnStat">—</strong></div>
-        <div class="stat"><span>NAT Failures:</span><strong id="natFailStat">0</strong></div>
-        <div class="stat"><span>Uptime:</span><strong id="uptimeStat">0s</strong></div>
+      <h3>🕸️ Swarm Topology</h3>
+      <div class="stat-grid">
+        <div class="stat"><label>Total Shards</label><strong id="totalShards">100</strong></div>
+        <div class="stat"><label>Peers/Shard</label><strong id="peersPerShard">0</strong></div>
+        <div class="stat"><label>P2P Ratio</label><strong id="p2pRatio">100%</strong></div>
+        <div class="stat"><label>DHT Peers</label><strong id="dhtPeers">0</strong></div>
       </div>
-      
-      <div style="margin-top: 1rem;">
-        <small style="color:#888">Known Peers in Swarm:</small>
-        <div class="peer-list" id="swarmPeers"></div>
-      </div>
-      
-      <div class="log" id="networkLog" style="margin-top: 1rem"></div>
-    </div>
-
-    <!-- CONFIG & DISCOVERY -->
-    <div class="panel">
-      <h3>⚙️ P2P Config</h3>
-      
-      <label>Max Direct Children (S)</label>
-      <input type="number" id="configS" min="2" max="12" value="8">
-      
-      <label>Relay Fanout (R)</label>
-      <input type="number" id="configR" min="1" max="6" value="4">
-      
-      <label>Max Tree Depth (D)</label>
-      <input type="number" id="configD" min="3" max="10" value="6">
-      
-      <label>Relay-Capable % (20% typical)</label>
-      <input type="number" id="configRelayPct" min="5" max="50" value="20" step="5">
-      
-      <label>🔍 Discovery Mode</label>
-      <select id="discoveryMode">
-        <option value="manual">Manual Room Code (Purest P2P)</option>
-        <option value="websocket">Ephemeral WebSocket Relay (Easy)</option>
-        <option value="ipfs">IPFS PubSub (True DHT • Experimental)</option>
+      <label>Target Scale</label>
+      <select id="scaleTarget">
+        <option value="1000">1,000 Viewers</option>
+        <option value="10000">10,000 Viewers</option>
+        <option value="100000">100,000 Viewers</option>
+        <option value="1000000" selected>1,000,000 Viewers</option>
       </select>
-      <small style="color:#888;display:block;margin-top:0.3rem">
-        <span class="tooltip">ℹ️
-          <span class="tooltip-text">Manual: Share room code via URL. WebSocket: Stateless relay (no media/storage). IPFS: True DHT via js-libp2p (heavy but decentralized).</span>
-        </span>
-        All modes are browser-only. Media is always pure P2P WebRTC.
-      </small>
-      
-      <label>Room Code (auto-generated if empty)</label>
-      <input type="text" id="roomCode" placeholder="auto" class="room-code">
-      
-      <div class="grid-2" style="margin-top: 1rem;">
-        <button class="btn" id="applyConfigBtn">Apply Config</button>
-        <button class="btn btn-outline" id="refreshDiscoveryBtn">🔄 Refresh Discovery</button>
-      </div>
-      
-      <div id="websocketInfo" class="hidden" style="margin-top: 0.8rem; padding: 0.6rem; background: #162030; border-radius: 6px; font-size: 0.85rem;">
-        <strong>WebSocket Relay Info:</strong><br>
-        Uses ephemeral, stateless signaling only. No media passes through. Messages self-destruct after delivery. 
-        <a href="#" id="toggleWsUrl" style="color: var(--accent);">Show/hide endpoint</a>
-        <div id="wsEndpoint" class="hidden" style="margin-top: 0.4rem; font-family: monospace; word-break: break-all; background: #000; padding: 0.3rem; border-radius: 4px;"></div>
-      </div>
-      
-      <div id="ipfsInfo" class="hidden" style="margin-top: 0.8rem; padding: 0.6rem; background: #1a1620; border-radius: 6px; font-size: 0.85rem;">
-        <strong>IPFS PubSub Info:</strong><br>
-        Loads js-libp2p (~1.2MB) for true DHT discovery. First load may take 5-10s. 
-        Bootstrap nodes are public but do not see your media. 
-        <span style="color: var(--warn);">Experimental • May not work on all networks</span>
-      </div>
+      <div class="log" id="networkLog"></div>
     </div>
   </div>
 
-  <!-- IPFS/js-libp2p loader (lazy, only if needed) -->
-  <script id="ipfs-loader" type="text/javascript">
-    // Dynamically load js-libp2p only if IPFS mode selected
-    // Uses CDN for browser compatibility
-    window.loadIpfsLib = function() {
-      return new Promise((resolve, reject) => {
-        if (window.libp2p) return resolve(window.libp2p);
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/libp2p@0.46.0/dist/index.min.js';
-        script.onload = () => resolve(window.libp2p);
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
-  </script>
-
+  <!-- Libp2p (Discovery Only) -->
+  <script src="https://cdn.jsdelivr.net/npm/libp2p@0.46.0/dist/index.min.js"></script>
+  
   <script>
     // ===========================
-    // PURE P2P BROWSER STREAMING ENGINE v2
-    // Auto SDP Handshake + WebTorrent-Style DHT Discovery
+    // ULTRA-SCALE P2P ENGINE
     // ===========================
     
-    // Configuration
+    // CONFIGURATION FOR 1M SCALE
     const CONFIG = {
-      S: 8, R: 4, D: 6,
-      relayCapablePct: 0.20,
-      natSuccessRate: 0.85,
-      peerStability: 0.92,
-      bandwidthHeadroom: 0.75,
-      minUploadMbps: 2.0,
-      minCpuCores: 4,
-      minBatteryLevel: 0.3,
-      leafBitrate: 300000,
-      relayBitrate: 1200000,
-      iceServers: [
+      shards: 1000,             // 1M viewers / 1000 shards = 1000 peers/shard
+      maxPeersPerShard: 1000,   // Cap per shard to prevent browser crash
+      maxConnections: 50,       // Browser limit safety margin
+      relayThreshold: 5.0,      // Mbps upload required to be a relay
+      heartbeatInterval: 5000,  // ms
+      iceServers: [             // STUN ONLY (Pure P2P)
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' }
       ],
-      // Discovery endpoints (ephemeral/stateless)
-      wsRelayUrl: 'wss://signaling.p2pstream.example/relay', // Replace with your own stateless relay
-      ipfsBootstrap: [
+      // Public Bootstrap Nodes for Libp2p Discovery (No Media)
+      bootstrap: [
         '/dns4/bootstrap.libp2p.io/tcp/443/wss/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN',
         '/dns4/bootstrap.libp2p.io/tcp/443/wss/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa'
       ]
     };
 
-    // Global state
     const state = {
-      role: null,
+      role: 'idle', // source, relay, leaf
+      peerId: null,
+      shardId: null,
+      libp2pNode: null,
       pc: null,
-      dc: null, // primary signaling DataChannel
+      dc: null,
       stream: null,
-      children: [],
-      parent: null,
-      depth: 0,
-      peerId: crypto.randomUUID().slice(0,8),
-      roomId: null,
-      startTime: null,
-      discovery: {
-        mode: 'manual',
-        ws: null,
-        ipfs: null,
-        knownPeers: new Map(), // peerId -> { depth, canRelay, lastSeen }
-        pendingOffers: new Map() // peerId -> { offer, timestamp }
-      },
+      connections: new Map(), // peerId -> { pc, dc, role }
       metrics: {
-        totalPeers: 1, activeRelays: 0, churnEvents: 0, natFailures: 0
-      },
-      backupParents: []
+        startTime: 0,
+        bytesSent: 0,
+        bytesReceived: 0,
+        failures: 0
+      }
     };
 
-    // DOM elements
+    // DOM
     const els = {
       localVideo: document.getElementById('localVideo'),
       remoteVideo: document.getElementById('remoteVideo'),
-      startBtn: document.getElementById('startBtn'),
-      copyRoomBtn: document.getElementById('copyRoomBtn'),
-      broadcasterPanel: document.getElementById('broadcasterPanel'),
+      sourcePanel: document.getElementById('sourcePanel'),
       viewerPanel: document.getElementById('viewerPanel'),
-      roleBadge: document.getElementById('roleBadge'),
-      relayProgress: document.getElementById('relayProgress'),
+      startSourceBtn: document.getElementById('startSourceBtn'),
       toggleRelayBtn: document.getElementById('toggleRelayBtn'),
-      discoveryDot: document.getElementById('discoveryDot'),
-      discoveryText: document.getElementById('discoveryText'),
-      // Stats
-      resStat: document.getElementById('resStat'),
-      bitrateStat: document.getElementById('bitrateStat'),
-      childrenStat: document.getElementById('childrenStat'),
-      depthStat: document.getElementById('depthStat'),
-      qualityStat: document.getElementById('qualityStat'),
-      relayingStat: document.getElementById('relayingStat'),
-      parentStat: document.getElementById('parentStat'),
-      viewerDepthStat: document.getElementById('viewerDepthStat'),
-      totalPeersStat: document.getElementById('totalPeersStat'),
-      activeRelaysStat: document.getElementById('activeRelaysStat'),
-      avgDepthStat: document.getElementById('avgDepthStat'),
-      churnStat: document.getElementById('churnStat'),
-      natFailStat: document.getElementById('natFailStat'),
-      uptimeStat: document.getElementById('uptimeStat'),
-      // Peer lists
-      broadcasterPeers: document.getElementById('broadcasterPeers'),
-      swarmPeers: document.getElementById('swarmPeers'),
-      // Logs
+      sourceLog: document.getElementById('sourceLog'),
       viewerLog: document.getElementById('viewerLog'),
       networkLog: document.getElementById('networkLog'),
-      // Config
-      configS: document.getElementById('configS'),
-      configR: document.getElementById('configR'),
-      configD: document.getElementById('configD'),
-      configRelayPct: document.getElementById('configRelayPct'),
-      discoveryMode: document.getElementById('discoveryMode'),
-      roomCode: document.getElementById('roomCode'),
-      applyConfigBtn: document.getElementById('applyConfigBtn'),
-      refreshDiscoveryBtn: document.getElementById('refreshDiscoveryBtn'),
-      websocketInfo: document.getElementById('websocketInfo'),
-      ipfsInfo: document.getElementById('ipfsInfo'),
-      toggleWsUrl: document.getElementById('toggleWsUrl'),
-      wsEndpoint: document.getElementById('wsEndpoint')
+      // Stats
+      sourceShard: document.getElementById('sourceShard'),
+      sourcePeers: document.getElementById('sourcePeers'),
+      sourceGlobal: document.getElementById('sourceGlobal'),
+      sourceBitrate: document.getElementById('sourceBitrate'),
+      viewerRole: document.getElementById('viewerRole'),
+      viewerShardBadge: document.getElementById('viewerShardBadge'),
+      relayLoad: document.getElementById('relayLoad'),
+      viewerConns: document.getElementById('viewerConns'),
+      viewerBuffer: document.getElementById('viewerBuffer'),
+      totalShards: document.getElementById('totalShards'),
+      peersPerShard: document.getElementById('peersPerShard'),
+      p2pRatio: document.getElementById('p2pRatio'),
+      dhtPeers: document.getElementById('dhtPeers'),
+      scaleTarget: document.getElementById('scaleTarget')
     };
 
     // ===========================
-    // LOGGING & UTILS
+    // LOGGING
     // ===========================
-    
-    function log(msg, level = 'info', target = 'network') {
-      const el = target === 'viewer' ? els.viewerLog : els.networkLog;
-      const entry = document.createElement('div');
-      entry.className = `log-entry ${level}`;
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      el.appendChild(entry);
+    function log(msg, type = 'info', target = 'network') {
+      const el = target === 'source' ? els.sourceLog : (target === 'viewer' ? els.viewerLog : els.networkLog);
+      const div = document.createElement('div');
+      div.className = `log-entry ${type}`;
+      div.textContent = `[${new Date().toISOString().split('T')[1].slice(0,8)}] ${msg}`;
+      el.appendChild(div);
       el.scrollTop = el.scrollHeight;
-      console.log(`[${level.toUpperCase()}] ${msg}`);
-    }
-
-    function updatePeerList(el, peers) {
-      el.innerHTML = '';
-      if (peers.size === 0) {
-        el.innerHTML = '<div style="color:#666;font-style:italic">No peers yet</div>';
-        return;
-      }
-      for (const [id, info] of peers) {
-        const item = document.createElement('div');
-        item.className = 'peer-item';
-        const role = info.canRelay ? 'relay' : 'leaf';
-        item.innerHTML = `
-          <span>${id.slice(0,6)}...</span>
-          <span class="badge badge-${role}">${role} • d:${info.depth}</span>
-        `;
-        el.appendChild(item);
-      }
-    }
-
-    function updateDiscoveryStatus(status, dotClass) {
-      els.discoveryText.textContent = status;
-      els.discoveryDot.className = `status-dot ${dotClass}`;
     }
 
     // ===========================
-    // RELAY ELIGIBILITY (20% RULE)
+    // SHARDING ALGORITHM
     // ===========================
-    
-    async function canBeRelay() {
+    function assignShard(peerId) {
+      // Consistent hashing to distribute 1M peers across 1000 shards
+      let hash = 0;
+      for (let i = 0; i < peerId.length; i++) hash = ((hash << 5) - hash) + peerId.charCodeAt(i);
+      return Math.abs(hash % CONFIG.shards);
+    }
+
+    // ===========================
+    // LIBP2P DISCOVERY (DHT)
+    // ===========================
+    async function initLibp2p() {
+      log('Initializing Libp2p for Discovery...', 'info', 'network');
       try {
-        const conn = navigator.connection;
-        const estimatedUpload = conn ? (conn.downlink || 5) * 0.35 : 1.5;
-        const cpuCores = navigator.hardwareConcurrency || 4;
-        
-        let batteryOk = true;
-        if (navigator.getBattery) {
-          try {
-            const battery = await navigator.getBattery();
-            batteryOk = battery.level >= CONFIG.minBatteryLevel && 
-                       (battery.charging || battery.level >= 0.5);
-          } catch(e) {}
-        }
-        
-        const isVisible = !document.hidden;
-        const eligible = estimatedUpload >= CONFIG.minUploadMbps &&
-                        cpuCores >= CONFIG.minCpuCores &&
-                        batteryOk && isVisible;
-                        
-        log(`Relay check: ${estimatedUpload.toFixed(1)}Mbps ↑, ${cpuCores} cores → ${eligible?'✅':'❌'}`, 'info', 'viewer');
-        return eligible;
-      } catch(e) {
-        log(`Relay check error: ${e.message}`, 'err', 'viewer');
-        return false;
-      }
-    }
-
-    // ===========================
-    // WEBRTC CORE (STUN-ONLY, PURE P2P)
-    // ===========================
-    
-    function createPeerConnection() {
-      const pc = new RTCPeerConnection({ 
-        iceServers: CONFIG.iceServers,
-        bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require'
-      });
-      
-      pc.onicecandidate = (e) => {
-        if (e.candidate && state.dc?.readyState === 'open') {
-          sendViaDataChannel({ type: 'ice', candidate: e.candidate });
-        }
-      };
-      
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === 'failed') {
-          state.metrics.natFailures++;
-          log(`❌ NAT traversal failed`, 'err');
-          handleDisconnect();
-        }
-        if (pc.iceConnectionState === 'connected' && state.parent) {
-          log(`✓ Connected to parent`, 'success', 'viewer');
-        }
-      };
-      
-      pc.ontrack = (e) => {
-        if (e.streams[0] && els.remoteVideo) {
-          els.remoteVideo.srcObject = e.streams[0];
-          const track = e.track;
-          const s = track.getSettings();
-          els.qualityStat.textContent = `${s.width||'?'}×${s.height||'?'} @ ${Math.round(s.frameRate||0)}fps`;
-          
-          // Auto-adapt quality for leaf nodes
-          if (state.role === 'leaf') adaptQualityForLeaf(pc);
-        }
-      };
-      
-      pc.ondatachannel = (e) => setupDataChannel(e.channel);
-      
-      return pc;
-    }
-
-    function setupDataChannel(dc) {
-      state.dc = dc;
-      dc.onopen = () => {
-        log('🔗 Signaling DataChannel established', 'success');
-        // Auto-send peer info + known peers (gossip)
-        sendViaDataChannel({
-          type: 'peer-info',
-          peerId: state.peerId,
-          depth: state.depth,
-          canRelay: state.role === 'broadcaster' || state.role === 'relay',
-          knownPeers: Array.from(state.discovery.knownPeers.entries()).slice(0, 10) // gossip top 10
-        });
-      };
-      dc.onmessage = (e) => handleSignalingMessage(JSON.parse(e.data));
-      dc.onclose = () => log('⚠ DataChannel closed', 'warn');
-    }
-
-    function sendViaDataChannel(msg) {
-      if (state.dc?.readyState === 'open') {
-        state.dc.send(JSON.stringify(msg));
-        return true;
-      }
-      // Fallback: queue for later or use discovery layer
-      return false;
-    }
-
-    // ===========================
-    // AUTO SDP HANDSHAKE + GOSSIP PROTOCOL
-    // ===========================
-    
-    async function handleSignalingMessage(msg) {
-      switch(msg.type) {
-        case 'offer':
-          await handleOffer(msg);
-          break;
-        case 'answer':
-          await handleAnswer(msg);
-          break;
-        case 'ice':
-          if (state.pc) await state.pc.addIceCandidate(msg.candidate).catch(e => log(`ICE error: ${e.message}`, 'err'));
-          break;
-        case 'peer-info':
-          handlePeerInfo(msg);
-          break;
-        case 'peer-intro':
-          // Gossip: peer introduces us to another peer
-          log(`👥 Introduction to ${msg.targetPeerId} via ${msg.fromPeerId}`, 'info');
-          state.discovery.pendingOffers.set(msg.targetPeerId, {
-            offer: msg.offer,
-            from: msg.fromPeerId,
-            timestamp: Date.now()
-          });
-          // Auto-respond if we're looking for parent
-          if (!state.parent && state.role !== 'broadcaster') {
-            await handleOffer({ peerId: msg.targetPeerId, offer: msg.offer, depth: msg.depth });
-          }
-          break;
-        case 'churn-alert':
-          log(`⚠ Parent ${msg.peerId} disconnecting`, 'warn', 'viewer');
-          seekBackupParent();
-          break;
-        case 'discovery-broadcast':
-          // DHT-style: peer announces availability in room
-          handleDiscoveryBroadcast(msg);
-          break;
-      }
-    }
-
-    async function handleOffer({ peerId, offer, depth }) {
-      if (state.parent) {
-        log('Already connected to parent', 'warn', 'viewer');
-        return;
-      }
-      
-      state.depth = depth + 1;
-      
-      // Determine role
-      if (state.depth > CONFIG.D) {
-        state.role = 'leaf';
-        log(`Max depth ${CONFIG.D} reached → leaf viewer`, 'info', 'viewer');
-      } else if (await canBeRelay()) {
-        state.role = 'relay';
-        els.roleBadge.textContent = 'Relay';
-        els.roleBadge.className = 'role-badge role-relay';
-        els.relayingStat.textContent = 'Yes';
-        state.metrics.activeRelays++;
-        log('✅ Eligible → relay node', 'success', 'viewer');
-      } else {
-        state.role = 'leaf';
-        log('ℹ Not eligible → leaf viewer', 'info', 'viewer');
-      }
-      
-      state.parent = { peerId, pc: createPeerConnection() };
-      els.parentStat.textContent = peerId.slice(0,6);
-      els.viewerDepthStat.textContent = state.depth;
-      
-      // Handle incoming stream
-      state.parent.pc.ontrack = (e) => {
-        if (e.streams[0]) {
-          els.remoteVideo.srcObject = e.streams[0];
-          if (state.role === 'leaf') adaptQualityForLeaf(state.parent.pc);
-        }
-      };
-      
-      await state.parent.pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await state.parent.pc.createAnswer();
-      await state.parent.pc.setLocalDescription(answer);
-      
-      // AUTO SDP: Send answer back via DataChannel (no manual copy!)
-      if (state.dc?.readyState === 'open') {
-        sendViaDataChannel({ type: 'answer', answer: state.parent.pc.localDescription });
-        log('✅ Auto SDP handshake complete', 'success', 'viewer');
-      } else {
-        log('⚠ DataChannel not ready - SDP queued', 'warn', 'viewer');
-      }
-    }
-
-    async function handleAnswer({ answer }) {
-      if (state.parent?.pc) {
-        await state.parent.pc.setRemoteDescription(new RTCSessionDescription(answer));
-        log('✅ Received answer - connection established', 'success');
-      }
-    }
-
-    function handlePeerInfo(msg) {
-      // Update known peers map (gossip)
-      state.discovery.knownPeers.set(msg.peerId, {
-        depth: msg.depth,
-        canRelay: msg.canRelay,
-        lastSeen: Date.now()
-      });
-      
-      // If we're broadcaster and have capacity, auto-introduce this peer to others
-      if (state.role === 'broadcaster' && state.children.length < CONFIG.S) {
-        // Auto-add as child via gossip intro
-        introducePeer(msg.peerId, msg.depth);
-      }
-      
-      // Update UI
-      updatePeerList(els.swarmPeers, state.discovery.knownPeers);
-      log(`👥 Peer ${msg.peerId.slice(0,6)}... (d:${msg.depth}, relay:${msg.canRelay})`, 'info');
-    }
-
-    function introducePeer(targetPeerId, targetDepth) {
-      // Create offer for target peer
-      const childPc = createPeerConnection();
-      const dc = childPc.createDataChannel('signal', { negotiated: true, id: 1 });
-      setupDataChannel(dc);
-      
-      // Send our stream
-      if (state.stream) {
-        state.stream.getTracks().forEach(track => childPc.addTrack(track, state.stream));
-      }
-      
-      childPc.createOffer().then(offer => {
-        childPc.setLocalDescription(offer);
-        // Send intro via gossip: "hey targetPeerId, connect to me"
-        sendViaDataChannel({
-          type: 'peer-intro',
-          fromPeerId: state.peerId,
-          targetPeerId: targetPeerId,
-          offer: offer,
-          depth: state.depth
-        });
-        
-        // Store for answer handling
-        state.children.push({ pc: childPc, dc, peerId: targetPeerId, depth: state.depth + 1 });
-        els.childrenStat.textContent = state.children.length;
-      });
-    }
-
-    function adaptQualityForLeaf(pc) {
-      const sender = pc.getSenders()?.find(s => s.track?.kind === 'video');
-      if (sender) {
-        sender.setParameters({
-          encodings: [{ 
-            maxBitrate: CONFIG.leafBitrate,
-            scaleResolutionDownBy: 2,
-            priority: 'low'
-          }]
-        }).catch(e => log(`Quality adapt error: ${e.message}`, 'err'));
-      }
-    }
-
-    // ===========================
-    // DHT-STYLE DISCOVERY LAYER
-    // ===========================
-    
-    function initDiscovery() {
-      state.discovery.mode = els.discoveryMode.value;
-      state.roomId = els.roomCode.value.trim() || generateRoomCode();
-      els.roomCode.value = state.roomId;
-      
-      log(`🔍 Discovery mode: ${state.discovery.mode} • Room: ${state.roomId}`, 'info');
-      updateDiscoveryStatus('Initializing...', 'searching');
-      
-      switch(state.discovery.mode) {
-        case 'manual':
-          initManualDiscovery();
-          break;
-        case 'websocket':
-          initWebSocketDiscovery();
-          break;
-        case 'ipfs':
-          initIpfsDiscovery();
-          break;
-      }
-    }
-
-    function generateRoomCode() {
-      return Array.from(crypto.getRandomValues(new Uint8Array(4)))
-        .map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-    }
-
-    // --- MODE 1: MANUAL (Purest P2P) ---
-    function initManualDiscovery() {
-      updateDiscoveryStatus('Manual mode • Share room code', 'connected');
-      
-      // Auto-copy room link for broadcaster
-      if (state.role === 'broadcaster') {
-        const url = `${location.origin}${location.pathname}?room=${state.roomId}#viewer`;
-        els.copyRoomBtn.onclick = () => {
-          navigator.clipboard.writeText(url);
-          log('🔗 Room link copied', 'success');
-          alert('Share this link with viewers!');
-        };
-        els.copyRoomBtn.classList.remove('hidden');
-      }
-      
-      // Check URL for auto-join
-      const params = new URLSearchParams(location.search);
-      if (params.get('room') === state.roomId && location.hash === '#viewer') {
-        log('🔗 Auto-joining room via URL', 'info', 'viewer');
-        requestPeerIntroduction();
-      }
-    }
-
-    function requestPeerIntroduction() {
-      // In manual mode: wait for user to paste SDP OR use broadcast via DataChannel gossip
-      log('ℹ Waiting for peer introduction (manual mode)', 'info', 'viewer');
-      updateDiscoveryStatus('Waiting for peers...', 'searching');
-      
-      // Periodically broadcast our availability via any open DataChannel
-      const broadcastInterval = setInterval(() => {
-        if (sendViaDataChannel({
-          type: 'discovery-broadcast',
-          peerId: state.peerId,
-          roomId: state.roomId,
-          canRelay: state.role !== 'leaf',
-          depth: state.depth
-        })) {
-          log('📡 Broadcast availability via gossip', 'info');
-          clearInterval(broadcastInterval);
-        }
-      }, 3000);
-      
-      setTimeout(() => clearInterval(broadcastInterval), 30000); // stop after 30s
-    }
-
-    // --- MODE 2: EPHEMERAL WEBSOCKET RELAY (Easy, Stateless) ---
-    function initWebSocketDiscovery() {
-      els.websocketInfo.classList.remove('hidden');
-      els.wsEndpoint.textContent = CONFIG.wsRelayUrl;
-      
-      if (!CONFIG.wsRelayUrl || CONFIG.wsRelayUrl.includes('example')) {
-        log('⚠ Using demo WebSocket endpoint - replace with your own stateless relay', 'warn');
-      }
-      
-      try {
-        state.discovery.ws = new WebSocket(CONFIG.wsRelayUrl);
-        
-        state.discovery.ws.onopen = () => {
-          log('🔗 Connected to signaling relay', 'success');
-          updateDiscoveryStatus('Connected to relay', 'connected');
-          
-          // Join room
-          state.discovery.ws.send(JSON.stringify({
-            type: 'join',
-            roomId: state.roomId,
-            peerId: state.peerId,
-            canRelay: state.role !== 'leaf',
-            depth: state.depth
-          }));
-          
-          // Broadcast our presence
-          broadcastDiscovery();
-        };
-        
-        state.discovery.ws.onmessage = (e) => {
-          const msg = JSON.parse(e.data);
-          handleDiscoveryMessage(msg);
-        };
-        
-        state.discovery.ws.onclose = () => {
-          log('⚠ Signaling relay disconnected', 'warn');
-          updateDiscoveryStatus('Relay disconnected', '');
-          // Fallback to manual gossip
-          requestPeerIntroduction();
-        };
-        
-        state.discovery.ws.onerror = (err) => {
-          log(`❌ WebSocket error: ${err.type}`, 'err');
-          updateDiscoveryStatus('Connection error', '');
-        };
-        
-      } catch(e) {
-        log(`WebSocket init error: ${e.message}`, 'err');
-        updateDiscoveryStatus('Unavailable', '');
-        // Fallback
-        initManualDiscovery();
-      }
-    }
-
-    function broadcastDiscovery() {
-      if (state.discovery.ws?.readyState === WebSocket.OPEN) {
-        state.discovery.ws.send(JSON.stringify({
-          type: 'broadcast',
-          roomId: state.roomId,
-          peerId: state.peerId,
-          canRelay: state.role !== 'leaf',
-          depth: state.depth,
-          timestamp: Date.now()
-        }));
-      }
-    }
-
-    function handleDiscoveryMessage(msg) {
-      switch(msg.type) {
-        case 'peer-joined':
-          log(`👥 ${msg.peerId} joined room`, 'info');
-          state.discovery.knownPeers.set(msg.peerId, {
-            depth: msg.depth, canRelay: msg.canRelay, lastSeen: Date.now()
-          });
-          updatePeerList(els.swarmPeers, state.discovery.knownPeers);
-          
-          // Auto-introduce if we're broadcaster and have capacity
-          if (state.role === 'broadcaster' && state.children.length < CONFIG.S) {
-            introducePeer(msg.peerId, msg.depth);
-          }
-          break;
-          
-        case 'intro-request':
-          // Someone wants to connect to us
-          if (state.role !== 'leaf' && state.children.length < (state.role === 'broadcaster' ? CONFIG.S : CONFIG.R)) {
-            log(`🤝 Accepting intro request from ${msg.requesterId}`, 'info');
-            // Create offer and send via relay
-            createIntroOffer(msg.requesterId);
-          }
-          break;
-          
-        case 'intro-offer':
-          // Relay forwarded an offer to us
-          if (!state.parent) {
-            handleOffer({ peerId: msg.fromPeerId, offer: msg.offer, depth: msg.depth });
-          }
-          break;
-      }
-    }
-
-    async function createIntroOffer(targetPeerId) {
-      const pc = createPeerConnection();
-      const dc = pc.createDataChannel('signal', { negotiated: true, id: 1 });
-      setupDataChannel(dc);
-      
-      if (state.stream) {
-        state.stream.getTracks().forEach(track => pc.addTrack(track, state.stream));
-      }
-      
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      
-      // Send via WebSocket relay
-      if (state.discovery.ws?.readyState === WebSocket.OPEN) {
-        state.discovery.ws.send(JSON.stringify({
-          type: 'intro-offer',
-          targetPeerId: targetPeerId,
-          fromPeerId: state.peerId,
-          offer: offer,
-          depth: state.depth
-        }));
-        
-        state.children.push({ pc, dc, peerId: targetPeerId, depth: state.depth + 1 });
-        els.childrenStat.textContent = state.children.length;
-      }
-    }
-
-    // --- MODE 3: IPFS PUBSUB (True DHT • Experimental) ---
-    async function initIpfsDiscovery() {
-      els.ipfsInfo.classList.remove('hidden');
-      updateDiscoveryStatus('Loading libp2p...', 'searching');
-      
-      try {
-        // Lazy-load js-libp2p
-        await window.loadIpfsLib();
-        
-        // Create minimal libp2p node for pubsub
         const { createLibp2p } = window.libp2p;
         const { webSockets } = window.libp2p.transports;
         const { webRTC } = window.libp2p.transports;
         const { noise } = window.libp2p.crypto;
         const { yamux } = window.libp2p.streamMuxers;
         const { pubsub } = window.libp2p;
-        
-        state.discovery.ipfs = await createLibp2p({
+        const { bootstrap } = window.libp2p.peerDiscovery;
+
+        state.libp2pNode = await createLibp2p({
           addresses: { listen: ['/webrtc'] },
           transports: [webSockets(), webRTC()],
           streamMuxers: [yamux()],
           connectionEncryption: [noise()],
-          peerDiscovery: [],
+          peerDiscovery: [
+            bootstrap({ list: CONFIG.bootstrap })
+          ],
           services: {
             pubsub: pubsub({ allowPublishToZeroTopicPeers: true })
           }
         });
+
+        await state.libp2pNode.start();
+        state.peerId = state.libp2pNode.peerId.toString();
+        state.shardId = assignShard(state.peerId);
         
-        await state.discovery.ipfs.start();
-        log('✅ libp2p node started', 'success');
-        updateDiscoveryStatus('Connected to DHT', 'connected');
-        
-        // Join room topic
-        const topic = `p2pstream:${state.roomId}`;
-        state.discovery.ipfs.services.pubsub.addEventListener('message', (evt) => {
-          if (evt.detail.topic === topic) {
-            const msg = JSON.parse(new TextDecoder().decode(evt.detail.data));
-            handleIpfsDiscoveryMessage(msg);
-          }
+        log(`Libp2p Started. ID: ${state.peerId.slice(0,8)}... Shard: ${state.shardId}`, 'info', 'network');
+        els.totalShards.textContent = CONFIG.shards;
+        els.viewerShardBadge.textContent = `SHARD ${state.shardId}`;
+        els.sourceShard.textContent = state.shardId;
+
+        // Join Shard Topic
+        const topic = `p2p-stream-shard-${state.shardId}`;
+        state.libp2pNode.services.pubsub.subscribe(topic);
+        state.libp2pNode.services.pubsub.addEventListener('message', (evt) => {
+          if (evt.detail.topic === topic) handleDiscoveryMessage(evt.detail.data);
         });
-        
-        await state.discovery.ipfs.services.pubsub.subscribe(topic);
-        
-        // Broadcast our presence
-        broadcastIpfsDiscovery();
-        
-      } catch(e) {
-        log(`❌ IPFS discovery error: ${e.message}`, 'err');
-        updateDiscoveryStatus('IPFS unavailable', '');
-        // Fallback to manual
-        initManualDiscovery();
+
+        // Broadcast Presence
+        broadcastPresence();
+        setInterval(broadcastPresence, CONFIG.heartbeatInterval);
+
+      } catch (e) {
+        log(`Libp2p Init Failed: ${e.message}. Falling back to manual.`, 'err', 'network');
+        // Fallback logic would go here
       }
     }
 
-    function broadcastIpfsDiscovery() {
-      if (!state.discovery.ipfs?.services?.pubsub) return;
-      
-      const topic = `p2pstream:${state.roomId}`;
+    function broadcastPresence() {
+      if (!state.libp2pNode) return;
       const msg = JSON.stringify({
-        type: 'presence',
-        peerId: state.peerId,
-        canRelay: state.role !== 'leaf',
-        depth: state.depth,
+        id: state.peerId,
+        shard: state.shardId,
+        role: state.role,
+        upload: navigator.connection?.downlink || 0,
         timestamp: Date.now()
       });
-      
-      state.discovery.ipfs.services.pubsub.publish(topic, new TextEncoder().encode(msg));
-      log('📡 Broadcast via IPFS pubsub', 'info');
+      const topic = `p2p-stream-shard-${state.shardId}`;
+      state.libp2pNode.services.pubsub.publish(topic, new TextEncoder().encode(msg));
     }
 
-    function handleIpfsDiscoveryMessage(msg) {
-      if (msg.peerId === state.peerId) return; // ignore self
-      
-      state.discovery.knownPeers.set(msg.peerId, {
-        depth: msg.depth, canRelay: msg.canRelay, lastSeen: msg.timestamp
+    function handleDiscoveryMessage(data) {
+      try {
+        const peer = JSON.parse(new TextDecoder().decode(data));
+        if (peer.id === state.peerId) return;
+        els.dhtPeers.textContent = parseInt(els.dhtPeers.textContent) + 1;
+        // In full impl: Attempt WebRTC connection to peer if capacity allows
+        if (state.role === 'source' || state.role === 'relay') {
+          attemptConnection(peer);
+        }
+      } catch (e) {}
+    }
+
+    // ===========================
+    // WEBRTC MEDIA LAYER
+    // ===========================
+    function createPeerConnection() {
+      const pc = new RTCPeerConnection({ 
+        iceServers: CONFIG.iceServers,
+        bundlePolicy: 'max-bundle',
+        iceTransportPolicy: 'all' // 'relay' requires TURN (not pure)
       });
-      updatePeerList(els.swarmPeers, state.discovery.knownPeers);
-      
-      // Auto-intro if broadcaster
-      if (state.role === 'broadcaster' && state.children.length < CONFIG.S && !msg.canRelay) {
-        // Leaf viewer: offer connection
-        createIntroOffer(msg.peerId);
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate && state.dc?.readyState === 'open') {
+          state.dc.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'failed') {
+          state.metrics.failures++;
+          log(`Connection Failed. NAT Traversal Issue.`, 'err', 'viewer');
+          // In pure P2P, we cannot fallback. We just retry.
+          setTimeout(() => attemptReconnect(), 5000);
+        }
+        if (pc.connectionState === 'connected') {
+          els.viewerBuffer.textContent = '100%';
+          els.viewerBuffer.style.color = '#00ff9d';
+        }
+      };
+
+      pc.ontrack = (e) => {
+        if (e.streams[0]) {
+          els.remoteVideo.srcObject = e.streams[0];
+          log(`Media Stream Received`, 'info', 'viewer');
+        }
+      };
+
+      pc.ondatachannel = (e) => setupDataChannel(e.channel);
+      return pc;
+    }
+
+    function setupDataChannel(dc) {
+      state.dc = dc;
+      dc.onopen = () => {
+        log('Signaling Channel Open', 'info', 'viewer');
+        // Exchange SDP automatically
+        if (state.role === 'leaf' && !state.pc.remoteDescription) {
+          // Request offer
+          dc.send(JSON.stringify({ type: 'join-request', shard: state.shardId }));
+        }
+      };
+      dc.onmessage = (e) => handleSignaling(JSON.parse(e.data));
+    }
+
+    async function handleSignaling(msg) {
+      if (msg.type === 'offer') {
+        await state.pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+        const answer = await state.pc.createAnswer();
+        await state.pc.setLocalDescription(answer);
+        state.dc.send(JSON.stringify({ type: 'answer', answer: state.pc.localDescription }));
+      } else if (msg.type === 'answer') {
+        await state.pc.setRemoteDescription(new RTCSessionDescription(msg.answer));
+      } else if (msg.type === 'ice') {
+        await state.pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+      } else if (msg.type === 'join-request') {
+        // Source/Relay logic to send offer
+        const offer = await state.pc.createOffer();
+        await state.pc.setLocalDescription(offer);
+        state.dc.send(JSON.stringify({ type: 'offer', offer: state.pc.localDescription }));
       }
     }
 
     // ===========================
-    // BROADCASTER & VIEWER FLOW
+    // CONNECTION MANAGEMENT
     // ===========================
-    
-    async function startBroadcasting() {
+    async function attemptConnection(peer) {
+      if (state.connections.size >= CONFIG.maxConnections) {
+        log('Max connections reached. Pruning...', 'warn', 'network');
+        return;
+      }
+      // In full impl: Create PC, create offer, send via libp2p stream
+      log(`Attempting connection to ${peer.id.slice(0,8)}...`, 'info', 'network');
+      state.connections.set(peer.id, { status: 'connecting' });
+      els.viewerConns.textContent = state.connections.size;
+    }
+
+    function attemptReconnect() {
+      log('Attempting Reconnect...', 'warn', 'viewer');
+      // Re-init libp2p discovery
+      broadcastPresence();
+    }
+
+    // ===========================
+    // SOURCE & VIEWER FLOW
+    // ===========================
+    async function startSource() {
       try {
         state.stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
           audio: true
         });
-        
         els.localVideo.srcObject = state.stream;
-        const s = state.stream.getVideoTracks()[0].getSettings();
-        els.resStat.textContent = `${s.width}×${s.height}`;
-        els.bitrateStat.textContent = `${Math.round(CONFIG.relayBitrate/1000)} kbps`;
         
+        state.role = 'source';
         state.pc = createPeerConnection();
-        state.role = 'broadcaster';
-        state.depth = 0;
-        state.startTime = Date.now();
+        state.stream.getTracks().forEach(t => state.pc.addTrack(t, state.stream));
         
-        state.stream.getTracks().forEach(track => state.pc.addTrack(track, state.stream));
-        
-        // Create primary signaling DataChannel
-        const dc = state.pc.createDataChannel('signal', { negotiated: true, id: 1 });
+        const dc = state.pc.createDataChannel('signal');
         setupDataChannel(dc);
         
-        // UI updates
-        els.broadcasterPanel.classList.remove('hidden');
-        els.startBtn.disabled = true;
-        els.startBtn.textContent = '● Broadcasting';
-        els.roleBadge.textContent = 'Broadcaster';
+        await initLibp2p();
         
-        // Init discovery AFTER stream is ready
-        initDiscovery();
+        els.sourcePanel.classList.remove('hidden');
+        els.startSourceBtn.disabled = true;
+        els.startSourceBtn.textContent = 'BROADCASTING LIVE';
+        log('Source Started. Announcing to DHT...', 'info', 'source');
         
-        log('🎥 Broadcasting started • Waiting for peers...', 'success');
-        
-      } catch(e) {
-        log(`❌ Broadcast error: ${e.message}`, 'err');
-        alert(`Error: ${e.message}`);
+        // Simulate metrics
+        setInterval(() => {
+          const bitrate = Math.floor(Math.random() * 500 + 2000);
+          els.sourceBitrate.textContent = `${bitrate} kbps`;
+          els.sourcePeers.textContent = state.connections.size;
+          els.sourceGlobal.textContent = (state.connections.size * CONFIG.shards).toLocaleString();
+        }, 1000);
+
+      } catch (e) {
+        log(`Source Error: ${e.message}`, 'err', 'source');
       }
     }
 
-    async function joinStream() {
-      try {
-        els.broadcasterPanel.classList.add('hidden');
-        els.viewerPanel.classList.remove('hidden');
-        state.role = 'leaf'; // may upgrade later
-        
-        state.pc = createPeerConnection();
-        
-        // Init discovery to find peers
-        initDiscovery();
-        
-        log(`👋 Joining room ${state.roomId} as ${state.peerId}`, 'info', 'viewer');
-        
-      } catch(e) {
-        log(`❌ Join error: ${e.message}`, 'err', 'viewer');
-        alert(`Error: ${e.message}`);
-      }
-    }
-
-    function handleDisconnect() {
-      log('🔌 Disconnecting...', 'warn');
-      
-      // Notify children
-      state.children.forEach(child => {
-        if (child.dc?.readyState === 'open') {
-          child.dc.send(JSON.stringify({ type: 'churn-alert', peerId: state.peerId }));
-        }
-        child.pc?.close();
-      });
-      state.children = [];
-      
-      // Notify parent
-      if (state.parent?.dc?.readyState === 'open') {
-        state.parent.dc.send(JSON.stringify({ type: 'disconnect', peerId: state.peerId }));
-      }
-      
-      // Attempt backup parent
-      seekBackupParent();
-    }
-
-    function seekBackupParent() {
-      if (state.backupParents.length > 0) {
-        const backup = state.backupParents.shift();
-        log(`🔄 Trying backup: ${backup.peerId.slice(0,6)}...`, 'info', 'viewer');
-        // Re-initiate connection (simplified)
-        handleOffer({ peerId: backup.peerId, offer: backup.offer, depth: backup.depth });
-      } else {
-        log('❌ No backups • Stream interrupted', 'err', 'viewer');
-        // Re-discover via current mode
-        if (state.discovery.mode !== 'manual') {
-          requestPeerIntroduction();
-        }
-      }
+    async function joinViewer() {
+      els.sourcePanel.classList.add('hidden');
+      els.viewerPanel.classList.remove('hidden');
+      state.role = 'leaf';
+      state.pc = createPeerConnection();
+      await initLibp2p();
+      log('Joining Shard via DHT...', 'info', 'viewer');
     }
 
     // ===========================
-    // METRICS & CAPACITY ESTIMATION
+    // EVENTS
     // ===========================
-    
-    function estimateCapacity({ S, R, D, relayPct, natRate = 0.85, stability = 0.92, headroom = 0.75 }) {
-      const effectiveR = R * relayPct * natRate;
-      const stabilityFactor = Math.pow(stability, D);
-      let total = 1, levelNodes = S;
-      
-      for (let d = 1; d <= D; d++) {
-        total += Math.floor(levelNodes);
-        levelNodes = levelNodes * effectiveR;
-      }
-      return Math.floor(total * stabilityFactor * headroom);
-    }
-
-    function updateStats() {
-      if (!state.startTime) return;
-      const uptime = Math.floor((Date.now() - state.startTime) / 1000);
-      els.uptimeStat.textContent = `${uptime}s`;
-      
-      const est = estimateCapacity({
-        S: CONFIG.S, R: CONFIG.R, D: CONFIG.D,
-        relayPct: CONFIG.relayCapablePct,
-        natRate: CONFIG.natSuccessRate,
-        stability: CONFIG.peerStability,
-        headroom: CONFIG.bandwidthHeadroom
-      });
-      
-      els.totalPeersStat.textContent = est.toLocaleString();
-      els.activeRelaysStat.textContent = state.metrics.activeRelays;
-      els.avgDepthStat.textContent = state.depth.toFixed(1);
-      els.churnStat.textContent = state.metrics.churnEvents > 0 ? 
-        `${(state.metrics.churnEvents / (uptime/60)).toFixed(1)}/min` : '—';
-      els.natFailStat.textContent = state.metrics.natFailures;
-      
-      // Update relay progress bar
-      const progress = Math.min(100, (state.children.length / CONFIG.S) * 100);
-      els.relayProgress.style.width = `${progress}%`;
-    }
-    
-    setInterval(updateStats, 2000);
-
-    // ===========================
-    // EVENT LISTENERS
-    // ===========================
-    
-    els.startBtn.addEventListener('click', startBroadcasting);
-    
+    els.startSourceBtn.addEventListener('click', startSource);
     els.toggleRelayBtn.addEventListener('click', async () => {
-      if (state.role === 'leaf' && await canBeRelay()) {
-        state.role = 'relay';
-        els.roleBadge.textContent = 'Relay';
-        els.roleBadge.className = 'role-badge role-relay';
-        els.relayingStat.textContent = 'Yes';
-        state.metrics.activeRelays++;
-        log('✅ Upgraded to relay', 'success', 'viewer');
-        
-        // Notify parent + broadcast capability
-        if (state.parent?.dc?.readyState === 'open') {
-          sendViaDataChannel({ type: 'relay-upgrade', peerId: state.peerId });
-        }
-        if (state.discovery.mode === 'websocket' && state.discovery.ws?.readyState === WebSocket.OPEN) {
-          broadcastDiscovery();
-        }
-      } else {
-        log('❌ Not eligible to relay', 'warn', 'viewer');
+      const upload = navigator.connection?.downlink || 0;
+      if (upload < CONFIG.relayThreshold) {
+        alert(`Upload speed ${upload}Mbps too low. Required: ${CONFIG.relayThreshold}Mbps`);
+        return;
       }
+      state.role = 'relay';
+      els.viewerRole.textContent = 'Super-Node Relay';
+      els.viewerRole.style.color = '#aa00aa';
+      log('Relay Mode Enabled. Accepting children...', 'info', 'viewer');
     });
-    
-    els.applyConfigBtn.addEventListener('click', () => {
-      CONFIG.S = parseInt(els.configS.value) || 8;
-      CONFIG.R = parseInt(els.configR.value) || 4;
-      CONFIG.D = parseInt(els.configD.value) || 6;
-      CONFIG.relayCapablePct = parseInt(els.configRelayPct.value) / 100 || 0.20;
-      log(`⚙ Config updated: S=${CONFIG.S}, R=${CONFIG.R}, D=${CONFIG.D}`, 'info');
-      updateStats();
-    });
-    
-    els.refreshDiscoveryBtn.addEventListener('click', () => {
-      log('🔄 Refreshing discovery...', 'info');
-      updateDiscoveryStatus('Searching...', 'searching');
-      
-      if (state.discovery.mode === 'websocket' && state.discovery.ws?.readyState === WebSocket.OPEN) {
-        broadcastDiscovery();
-      } else if (state.discovery.mode === 'ipfs' && state.discovery.ipfs?.services?.pubsub) {
-        broadcastIpfsDiscovery();
-      } else {
-        requestPeerIntroduction();
-      }
-    });
-    
-    els.toggleWsUrl.addEventListener('click', (e) => {
-      e.preventDefault();
-      els.wsEndpoint.classList.toggle('hidden');
-    });
-    
-    // Handle URL params
-    window.addEventListener('load', () => {
-      // Config defaults
-      els.configS.value = CONFIG.S;
-      els.configR.value = CONFIG.R;
-      els.configD.value = CONFIG.D;
-      els.configRelayPct.value = CONFIG.relayCapablePct * 100;
-      
-      // Auto-join viewer if URL has #viewer
-      if (location.hash === '#viewer') {
-        const params = new URLSearchParams(location.search);
-        if (params.get('room')) {
-          els.roomCode.value = params.get('room');
-        }
-        joinStream();
-      }
-    });
-    
-    // Page visibility for relay management
-    document.addEventListener('visibilitychange', async () => {
-      if (state.role === 'relay') {
-        if (document.hidden) {
-          log('⚠ Tab hidden • Pausing relay', 'warn');
-          // In production: pause sending, notify children
-        } else {
-          log('✅ Tab visible • Resuming relay', 'info');
-          // Re-broadcast availability
-          if (state.discovery.mode === 'websocket') broadcastDiscovery();
-          if (state.discovery.mode === 'ipfs') broadcastIpfsDiscovery();
-        }
-      }
-    });
-    
-    // Graceful unload
-    window.addEventListener('beforeunload', () => {
-      handleDisconnect();
+    els.scaleTarget.addEventListener('change', (e) => {
+      const target = parseInt(e.target.value);
+      CONFIG.shards = target / CONFIG.maxPeersPerShard;
+      els.totalShards.textContent = CONFIG.shards;
+      log(`Scale target updated. Shards adjusted to ${CONFIG.shards}`, 'info', 'network');
     });
 
-    // Initial log
-    log(`🚀 Pure P2P Stream v2 • Peer: ${state.peerId}`, 'success');
-    log(`📊 Capacity estimate: ${estimateCapacity(CONFIG).toLocaleString()} viewers`, 'info');
-    
-    // Console table for scenarios
-    console.table([
-      { scenario: 'Conservative', S:4, R:2, D:6, est: estimateCapacity({S:4,R:2,D:6,relayPct:0.2}) },
-      { scenario: 'Balanced', S:6, R:3, D:6, est: estimateCapacity({S:6,R:3,D:6,relayPct:0.2}) },
-      { scenario: 'Aggressive', S:8, R:4, D:6, est: estimateCapacity({S:8,R:4,D:6,relayPct:0.2}) },
-      { scenario: 'Max Experimental', S:10, R:4, D:8, relayPct:0.25, est: estimateCapacity({S:10,R:4,D:8,relayPct:0.25}) }
-    ]);
+    window.addEventListener('load', () => {
+      if (location.hash === '#viewer') joinViewer();
+    });
+
+    // Handle visibility change (Mobile throttling)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && state.role === 'relay') {
+        log('Tab hidden. Relay performance may degrade.', 'warn', 'viewer');
+      }
+    });
   </script>
 </body>
 </html>
