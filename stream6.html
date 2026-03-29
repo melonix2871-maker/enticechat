@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>EnticeChat Live · Adaptive Relay</title>
-  <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
+  <title>EnticeChat Live · Multiplexed WebRTC</title>
   <style>
-    /* Your original beautiful styles (unchanged) */
     * { box-sizing: border-box; }
+
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
       background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
@@ -16,7 +15,13 @@
       padding: 20px;
       min-height: 100vh;
     }
-    .container { max-width: 1480px; margin: 0 auto; padding: 0 16px; }
+
+    .container {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
     h1 {
       font-weight: 700;
       font-size: 2rem;
@@ -27,9 +32,26 @@
       margin-bottom: 8px;
       text-align: center;
     }
-    .sub { color: #aaa; margin-top: -8px; font-size: 0.95rem; text-align: center; }
-    .main-layout { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
-    .video-section { flex: 3; min-width: 300px; }
+
+    .sub {
+      color: #aaa;
+      margin-top: -8px;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .video-section {
+      flex: 3;
+      min-width: 300px;
+    }
+
     .chat-section {
       flex: 1.15;
       min-width: 290px;
@@ -42,8 +64,368 @@
       height: 72vh;
       overflow: hidden;
     }
-    /* ... (all your other styles remain exactly the same) ... */
-    /* I kept the full original CSS for fidelity */
+
+    .info-card {
+      background: rgba(20, 25, 45, 0.86);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      padding: 14px 18px;
+      margin: 0 0 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .pill, #status, .room-badge {
+      background: #0f172a;
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .room-badge {
+      font-family: monospace;
+      color: #ffd966;
+      cursor: pointer;
+      user-select: all;
+    }
+
+    .room-badge:hover { background: #162238; }
+
+    .section-card {
+      background: rgba(20, 25, 45, 0.84);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 24px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      color: #ffd966;
+      font-weight: 700;
+    }
+
+    .hint {
+      font-size: 0.78rem;
+      color: #aeb9c8;
+      line-height: 1.45;
+      margin-bottom: 8px;
+    }
+
+    .video-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255,215,0,0.26);
+      box-shadow: 0 18px 35px -14px rgba(0,0,0,0.65);
+    }
+
+    .video-wrapper video {
+      width: 100%;
+      display: block;
+      background: #090909;
+      border-radius: 24px;
+    }
+
+    .video-label {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.72);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .multiplex-control {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.72);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .multiplex-control button {
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      background: rgba(255,255,255,0.2);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    button, select {
+      padding: 11px 22px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      color: white;
+      background: #2b3b4f;
+    }
+
+    button {
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    select {
+      cursor: pointer;
+      outline: none;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .broadcaster { background: linear-gradient(95deg, #E63E2E, #C0392B); }
+    .viewer { background: linear-gradient(95deg, #1F6392, #0E4A6E); }
+    .danger-btn { background: #7f2a2a; }
+    .small-btn {
+      padding: 8px 16px;
+      font-size: .82rem;
+      background: #2a2f3f;
+    }
+
+    .relay-btn.active { background: linear-gradient(95deg, #0e8f5b, #0a6b45); }
+    .page-btn.active { background: linear-gradient(95deg, #7c3aed, #5b21b6); }
+
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .stats-grid, .tree-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card, .tree-item {
+      background: rgba(0,0,0,0.24);
+      border-radius: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .stat-card strong, .tree-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.76rem;
+      color: #fff;
+    }
+
+    .pages-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .page-chip {
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .page-chip.active {
+      background: linear-gradient(95deg, #7c3aed, #5b21b6);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .quality-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      font-size: 0.68rem;
+      vertical-align: middle;
+    }
+
+    .chat-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      font-weight: 700;
+      background: rgba(0,0,0,0.22);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn .2s ease;
+    }
+
+    .message.own { align-items: flex-end; }
+
+    .message-bubble {
+      max-width: 88%;
+      padding: 9px 14px;
+      border-radius: 18px;
+      background: rgba(30, 40, 60, .92);
+      word-wrap: break-word;
+    }
+
+    .message.own .message-bubble {
+      background: linear-gradient(135deg, #E63E2E, #C0392B);
+    }
+
+    .message-name {
+      font-size: .7rem;
+      opacity: .72;
+      margin-bottom: 4px;
+      margin-left: 10px;
+    }
+
+    .message.own .message-name {
+      text-align: right;
+      margin-right: 10px;
+      margin-left: 0;
+    }
+
+    .message-text {
+      font-size: .9rem;
+      line-height: 1.4;
+    }
+
+    .message-time {
+      font-size: .62rem;
+      opacity: .5;
+      margin-top: 4px;
+      margin-left: 10px;
+    }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 40px;
+      background: rgba(20, 30, 45, 0.9);
+      color: white;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .chat-input:focus { border: 1px solid #ffb347; }
+
+    .send-btn {
+      padding: 10px 18px;
+      background: #ffb347;
+      color: #1a1a2e;
+      border-radius: 40px;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      font-size: 0.72rem;
+      color: #6c7a89;
+      margin-top: 22px;
+      text-align: center;
+      border-top: 1px solid #222;
+      padding-top: 20px;
+      line-height: 1.55;
+    }
+
+    code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    .live-pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #e74c3c;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 1.2s infinite;
+      vertical-align: middle;
+    }
+
+    .stream-selector {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .stream-badge {
+      background: rgba(0,0,0,0.6);
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .stream-badge.active {
+      background: #ffb347;
+      color: #1a1a2e;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1.2); }
+    }
+
     @media (max-width: 768px) {
       .main-layout { flex-direction: column; }
       .chat-section { height: 42vh; }
@@ -52,12 +434,12 @@
 </head>
 <body>
 <div class="container">
-  <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">Adaptive Relay Pages · Backup Parents · Quality Tiers</div>
+  <h1>🎙️ EnticeChat Live · Multiplexed</h1>
+  <div class="sub">True WebRTC Multiplexing · Multiple Streams Per Connection</div>
 
   <div class="info-card">
     <span>🔗 Channel:</span>
-    <span class="room-badge" id="channelDisplay">enticechat-live</span>
+    <span class="room-badge" id="channelDisplay">enticechat-multiplex</span>
     <span id="status">⚡ Choose your role</span>
     <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
     <span class="pill">📄 Page: <span id="pageStat">-</span></span>
@@ -65,11 +447,12 @@
     <span class="pill">🔁 Children: <span id="childCountStat">0</span></span>
     <span class="pill">🧭 Role: <span id="nodeRoleStat">none</span></span>
     <span class="pill">🎚 Quality: <span id="currentQualityStat">-</span></span>
+    <span class="pill">📡 Multiplex: <span id="multiplexStat">0 streams</span></span>
   </div>
 
   <div class="main-layout">
     <div class="video-section">
-      <div class="button-row" id="roleButtons">
+      <div class="button-row">
         <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
         <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
       </div>
@@ -79,36 +462,74 @@
         <button id="muteMicBtn" class="small-btn">🎤 Mute Mic</button>
         <button id="toggleCamBtn" class="small-btn">📷 Pause Camera</button>
         <button id="relayOptInBtn" class="small-btn relay-btn active">🔁 Relay: On</button>
-        <button id="pageSwitchBtn" class="small-btn page-btn">📄 Switch Page</button>
-        <select id="originQualitySelect">
+        <button id="addStreamBtn" class="small-btn" style="background:#4a4a8a;">➕ Add Stream</button>
+        <select id="originQualitySelect" title="Origin quality">
           <option value="high">Origin: High</option>
           <option value="medium">Origin: Medium</option>
           <option value="low">Origin: Low</option>
         </select>
       </div>
 
-      <!-- Video wrappers and all other sections remain exactly as you had them -->
-      <!-- (I kept the full HTML structure for video, stats, pages, etc.) -->
-
       <div class="video-grid">
         <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
           <video id="localVideo" autoplay playsinline muted></video>
           <div class="video-label" id="localVideoLabel">📹 You</div>
+          <div class="multiplex-control" id="localMultiplexControl" style="display:none;">
+            <span style="color:#ffb347;">🎬 Streams:</span>
+            <div id="localStreamSelector" class="stream-selector"></div>
+          </div>
         </div>
+
         <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
           <video id="mainRemoteVideo" autoplay playsinline controls></video>
           <div class="video-label" id="mainRemoteLabel">🎙️ Live</div>
+          <div class="multiplex-control" id="remoteMultiplexControl" style="display:none;">
+            <span style="color:#ffb347;">📺 Streams:</span>
+            <div id="remoteStreamSelector" class="stream-selector"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Node/Relay Status, Page Registry, Page Details sections (unchanged) -->
-      <!-- ... your full section-card blocks ... -->
+      <div class="section-card">
+        <div class="section-title">Multiplexed Streams Status</div>
+        <div class="stats-grid">
+          <div class="stat-card"><strong>My Streams</strong><span id="myStreamsCount">0</span></div>
+          <div class="stat-card"><strong>Received Streams</strong><span id="receivedStreamsCount">0</span></div>
+          <div class="stat-card"><strong>Active Tracks</strong><span id="activeTracksCount">0</span></div>
+          <div class="stat-card"><strong>Multiplex Sessions</strong><span id="multiplexSessions">0</span></div>
+        </div>
+      </div>
 
+      <div class="section-card">
+        <div class="section-title">Node / Relay Status</div>
+        <div class="tree-grid">
+          <div class="tree-item"><strong>Your ID</strong><span id="myIdView">—</span></div>
+          <div class="tree-item"><strong>Assigned Parent</strong><span id="myParentView">—</span></div>
+          <div class="tree-item"><strong>Backup Parents</strong><span id="backupParentsView">—</span></div>
+          <div class="tree-item"><strong>Current Source</strong><span id="mySourceView">—</span></div>
+          <div class="tree-item"><strong>Origin ID</strong><span id="originIdView">—</span></div>
+          <div class="tree-item"><strong>Relay Eligible</strong><span id="relayEligibleView">—</span></div>
+          <div class="tree-item"><strong>Relay Enabled</strong><span id="relayEnabledView">—</span></div>
+          <div class="tree-item"><strong>Children IDs</strong><span id="myChildrenView">—</span></div>
+          <div class="tree-item"><strong>Known Pages</strong><span id="knownPagesView">—</span></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">Page Registry</div>
+        <div class="pages-wrap" id="pagesWrap"></div>
+      </div>
     </div>
 
     <div class="chat-section">
       <div class="chat-header">💬 Live Chat <span id="chatRoleBadge"></span></div>
-      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="message">
+          <div class="message-bubble" style="background:#2c3e50;">
+            ✨ MULTIPLEXED MODE! Each connection can carry multiple independent streams.
+          </div>
+        </div>
+      </div>
       <div class="chat-input-area">
         <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="500" />
         <button id="sendChatBtn" class="send-btn">📤 Send</button>
@@ -117,30 +538,669 @@
   </div>
 
   <div class="footer-note">
-    <strong>Adaptive relay mode</strong>: Origin + relays with quality tiers, backup parents, and page clustering.<br>
-    This is experimental but improves stability when peers join/leave.
+    <strong>Multiplexed WebRTC</strong>: Each peer connection supports multiple independent video/audio streams.<br>
+    Add multiple camera angles, screen shares, or quality layers over a single connection.
   </div>
 </div>
 
 <script>
-  // === Your full original JavaScript (with minor cleanups + viewer mode support) ===
-  const CHANNEL = "enticechat-live";
-  // ... (all your constants, variables, helper functions remain the same) ...
-
-  // Quick URL param support for clean modes
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has("broadcast")) {
-    setTimeout(() => startOrigin(), 300);
-  } else if (urlParams.has("view") || urlParams.has("viewer")) {
-    // Viewer-only mode: hide broadcaster button
-    document.getElementById("startBroadcastBtn").style.display = "none";
-    setTimeout(() => startViewer(), 300);
+  // Configuration
+  const SIGNALING_SERVER = "wss://webrtc-signaling.glitch.me/ws"; // Public test server
+  const CHANNEL = "enticechat-multiplex";
+  
+  let ws = null;
+  let myId = null;
+  let myRole = null;
+  let peerConnections = new Map(); // peerId -> { pc, streams, tracks, metadata }
+  let localStreams = new Map(); // streamId -> MediaStream
+  let remoteStreams = new Map(); // peerId -> Map(streamId -> MediaStream)
+  let nextStreamId = 1;
+  
+  // Tree state
+  let originId = null;
+  let assignedParentId = null;
+  let backupParentIds = [];
+  let myTreeLevel = 0;
+  let myPage = 1;
+  let childPeerIds = new Set();
+  let relayEnabled = true;
+  let relayEligible = detectRelayEligibility();
+  let peerRegistry = new Map();
+  let pageRegistry = new Map();
+  
+  // Quality settings
+  let desiredOriginQuality = "high";
+  let myActiveQuality = "high";
+  
+  // UI elements
+  const statusSpan = document.getElementById("status");
+  const startBroadcastBtn = document.getElementById("startBroadcastBtn");
+  const joinViewerBtn = document.getElementById("joinViewerBtn");
+  const controlBar = document.getElementById("controlBar");
+  const stopBtn = document.getElementById("stopBtn");
+  const muteMicBtn = document.getElementById("muteMicBtn");
+  const toggleCamBtn = document.getElementById("toggleCamBtn");
+  const relayOptInBtn = document.getElementById("relayOptInBtn");
+  const addStreamBtn = document.getElementById("addStreamBtn");
+  const originQualitySelect = document.getElementById("originQualitySelect");
+  
+  const localVideoWrapper = document.getElementById("localVideoWrapper");
+  const localVideo = document.getElementById("localVideo");
+  const localVideoLabel = document.getElementById("localVideoLabel");
+  const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
+  const mainRemoteVideo = document.getElementById("mainRemoteVideo");
+  const mainRemoteLabel = document.getElementById("mainRemoteLabel");
+  const localStreamSelector = document.getElementById("localStreamSelector");
+  const remoteStreamSelector = document.getElementById("remoteStreamSelector");
+  
+  const peerCountSpan = document.getElementById("peerCount");
+  const pageStat = document.getElementById("pageStat");
+  const depthStat = document.getElementById("depthStat");
+  const childCountStat = document.getElementById("childCountStat");
+  const nodeRoleStat = document.getElementById("nodeRoleStat");
+  const currentQualityStat = document.getElementById("currentQualityStat");
+  const multiplexStat = document.getElementById("multiplexStat");
+  const myStreamsCount = document.getElementById("myStreamsCount");
+  const receivedStreamsCount = document.getElementById("receivedStreamsCount");
+  const activeTracksCount = document.getElementById("activeTracksCount");
+  const multiplexSessions = document.getElementById("multiplexSessions");
+  
+  const myIdView = document.getElementById("myIdView");
+  const myParentView = document.getElementById("myParentView");
+  const backupParentsView = document.getElementById("backupParentsView");
+  const mySourceView = document.getElementById("mySourceView");
+  const originIdView = document.getElementById("originIdView");
+  const relayEligibleView = document.getElementById("relayEligibleView");
+  const relayEnabledView = document.getElementById("relayEnabledView");
+  const myChildrenView = document.getElementById("myChildrenView");
+  const knownPagesView = document.getElementById("knownPagesView");
+  const pagesWrap = document.getElementById("pagesWrap");
+  const channelDisplay = document.getElementById("channelDisplay");
+  const chatMessages = document.getElementById("chatMessages");
+  const chatInput = document.getElementById("chatInput");
+  const sendChatBtn = document.getElementById("sendChatBtn");
+  const chatRoleBadge = document.getElementById("chatRoleBadge");
+  
+  function detectRelayEligibility() {
+    const ua = navigator.userAgent || "";
+    const mobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+    const cores = navigator.hardwareConcurrency || 2;
+    return !mobile && cores >= 4;
   }
-
-  // Rest of your original script (startOrigin, startViewer, event listeners, etc.)
-  // I kept it 99% identical for maximum compatibility.
-
-  console.log("✅ EnticeChat Adaptive Relay Ready (webconnect.js powered)");
+  
+  function shortId(id) {
+    return id ? `${id.slice(0, 8)}…` : "—";
+  }
+  
+  function getTime() {
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  
+  function nowId() {
+    return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+  
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === "&") return "&amp;";
+      if (m === "<") return "&lt;";
+      if (m === ">") return "&gt;";
+      return m;
+    });
+  }
+  
+  function setStatusMessage(message, isError = false, isLive = false) {
+    if (isLive) {
+      statusSpan.innerHTML = `<span class="live-pulse"></span>${message}`;
+    } else {
+      statusSpan.innerHTML = message;
+    }
+    statusSpan.style.background = isError ? "#4a1a1a" : "#0f172a";
+  }
+  
+  function addMessageToUI(senderName, message, isOwn = false) {
+    const div = document.createElement("div");
+    div.className = `message ${isOwn ? "own" : ""}`;
+    div.innerHTML = `
+      <div class="message-name">${escapeHtml(senderName)}</div>
+      <div class="message-bubble"><div class="message-text">${escapeHtml(message)}</div></div>
+      <div class="message-time">${getTime()}</div>
+    `;
+    chatMessages.appendChild(div);
+    div.scrollIntoView({ behavior: "smooth", block: "end" });
+    while (chatMessages.children.length > 200) {
+      chatMessages.removeChild(chatMessages.firstChild);
+    }
+  }
+  
+  // WebRTC Configuration
+  const pcConfig = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" }
+    ]
+  };
+  
+  const QUALITY_PROFILES = {
+    high: { video: { width: 1280, height: 720, frameRate: 30 }, bitrate: 2500000 },
+    medium: { video: { width: 960, height: 540, frameRate: 24 }, bitrate: 1500000 },
+    low: { video: { width: 640, height: 360, frameRate: 20 }, bitrate: 800000 }
+  };
+  
+  // Signaling via WebSocket
+  function connectSignaling() {
+    ws = new WebSocket(SIGNALING_SERVER);
+    
+    ws.onopen = () => {
+      console.log("Connected to signaling server");
+      ws.send(JSON.stringify({
+        type: "join",
+        channel: CHANNEL,
+        peerId: myId || `peer_${Math.random().toString(36).slice(2, 10)}`
+      }));
+    };
+    
+    ws.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+      await handleSignaling(data);
+    };
+    
+    ws.onclose = () => {
+      console.log("Signaling disconnected, reconnecting in 3s...");
+      setTimeout(connectSignaling, 3000);
+    };
+  }
+  
+  async function handleSignaling(data) {
+    switch (data.type) {
+      case "peer-joined":
+        if (data.peerId !== myId) {
+          addMessageToUI("System", `Peer ${shortId(data.peerId)} joined`, false);
+          await createPeerConnection(data.peerId, true);
+        }
+        break;
+        
+      case "offer":
+        await handleOffer(data);
+        break;
+        
+      case "answer":
+        await handleAnswer(data);
+        break;
+        
+      case "ice-candidate":
+        await handleIceCandidate(data);
+        break;
+        
+      case "peer-left":
+        if (peerConnections.has(data.peerId)) {
+          closePeerConnection(data.peerId);
+          peerRegistry.delete(data.peerId);
+          updateStats();
+        }
+        break;
+        
+      case "chat":
+        addMessageToUI(data.senderName, data.message, false);
+        break;
+        
+      case "tree-update":
+        handleTreeUpdate(data);
+        break;
+    }
+  }
+  
+  async function createPeerConnection(peerId, isInitiator) {
+    if (peerConnections.has(peerId)) return;
+    
+    const pc = new RTCPeerConnection(pcConfig);
+    const connectionInfo = {
+      pc: pc,
+      streams: new Map(), // streamId -> { stream, transceivers, enabled }
+      metadata: {}
+    };
+    
+    peerConnections.set(peerId, connectionInfo);
+    
+    // Handle incoming tracks
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+      if (stream) {
+        const streamId = stream.id;
+        if (!connectionInfo.streams.has(streamId)) {
+          connectionInfo.streams.set(streamId, {
+            stream: stream,
+            transceivers: [],
+            enabled: true
+          });
+          
+          // Store remote stream
+          if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
+          remoteStreams.get(peerId).set(streamId, stream);
+          
+          updateMultiplexUI();
+          
+          // Show first video stream
+          if (mainRemoteVideo.srcObject !== stream && connectionInfo.streams.size === 1) {
+            mainRemoteVideo.srcObject = stream;
+            mainRemoteWrapper.style.display = "block";
+            mainRemoteLabel.innerText = `📺 Stream from ${shortId(peerId)}`;
+          }
+        }
+      }
+    };
+    
+    pc.onicecandidate = (event) => {
+      if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "ice-candidate",
+          to: peerId,
+          candidate: event.candidate
+        }));
+      }
+    };
+    
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE state with ${shortId(peerId)}: ${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+        closePeerConnection(peerId);
+      }
+    };
+    
+    if (isInitiator) {
+      await createAndSendOffer(peerId);
+    }
+    
+    updateStats();
+    return pc;
+  }
+  
+  async function createAndSendOffer(peerId) {
+    const conn = peerConnections.get(peerId);
+    if (!conn) return;
+    
+    // Add all local streams to the connection
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(track => {
+        conn.pc.addTrack(track, stream);
+      });
+    }
+    
+    const offer = await conn.pc.createOffer();
+    await conn.pc.setLocalDescription(offer);
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "offer",
+        to: peerId,
+        sdp: offer.sdp
+      }));
+    }
+  }
+  
+  async function handleOffer(data) {
+    await createPeerConnection(data.from, false);
+    const conn = peerConnections.get(data.from);
+    if (!conn) return;
+    
+    await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: data.sdp }));
+    
+    // Add local streams
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(track => {
+        conn.pc.addTrack(track, stream);
+      });
+    }
+    
+    const answer = await conn.pc.createAnswer();
+    await conn.pc.setLocalDescription(answer);
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "answer",
+        to: data.from,
+        sdp: answer.sdp
+      }));
+    }
+  }
+  
+  async function handleAnswer(data) {
+    const conn = peerConnections.get(data.from);
+    if (!conn) return;
+    await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: data.sdp }));
+  }
+  
+  async function handleIceCandidate(data) {
+    const conn = peerConnections.get(data.from);
+    if (!conn) return;
+    await conn.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+  }
+  
+  function closePeerConnection(peerId) {
+    const conn = peerConnections.get(peerId);
+    if (conn) {
+      conn.pc.close();
+      peerConnections.delete(peerId);
+      remoteStreams.delete(peerId);
+      
+      if (peerId === assignedParentId) {
+        assignedParentId = null;
+        mainRemoteVideo.srcObject = null;
+        mainRemoteWrapper.style.display = "none";
+      }
+      
+      if (childPeerIds.has(peerId)) {
+        childPeerIds.delete(peerId);
+      }
+    }
+    updateStats();
+    updateMultiplexUI();
+  }
+  
+  // Multiplexed Stream Management
+  async function addLocalStream(type = "camera") {
+    let stream;
+    
+    if (type === "camera") {
+      const profile = QUALITY_PROFILES[desiredOriginQuality];
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: profile.video,
+        audio: true
+      });
+    } else if (type === "screen") {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true
+      });
+    } else if (type === "microphone-only") {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+    }
+    
+    const streamId = `stream_${nextStreamId++}_${type}`;
+    stream.id = streamId;
+    localStreams.set(streamId, stream);
+    
+    // Add tracks to all existing peer connections
+    for (const [peerId, conn] of peerConnections) {
+      stream.getTracks().forEach(track => {
+        conn.pc.addTrack(track, stream);
+      });
+      
+      // Renegotiate
+      const offer = await conn.pc.createOffer();
+      await conn.pc.setLocalDescription(offer);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "offer",
+          to: peerId,
+          sdp: offer.sdp
+        }));
+      }
+    }
+    
+    // Show local video
+    if (!localVideo.srcObject) {
+      localVideo.srcObject = stream;
+      localVideoWrapper.style.display = "block";
+    }
+    
+    updateMultiplexUI();
+    addMessageToUI("System", `Added ${type} stream (ID: ${streamId.slice(0, 8)})`, false);
+    
+    return streamId;
+  }
+  
+  function switchRemoteStream(peerId, streamId) {
+    const streams = remoteStreams.get(peerId);
+    if (streams && streams.has(streamId)) {
+      mainRemoteVideo.srcObject = streams.get(streamId);
+      mainRemoteLabel.innerText = `📺 Stream ${streamId.slice(0, 8)} from ${shortId(peerId)}`;
+    }
+  }
+  
+  function updateMultiplexUI() {
+    myStreamsCount.innerText = localStreams.size;
+    
+    let totalRemoteStreams = 0;
+    for (const streams of remoteStreams.values()) {
+      totalRemoteStreams += streams.size;
+    }
+    receivedStreamsCount.innerText = totalRemoteStreams;
+    
+    let totalTracks = 0;
+    for (const stream of localStreams.values()) {
+      totalTracks += stream.getTracks().length;
+    }
+    activeTracksCount.innerText = totalTracks;
+    
+    multiplexSessions.innerText = peerConnections.size;
+    multiplexStat.innerText = `${localStreams.size} local · ${totalRemoteStreams} remote`;
+    
+    // Update local stream selector
+    localStreamSelector.innerHTML = "";
+    for (const [streamId, stream] of localStreams) {
+      const badge = document.createElement("div");
+      badge.className = "stream-badge";
+      badge.innerText = streamId.slice(0, 8);
+      badge.onclick = () => {
+        localVideo.srcObject = stream;
+        localVideoLabel.innerText = `📹 ${streamId.slice(0, 8)}`;
+      };
+      localStreamSelector.appendChild(badge);
+    }
+    
+    // Update remote stream selector for first peer
+    if (peerConnections.size > 0) {
+      const firstPeer = peerConnections.keys().next().value;
+      const streams = remoteStreams.get(firstPeer);
+      if (streams) {
+        remoteStreamSelector.innerHTML = "";
+        for (const [streamId, stream] of streams) {
+          const badge = document.createElement("div");
+          badge.className = "stream-badge";
+          badge.innerText = streamId.slice(0, 8);
+          badge.onclick = () => switchRemoteStream(firstPeer, streamId);
+          remoteStreamSelector.appendChild(badge);
+        }
+        document.getElementById("remoteMultiplexControl").style.display = "flex";
+      }
+    }
+  }
+  
+  // Tree management (simplified for multiplex version)
+  function updateStats() {
+    pageStat.innerText = myPage;
+    depthStat.innerText = myTreeLevel;
+    childCountStat.innerText = childPeerIds.size;
+    nodeRoleStat.innerText = myRole || "none";
+    currentQualityStat.innerText = QUALITY_PROFILES[myActiveQuality]?.video.width || myActiveQuality;
+    myIdView.innerText = myId ? shortId(myId) : "—";
+    myParentView.innerText = assignedParentId ? shortId(assignedParentId) : "—";
+    backupParentsView.innerText = backupParentIds.length ? backupParentIds.map(shortId).join(", ") : "—";
+    originIdView.innerText = originId ? shortId(originId) : "—";
+    relayEligibleView.innerText = relayEligible ? "Yes" : "No";
+    relayEnabledView.innerText = relayEnabled ? "Yes" : "No";
+    myChildrenView.innerText = childPeerIds.size ? Array.from(childPeerIds).map(shortId).join(", ") : "—";
+    peerCountSpan.innerText = peerConnections.size;
+    updateRoleBadge();
+  }
+  
+  function updateRoleBadge() {
+    const roleText = myRole ? myRole.toUpperCase() : "NONE";
+    chatRoleBadge.innerHTML = `· ${roleText}`;
+  }
+  
+  function sendChatMessage(message) {
+    const clean = (message || "").trim();
+    if (!clean || !ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    ws.send(JSON.stringify({
+      type: "chat",
+      senderName: myId?.slice(0, 8) || "Anonymous",
+      message: clean,
+      timestamp: Date.now()
+    }));
+    addMessageToUI(myId?.slice(0, 8) || "You", clean, true);
+    chatInput.value = "";
+  }
+  
+  function handleTreeUpdate(data) {
+    if (data.originId) originId = data.originId;
+    if (data.assignedParentId) assignedParentId = data.assignedParentId;
+    if (data.backupParents) backupParentIds = data.backupParents;
+    if (data.treeLevel !== undefined) myTreeLevel = data.treeLevel;
+    if (data.page) myPage = data.page;
+    updateStats();
+  }
+  
+  async function startBroadcast() {
+    myRole = "origin";
+    myId = `origin_${Math.random().toString(36).slice(2, 10)}`;
+    originId = myId;
+    myPage = 1;
+    myTreeLevel = 0;
+    
+    connectSignaling();
+    await addLocalStream("camera");
+    
+    controlBar.style.display = "flex";
+    setStatusMessage("🔴 Origin LIVE (Multiplexed)", false, true);
+    updateStats();
+    updateMultiplexUI();
+    updateRoleBadge();
+  }
+  
+  async function startViewer() {
+    myRole = "viewer";
+    myId = `viewer_${Math.random().toString(36).slice(2, 10)}`;
+    
+    connectSignaling();
+    
+    controlBar.style.display = "flex";
+    setStatusMessage("👁️ Viewer mode (Multiplexed)", false, false);
+    updateStats();
+    updateRoleBadge();
+  }
+  
+  async function stopEverything() {
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+    localStreams.clear();
+    
+    for (const [peerId, conn] of peerConnections) {
+      conn.pc.close();
+    }
+    peerConnections.clear();
+    remoteStreams.clear();
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+    
+    myRole = null;
+    assignedParentId = null;
+    childPeerIds.clear();
+    
+    localVideo.srcObject = null;
+    mainRemoteVideo.srcObject = null;
+    localVideoWrapper.style.display = "none";
+    mainRemoteWrapper.style.display = "none";
+    controlBar.style.display = "none";
+    
+    setStatusMessage("⚡ Choose your role");
+    updateStats();
+    updateMultiplexUI();
+  }
+  
+  // Event listeners
+  startBroadcastBtn.addEventListener("click", () => {
+    if (myRole) stopEverything();
+    startBroadcast();
+  });
+  
+  joinViewerBtn.addEventListener("click", () => {
+    if (myRole) stopEverything();
+    startViewer();
+  });
+  
+  stopBtn.addEventListener("click", stopEverything);
+  
+  addStreamBtn.addEventListener("click", async () => {
+    const type = prompt("Stream type: camera, screen, or microphone-only", "camera");
+    if (type && ["camera", "screen", "microphone-only"].includes(type)) {
+      await addLocalStream(type);
+    }
+  });
+  
+  muteMicBtn.addEventListener("click", () => {
+    for (const [streamId, stream] of localStreams) {
+      stream.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+    }
+    muteMicBtn.innerHTML = localStreams.size > 0 && localStreams.values().next().value.getAudioTracks()[0]?.enabled ? "🎤 Mute Mic" : "🎤 Unmute Mic";
+  });
+  
+  toggleCamBtn.addEventListener("click", () => {
+    for (const [streamId, stream] of localStreams) {
+      stream.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+    }
+    toggleCamBtn.innerHTML = localStreams.size > 0 && localStreams.values().next().value.getVideoTracks()[0]?.enabled ? "📷 Pause Camera" : "📷 Resume Camera";
+  });
+  
+  relayOptInBtn.addEventListener("click", () => {
+    relayEnabled = !relayEnabled;
+    relayOptInBtn.classList.toggle("active", relayEnabled);
+    updateStats();
+  });
+  
+  originQualitySelect.addEventListener("change", async () => {
+    desiredOriginQuality = originQualitySelect.value;
+    // Reapply constraints
+    for (const [streamId, stream] of localStreams) {
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        const profile = QUALITY_PROFILES[desiredOriginQuality];
+        await videoTrack.applyConstraints({ width: profile.video.width, height: profile.video.height, frameRate: profile.video.frameRate });
+      }
+    }
+    myActiveQuality = desiredOriginQuality;
+    updateStats();
+  });
+  
+  sendChatBtn.addEventListener("click", () => sendChatMessage(chatInput.value));
+  chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChatMessage(chatInput.value);
+  });
+  
+  channelDisplay.innerText = CHANNEL;
+  channelDisplay.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(CHANNEL);
+      setStatusMessage("📋 Channel copied!", false);
+    } catch (err) {
+      setStatusMessage("⚠️ Could not copy channel", true);
+    }
+  });
+  
+  window.addEventListener("beforeunload", () => {
+    for (const [streamId, stream] of localStreams) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+    if (ws) ws.close();
+  });
+  
+  updateStats();
+  updateMultiplexUI();
+  console.log("✅ Multiplexed WebRTC Ready");
 </script>
 </body>
 </html>
