@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>EnticeChat Live · Multi-Server P2P · Anywhere</title>
+  <title>EnticeChat Live · Working P2P Broadcast</title>
   <style>
     * {
       box-sizing: border-box;
@@ -82,7 +82,7 @@
       border: 1px solid rgba(255,255,255,0.12);
     }
 
-    .pill, #status, .room-badge {
+    .pill {
       background: #0f172a;
       padding: 6px 12px;
       border-radius: 999px;
@@ -91,13 +91,7 @@
       border: 1px solid rgba(255,255,255,0.06);
     }
 
-    .room-badge {
-      font-family: monospace;
-      color: #ffd966;
-      cursor: pointer;
-    }
-
-    .room-input, .server-select {
+    .room-input {
       background: #0f172a;
       border: 1px solid #ffb347;
       color: #ffd966;
@@ -105,10 +99,8 @@
       border-radius: 999px;
       font-family: monospace;
       font-size: 0.75rem;
+      width: 180px;
     }
-
-    .room-input { width: 180px; }
-    .server-select { width: 200px; cursor: pointer; }
 
     .button-row {
       display: flex;
@@ -118,7 +110,7 @@
       margin-bottom: 12px;
     }
 
-    button, select {
+    button {
       padding: 10px 20px;
       font-size: 0.9rem;
       font-weight: 700;
@@ -185,35 +177,6 @@
       font-weight: 600;
       backdrop-filter: blur(4px);
       z-index: 10;
-    }
-
-    .stream-selector {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.72);
-      padding: 4px 8px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      display: flex;
-      gap: 6px;
-      z-index: 10;
-      flex-wrap: wrap;
-      max-width: 60%;
-      justify-content: flex-end;
-    }
-
-    .stream-badge {
-      background: rgba(255,255,255,0.2);
-      padding: 3px 8px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 0.65rem;
-    }
-
-    .stream-badge.active {
-      background: #ffb347;
-      color: #1a1a2e;
     }
 
     .section-card {
@@ -365,16 +328,9 @@
       vertical-align: middle;
     }
 
-    .connection-status {
-      font-size: 0.7rem;
-      padding: 4px 8px;
-      border-radius: 12px;
-      background: rgba(0,0,0,0.5);
-    }
-
-    .connection-status.connected { background: #0e8f5b; }
-    .connection-status.disconnected { background: #7f2a2a; }
-    .connection-status.connecting { background: #ffb347; color: #1a1a2e; }
+    .status-connected { background: #0e8f5b; }
+    .status-disconnected { background: #7f2a2a; }
+    .status-connecting { background: #ffb347; color: #1a1a2e; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(5px); }
@@ -393,85 +349,64 @@
       .chat-section { height: 40vh; }
       .video-wrapper video { max-height: 35vh; }
       button { padding: 8px 16px; font-size: 0.8rem; }
-      .room-input, .server-select { width: 130px; font-size: 0.7rem; }
+      .room-input { width: 130px; font-size: 0.7rem; }
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>🎙️ EnticeChat Live · Multi-Server P2P</h1>
-  <div class="sub">Multiple Signaling Servers · Works Anywhere · Multi-Stream</div>
+  <h1>🎙️ EnticeChat Live · Working P2P</h1>
+  <div class="sub">Simple Working Broadcast · Works Anywhere</div>
 
   <div class="info-card">
-    <span>🔗 My ID:</span>
-    <span class="pill" id="myIdDisplay">-</span>
     <span>🔗 Room:</span>
     <input type="text" id="roomInput" class="room-input" value="enticechat-live" maxlength="50" />
-    <span>📡 Server:</span>
-    <select id="serverSelect" class="server-select">
-      <option value="wss://broadcastchannel.glitch.me/ws">Default (Glitch)</option>
-      <option value="wss://xrplcluster.com/">XRPL Cluster</option>
-      <option value="wss://s1.ripple.com/">Ripple S1</option>
-      <option value="wss://s2.ripple.com/">Ripple S2</option>
-      <option value="wss://testnet.xrpl-labs.com/">XRPL Labs Test</option>
-    </select>
-    <button id="joinRoomBtn" class="small-btn" style="background:#4a4a8a;">Join</button>
-    <span id="status">⚡ Choose role</span>
-    <span class="pill" id="connectionStatusSpan">⚪ Disconnected</span>
-    <span class="pill">👥 Peers: <span id="peerCountSpan">0</span></span>
-    <span class="pill">🎚 Quality: <span id="qualityLabelSpan">Detecting...</span></span>
-    <span class="pill">📡 Streams: <span id="streamCountSpan">0</span></span>
+    <button id="connectBtn" class="small-btn" style="background:#4a4a8a;">Connect</button>
+    <span id="status" class="pill">⚡ Disconnected</span>
+    <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
+    <span class="pill">🎚 Quality: <span id="qualityLabel">720p</span></span>
   </div>
 
   <div class="main-layout">
     <div class="video-section">
       <div class="button-row">
-        <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
-        <button id="startViewerBtn" class="viewer">👁️ Start Viewer</button>
-      </div>
-
-      <div class="control-bar" id="controlBarDiv" style="display:none;">
-        <button id="stopBtn" class="small-btn danger-btn">🔴 Stop</button>
-        <button id="muteMicBtn" class="small-btn">🎤 Mute</button>
-        <button id="toggleCamBtn" class="small-btn">📷 Pause</button>
-        <button id="addStreamBtn" class="small-btn" style="background:#4a4a8a;">➕ Add Stream</button>
+        <button id="broadcastBtn" class="broadcaster">🎥 Start Broadcasting</button>
+        <button id="viewerBtn" class="viewer">👁️ Start Viewer</button>
+        <button id="stopBtn" class="danger-btn" style="display:none;">🔴 Stop</button>
       </div>
 
       <div class="video-grid">
-        <div class="video-wrapper" id="localVideoWrapperDiv" style="display:none;">
+        <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
           <video id="localVideo" autoplay playsinline muted></video>
-          <div class="video-label" id="localVideoLabelDiv">📹 You</div>
-          <div id="localStreamSelectorDiv" class="stream-selector"></div>
+          <div class="video-label">📹 You</div>
         </div>
 
-        <div class="video-wrapper" id="remoteVideoWrapperDiv" style="display:none;">
+        <div class="video-wrapper" id="remoteVideoWrapper" style="display:none;">
           <video id="remoteVideo" autoplay playsinline></video>
-          <div class="video-label" id="remoteVideoLabelDiv">🎙️ Remote</div>
-          <div id="remoteStreamSelectorDiv" class="stream-selector"></div>
+          <div class="video-label">🎙️ Remote</div>
         </div>
       </div>
 
       <div class="section-card">
-        <div class="section-title">🔗 Connected Peers (click to switch)</div>
-        <div id="peersListDiv" style="max-height: 120px; overflow-y: auto;"></div>
+        <div class="section-title">🔗 Connected Peers</div>
+        <div id="peersList" style="max-height: 120px; overflow-y: auto;"></div>
       </div>
 
       <div class="section-card">
-        <div class="section-title">📊 Connection Stats</div>
+        <div class="section-title">📊 Status</div>
         <div class="stats-grid">
-          <div class="stat-card"><strong>Device</strong><span id="deviceInfoSpan">-</span></div>
-          <div class="stat-card"><strong>Video Res</strong><span id="videoResSpan">-</span></div>
-          <div class="stat-card"><strong>Local Streams</strong><span id="localStreamsCountSpan">0</span></div>
-          <div class="stat-card"><strong>Remote Streams</strong><span id="remoteStreamsCountSpan">0</span></div>
+          <div class="stat-card"><strong>Device</strong><span id="deviceInfo">-</span></div>
+          <div class="stat-card"><strong>Connection</strong><span id="connState">-</span></div>
+          <div class="stat-card"><strong>Role</strong><span id="roleInfo">-</span></div>
         </div>
       </div>
     </div>
 
     <div class="chat-section">
-      <div class="chat-header">💬 Chat <span id="roleBadgeSpan"></span></div>
-      <div class="chat-messages" id="chatMessagesDiv">
+      <div class="chat-header">💬 Chat</div>
+      <div class="chat-messages" id="chatMessages">
         <div class="message">
-          <div class="message-bubble">✨ Multi-server signaling! Choose a server, enter room name, start!</div>
+          <div class="message-bubble">✨ Working P2P! Connect to a room, then broadcast or view.</div>
         </div>
       </div>
       <div class="chat-input-area">
@@ -482,755 +417,493 @@
   </div>
 
   <div class="footer-note">
-    <strong>🌍 Multi-Server P2P!</strong> Multiple signaling servers (including XRPL public servers) for redundancy.<br>
-    Mobile: 360p | Desktop: 720p | Add multiple streams | Works anywhere in the world!
+    <strong>🌍 Working P2P!</strong> Uses public signaling server. Connect to same room name to connect.<br>
+    Mobile: 360p | Desktop: 720p | Works anywhere in the world!
   </div>
 </div>
 
 <script>
   // ========== CONFIGURATION ==========
-  const SIGNALING_SERVERS = {
-    "wss://broadcastchannel.glitch.me/ws": "Default (Glitch)",
-    "wss://xrplcluster.com/": "XRPL Cluster",
-    "wss://s1.ripple.com/": "Ripple S1",
-    "wss://s2.ripple.com/": "Ripple S2",
-    "wss://testnet.xrpl-labs.com/": "XRPL Labs Test"
-  };
+  // Using a reliable public signaling server with proper CORS
+  const SIGNALING_SERVER = "wss://signal.webrtc.zone/ws";
   
   const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent);
-  
-  const QUALITY = {
-    mobile: { width: 640, height: 360, frameRate: 15, bitrate: 500000, label: "360p" },
-    tablet: { width: 960, height: 540, frameRate: 20, bitrate: 1000000, label: "540p" },
-    desktop: { width: 1280, height: 720, frameRate: 24, bitrate: 1500000, label: "720p" }
-  };
-  
-  const deviceType = isMobile ? "mobile" : (isTablet ? "tablet" : "desktop");
-  const currentQuality = QUALITY[deviceType];
+  const QUALITY = isMobile 
+    ? { width: 640, height: 360, frameRate: 15, label: "360p" }
+    : { width: 1280, height: 720, frameRate: 24, label: "720p" };
   
   // ========== GLOBAL STATE ==========
   let ws = null;
-  let myPeerId = null;
+  let myId = null;
   let myRole = null;
-  let currentRoom = "enticechat-live";
-  let currentServer = "wss://broadcastchannel.glitch.me/ws";
-  let localStreams = new Map();
-  let peerConnections = new Map();
-  let remoteStreams = new Map();
-  let currentSelectedPeer = null;
-  let nextStreamId = 1;
-  let reconnectTimer = null;
+  let roomName = "enticechat-live";
+  let localStream = null;
+  let peerConnections = new Map(); // peerId -> RTCPeerConnection
+  let dataChannels = new Map(); // peerId -> RTCDataChannel
   
-  // ========== Safe DOM Helpers ==========
-  function getElement(id) {
-    const el = document.getElementById(id);
-    if (!el && id !== "myIdDisplay") {
-      console.warn(`Element not found: ${id}`);
-    }
-    return el;
-  }
-  
-  function setText(id, value) {
-    const el = getElement(id);
-    if (el) el.innerText = value;
-  }
-  
-  function setDisplay(id, display) {
-    const el = getElement(id);
-    if (el) el.style.display = display;
-  }
+  // ========== DOM Elements ==========
+  const roomInput = document.getElementById('roomInput');
+  const connectBtn = document.getElementById('connectBtn');
+  const broadcastBtn = document.getElementById('broadcastBtn');
+  const viewerBtn = document.getElementById('viewerBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const statusSpan = document.getElementById('status');
+  const peerCountSpan = document.getElementById('peerCount');
+  const qualityLabelSpan = document.getElementById('qualityLabel');
+  const deviceInfoSpan = document.getElementById('deviceInfo');
+  const connStateSpan = document.getElementById('connState');
+  const roleInfoSpan = document.getElementById('roleInfo');
+  const localVideoWrapper = document.getElementById('localVideoWrapper');
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideoWrapper = document.getElementById('remoteVideoWrapper');
+  const remoteVideo = document.getElementById('remoteVideo');
+  const peersListDiv = document.getElementById('peersList');
+  const chatMessagesDiv = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+  const sendChatBtn = document.getElementById('sendChatBtn');
   
   // ========== Helper Functions ==========
-  function shortId(id) {
-    return id ? id.slice(0, 8) : "?";
-  }
-  
   function addMessage(text, sender = "System", isOwn = false) {
-    const chatMessagesDiv = getElement("chatMessagesDiv");
-    if (!chatMessagesDiv) return;
-    
-    const div = document.createElement("div");
-    div.className = `message ${isOwn ? "own" : ""}`;
+    const div = document.createElement('div');
+    div.className = `message ${isOwn ? 'own' : ''}`;
     div.innerHTML = `
       <div class="message-name">${escapeHtml(sender)}</div>
       <div class="message-bubble">${escapeHtml(text)}</div>
     `;
     chatMessagesDiv.appendChild(div);
-    div.scrollIntoView({ behavior: "smooth", block: "end" });
-    while (chatMessagesDiv.children.length > 200) chatMessagesDiv.removeChild(chatMessagesDiv.firstChild);
+    div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    while (chatMessagesDiv.children.length > 200) {
+      chatMessagesDiv.removeChild(chatMessagesDiv.firstChild);
+    }
   }
   
   function escapeHtml(str) {
-    if (!str) return "";
-    return str.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m] || m));
+    if (!str) return '';
+    return str.replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
   }
   
-  function setStatus(msg, isError = false) {
-    const statusEl = getElement("status");
-    if (statusEl) {
-      statusEl.innerHTML = msg;
-      statusEl.style.background = isError ? "#4a1a1a" : "#0f172a";
-    }
+  function setStatus(text, isError = false) {
+    statusSpan.innerHTML = text;
+    statusSpan.className = `pill ${isError ? 'status-disconnected' : 'status-connected'}`;
   }
   
-  function updateConnectionStatus(connected) {
-    const statusSpan = getElement("connectionStatusSpan");
-    if (!statusSpan) return;
+  function updateUI() {
+    peerCountSpan.innerText = peerConnections.size;
+    qualityLabelSpan.innerText = QUALITY.label;
+    deviceInfoSpan.innerText = isMobile ? 'Mobile' : 'Desktop';
+    roleInfoSpan.innerText = myRole || 'None';
+    connStateSpan.innerText = ws && ws.readyState === WebSocket.OPEN ? 'Connected' : 'Disconnected';
     
-    if (connected) {
-      statusSpan.innerHTML = "🟢 Connected";
-      statusSpan.className = "pill connection-status connected";
-    } else {
-      statusSpan.innerHTML = "🔴 Disconnected";
-      statusSpan.className = "pill connection-status disconnected";
-    }
-  }
-  
-  function updateStats() {
-    setText("peerCountSpan", peerConnections.size);
-    setText("streamCountSpan", localStreams.size);
-    setText("localStreamsCountSpan", localStreams.size);
-    
-    let totalRemote = 0;
-    for (const streams of remoteStreams.values()) totalRemote += streams.size;
-    setText("remoteStreamsCountSpan", totalRemote);
-    setText("qualityLabelSpan", currentQuality.label);
-    setText("deviceInfoSpan", deviceType.toUpperCase());
-    
-    if (myPeerId) setText("myIdDisplay", shortId(myPeerId));
-    
-    const roleBadge = getElement("roleBadgeSpan");
-    if (roleBadge) roleBadge.innerHTML = myRole === "broadcaster" ? "· BROADCASTER" : (myRole === "viewer" ? "· VIEWER" : "");
-  }
-  
-  // ========== SIGNALING (Multi-Server WebSocket) ==========
-  function connectSignaling() {
-    if (ws && ws.readyState === WebSocket.OPEN) return;
-    
-    updateConnectionStatus(false);
-    setStatus(`Connecting to ${currentServer}...`);
-    
-    try {
-      ws = new WebSocket(currentServer);
-      
-      ws.onopen = () => {
-        console.log(`Signaling connected to ${currentServer}`);
-        updateConnectionStatus(true);
-        setStatus("Connected! Choose your role");
-        
-        if (myPeerId && myRole) {
-          ws.send(JSON.stringify({
-            type: "join",
-            room: currentRoom,
-            peerId: myPeerId,
-            role: myRole
-          }));
-        }
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          handleSignaling(data);
-        } catch(e) { console.error("Parse error:", e); }
-      };
-      
-      ws.onclose = () => {
-        console.log(`Signaling disconnected from ${currentServer}`);
-        updateConnectionStatus(false);
-        setStatus("Disconnected, reconnecting...", true);
-        
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => {
-          if (myPeerId) connectSignaling();
-        }, 3000);
-      };
-      
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        setStatus(`Signaling error on ${currentServer}`, true);
-      };
-    } catch (err) {
-      console.error("Failed to connect:", err);
-      setStatus("Failed to connect to signaling server", true);
-    }
-  }
-  
-  function sendSignaling(type, to, data = {}) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket not open, reconnecting...");
-      connectSignaling();
-      return;
-    }
-    
-    ws.send(JSON.stringify({
-      type: type,
-      from: myPeerId,
-      to: to,
-      room: currentRoom,
-      ...data
-    }));
-  }
-  
-  function broadcastPresence() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({
-      type: "presence",
-      room: currentRoom,
-      peerId: myPeerId,
-      role: myRole,
-      streams: localStreams.size
-    }));
-  }
-  
-  async function handleSignaling(data) {
-    switch (data.type) {
-      case "peers":
-        if (data.peers && Array.isArray(data.peers)) {
-          for (const peerId of data.peers) {
-            if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-              if (data.roles && data.roles[peerId]) {
-                const peerRole = data.roles[peerId];
-                if ((myRole === "broadcaster" && peerRole === "viewer") ||
-                    (myRole === "viewer" && peerRole === "broadcaster")) {
-                  addMessage(`Auto-connecting to ${shortId(peerId)} (${peerRole})`);
-                  await initiateConnection(peerId);
-                }
-              }
-            }
-          }
-        }
-        break;
-        
-      case "offer":
-        if (data.from && data.sdp) await handleOffer(data.from, data.sdp);
-        break;
-        
-      case "answer":
-        if (data.from && data.sdp) await handleAnswer(data.from, data.sdp);
-        break;
-        
-      case "ice":
-        if (data.from && data.candidate) await handleIce(data.from, data.candidate);
-        break;
-        
-      case "chat":
-        if (data.from && data.message) addMessage(data.message, shortId(data.from));
-        break;
-        
-      case "peer-left":
-        if (data.peerId && peerConnections.has(data.peerId)) {
-          addMessage(`${shortId(data.peerId)} left the room`);
-          closePeerConnection(data.peerId);
-        }
-        break;
-    }
-  }
-  
-  // ========== WEBRTC CONNECTION ==========
-  const ICE_SERVERS = {
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" }
-    ]
-  };
-  
-  async function initiateConnection(peerId) {
-    if (peerConnections.has(peerId)) return;
-    
-    addMessage(`🔗 Connecting to ${shortId(peerId)}...`);
-    
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    const dataChannel = pc.createDataChannel("chat");
-    
-    peerConnections.set(peerId, { pc, streams: new Map(), dataChannel });
-    
-    dataChannel.onopen = () => addMessage(`💬 Chat ready with ${shortId(peerId)}`);
-    dataChannel.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "chat") addMessage(data.message, shortId(peerId));
-      } catch(e) {}
-    };
-    
-    for (const [streamId, stream] of localStreams) {
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream);
-      });
-    }
-    
-    pc.ontrack = (event) => {
-      const stream = event.streams[0];
-      if (stream) {
-        const streamId = stream.id || `stream_${Date.now()}_${Math.random()}`;
-        if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
-        remoteStreams.get(peerId).set(streamId, stream);
-        
-        addMessage(`📺 New stream from ${shortId(peerId)}`);
-        updateRemoteSelector(peerId);
-        updateStats();
-        
-        if (!currentSelectedPeer && remoteStreams.get(peerId).size === 1) {
-          selectPeer(peerId);
-        }
-      }
-    };
-    
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        sendSignaling("ice", peerId, { candidate: event.candidate });
-      }
-    };
-    
-    pc.oniceconnectionstatechange = () => {
-      updatePeersList();
-      if (pc.iceConnectionState === "connected") {
-        addMessage(`✅ Connected to ${shortId(peerId)}`);
-      }
-    };
-    
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    sendSignaling("offer", peerId, { sdp: offer.sdp });
-    
-    updatePeersList();
-  }
-  
-  async function handleOffer(peerId, sdp) {
-    if (peerConnections.has(peerId)) return;
-    
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    const conn = { pc, streams: new Map(), dataChannel: null };
-    peerConnections.set(peerId, conn);
-    
-    pc.ondatachannel = (event) => {
-      conn.dataChannel = event.channel;
-      conn.dataChannel.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.type === "chat") addMessage(data.message, shortId(peerId));
-        } catch(e) {}
-      };
-    };
-    
-    for (const [streamId, stream] of localStreams) {
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
-    }
-    
-    pc.ontrack = (event) => {
-      const stream = event.streams[0];
-      if (stream) {
-        const streamId = stream.id || `stream_${Date.now()}`;
-        if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new Map());
-        remoteStreams.get(peerId).set(streamId, stream);
-        updateRemoteSelector(peerId);
-        updateStats();
-        if (!currentSelectedPeer) selectPeer(peerId);
-      }
-    };
-    
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        sendSignaling("ice", peerId, { candidate: event.candidate });
-      }
-    };
-    
-    await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: sdp }));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    sendSignaling("answer", peerId, { sdp: answer.sdp });
-    
-    updatePeersList();
-  }
-  
-  async function handleAnswer(peerId, sdp) {
-    const conn = peerConnections.get(peerId);
-    if (conn) {
-      await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: sdp }));
-    }
-  }
-  
-  async function handleIce(peerId, candidate) {
-    const conn = peerConnections.get(peerId);
-    if (conn && candidate) {
-      await conn.pc.addIceCandidate(new RTCIceCandidate(candidate));
-    }
-  }
-  
-  function closePeerConnection(peerId) {
-    const conn = peerConnections.get(peerId);
-    if (conn) {
-      if (conn.dataChannel) conn.dataChannel.close();
-      conn.pc.close();
-      peerConnections.delete(peerId);
-      remoteStreams.delete(peerId);
-      if (currentSelectedPeer === peerId) {
-        currentSelectedPeer = null;
-        const remoteVideo = getElement("remoteVideo");
-        if (remoteVideo) remoteVideo.srcObject = null;
-        setDisplay("remoteVideoWrapperDiv", "none");
-      }
-      updateStats();
-      updatePeersList();
-    }
-  }
-  
-  // ========== STREAM MANAGEMENT ==========
-  async function addLocalStream(type = "camera") {
-    try {
-      let stream;
-      
-      if (type === "camera") {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: currentQuality.width }, height: { ideal: currentQuality.height }, frameRate: { ideal: currentQuality.frameRate } },
-          audio: { echoCancellation: true, noiseSuppression: true }
-        });
-      } else if (type === "screen") {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      } else if (type === "audio-only") {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } else {
-        return;
-      }
-      
-      const streamId = `${type}_${nextStreamId++}_${Date.now().toString(36)}`;
-      Object.defineProperty(stream, 'id', { value: streamId, writable: false });
-      localStreams.set(streamId, stream);
-      
-      for (const [peerId, conn] of peerConnections) {
-        stream.getTracks().forEach(track => {
-          conn.pc.addTrack(track, stream);
-        });
-        await renegotiate(peerId);
-      }
-      
-      if (stream.getVideoTracks().length > 0 && localStreams.size === 1) {
-        const localVideo = getElement("localVideo");
-        if (localVideo) localVideo.srcObject = stream;
-        setDisplay("localVideoWrapperDiv", "block");
-      }
-      
-      updateLocalSelector();
-      updateStats();
-      addMessage(`✅ Added ${type} stream`);
-      
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        const settings = videoTrack.getSettings();
-        setText("videoResSpan", `${settings.width}x${settings.height}`);
-      }
-      
-      broadcastPresence();
-      
-    } catch (err) {
-      addMessage(`❌ Failed to add ${type}: ${err.message}`);
-    }
-  }
-  
-  async function renegotiate(peerId) {
-    const conn = peerConnections.get(peerId);
-    if (!conn || !conn.pc) return;
-    
-    try {
-      const offer = await conn.pc.createOffer();
-      await conn.pc.setLocalDescription(offer);
-      sendSignaling("offer", peerId, { sdp: offer.sdp });
-    } catch (err) {
-      console.error("Renegotiation failed:", err);
-    }
-  }
-  
-  function updateLocalSelector() {
-    const selector = getElement("localStreamSelectorDiv");
-    if (!selector) return;
-    
-    selector.innerHTML = "";
-    for (const [streamId, stream] of localStreams) {
-      const badge = document.createElement("div");
-      badge.className = "stream-badge";
-      const hasVideo = stream.getVideoTracks().length > 0 ? "🎥" : "🎤";
-      badge.innerHTML = `${hasVideo} ${streamId.slice(0, 6)}`;
-      badge.onclick = () => {
-        const localVideo = getElement("localVideo");
-        if (localVideo) localVideo.srcObject = stream;
-        const label = getElement("localVideoLabelDiv");
-        if (label) label.innerHTML = `📹 ${streamId.slice(0, 8)}`;
-        document.querySelectorAll('#localStreamSelectorDiv .stream-badge').forEach(b => b.classList.remove('active'));
-        badge.classList.add('active');
-      };
-      selector.appendChild(badge);
-    }
-    if (localStreams.size > 0) selector.style.display = "flex";
-  }
-  
-  function updateRemoteSelector(peerId) {
-    if (peerId !== currentSelectedPeer) return;
-    const streams = remoteStreams.get(peerId);
-    const selector = getElement("remoteStreamSelectorDiv");
-    if (!selector) return;
-    
-    if (!streams || streams.size === 0) {
-      selector.style.display = "none";
-      return;
-    }
-    
-    selector.style.display = "flex";
-    selector.innerHTML = "";
-    for (const [streamId, stream] of streams) {
-      const badge = document.createElement("div");
-      badge.className = "stream-badge";
-      const hasVideo = stream.getVideoTracks().length > 0 ? "🎥" : "🎤";
-      badge.innerHTML = `${hasVideo} ${streamId.slice(0, 6)}`;
-      badge.onclick = () => {
-        const remoteVideo = getElement("remoteVideo");
-        if (remoteVideo) remoteVideo.srcObject = stream;
-        const label = getElement("remoteVideoLabelDiv");
-        if (label) label.innerHTML = `📺 ${streamId.slice(0, 8)}`;
-        document.querySelectorAll('#remoteStreamSelectorDiv .stream-badge').forEach(b => b.classList.remove('active'));
-        badge.classList.add('active');
-      };
-      selector.appendChild(badge);
-    }
-  }
-  
-  function selectPeer(peerId) {
-    currentSelectedPeer = peerId;
-    const streams = remoteStreams.get(peerId);
-    if (streams && streams.size > 0) {
-      const firstVideo = Array.from(streams.values()).find(s => s.getVideoTracks().length > 0);
-      if (firstVideo) {
-        const remoteVideo = getElement("remoteVideo");
-        if (remoteVideo) remoteVideo.srcObject = firstVideo;
-        setDisplay("remoteVideoWrapperDiv", "block");
-        const label = getElement("remoteVideoLabelDiv");
-        if (label) label.innerHTML = `📺 ${shortId(peerId)}`;
-      }
-    }
-    updateRemoteSelector(peerId);
-    updatePeersList();
-  }
-  
-  function updatePeersList() {
-    const peersListDiv = getElement("peersListDiv");
-    if (!peersListDiv) return;
-    
-    peersListDiv.innerHTML = "";
-    for (const [peerId, conn] of peerConnections) {
-      const div = document.createElement("div");
-      div.className = `peer-item ${currentSelectedPeer === peerId ? "selected" : ""}`;
+    // Update peers list
+    peersListDiv.innerHTML = '';
+    for (const [peerId, pc] of peerConnections) {
+      const div = document.createElement('div');
+      div.className = 'peer-item';
       div.innerHTML = `
-        <strong>${shortId(peerId)}</strong>
-        <span style="float:right; font-size:0.65rem;">${conn.pc.iceConnectionState}</span>
-        <div style="font-size:0.65rem;">📡 ${remoteStreams.get(peerId)?.size || 0} streams</div>
+        <strong>${peerId.slice(0, 8)}</strong>
+        <span style="float:right; font-size:0.65rem;">${pc.iceConnectionState}</span>
       `;
-      div.onclick = () => selectPeer(peerId);
       peersListDiv.appendChild(div);
     }
   }
   
-  // ========== ROLE MANAGEMENT ==========
-  async function startBroadcast() {
-    await stopEverything();
-    myRole = "broadcaster";
-    myPeerId = `broad_${Math.random().toString(36).slice(2, 10)}`;
-    const controlBar = getElement("controlBarDiv");
-    if (controlBar) controlBar.style.display = "flex";
+  // ========== WebSocket Signaling ==========
+  function connectWebSocket() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
     
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      connectSignaling();
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    setStatus('Connecting...');
+    ws = new WebSocket(SIGNALING_SERVER);
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setStatus('Connected');
+      updateUI();
+      
+      // Join room
+      ws.send(JSON.stringify({
+        type: 'join',
+        room: roomName,
+        peerId: myId
+      }));
+    };
+    
+    ws.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+      await handleSignaling(data);
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setStatus('Disconnected - reconnecting...', true);
+      updateUI();
+      setTimeout(connectWebSocket, 3000);
+    };
+    
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+      setStatus('Connection error', true);
+    };
+  }
+  
+  async function handleSignaling(data) {
+    switch (data.type) {
+      case 'peer-joined':
+        if (data.peerId !== myId && !peerConnections.has(data.peerId)) {
+          addMessage(`${data.peerId.slice(0, 8)} joined the room`);
+          if (myRole === 'broadcaster') {
+            await createOffer(data.peerId);
+          }
+        }
+        break;
+        
+      case 'offer':
+        await handleOffer(data);
+        break;
+        
+      case 'answer':
+        await handleAnswer(data);
+        break;
+        
+      case 'ice-candidate':
+        await handleIceCandidate(data);
+        break;
+        
+      case 'peer-left':
+        if (peerConnections.has(data.peerId)) {
+          addMessage(`${data.peerId.slice(0, 8)} left`);
+          closePeerConnection(data.peerId);
+        }
+        break;
+        
+      case 'chat':
+        addMessage(data.message, data.senderId?.slice(0, 8));
+        break;
     }
-    
-    await addLocalStream("camera");
-    
+    updateUI();
+  }
+  
+  function sendSignal(type, to, data = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
-        type: "join",
-        room: currentRoom,
-        peerId: myPeerId,
-        role: myRole
+        type: type,
+        to: to,
+        from: myId,
+        room: roomName,
+        ...data
       }));
     }
+  }
+  
+  // ========== WebRTC ==========
+  const iceServers = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' }
+    ]
+  };
+  
+  async function createOffer(peerId) {
+    console.log('Creating offer for', peerId);
+    const pc = new RTCPeerConnection(iceServers);
+    peerConnections.set(peerId, pc);
     
-    setStatus("🔴 Broadcasting LIVE - Share the room name!", false);
-    addMessage(`🎬 Broadcasting in room "${currentRoom}" on server ${SIGNALING_SERVERS[currentServer] || currentServer}`);
-    updateStats();
+    // Add local stream if broadcasting
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+      });
+    }
+    
+    // Create data channel for chat
+    const dc = pc.createDataChannel('chat');
+    dataChannels.set(peerId, dc);
+    dc.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'chat') {
+        addMessage(data.message, peerId.slice(0, 8));
+      }
+    };
+    
+    // Handle remote stream
+    pc.ontrack = (event) => {
+      if (event.streams[0]) {
+        console.log('Received remote stream from', peerId);
+        remoteVideo.srcObject = event.streams[0];
+        remoteVideoWrapper.style.display = 'block';
+        addMessage(`Receiving stream from ${peerId.slice(0, 8)}`);
+      }
+    };
+    
+    // Handle ICE candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendSignal('ice-candidate', peerId, { candidate: event.candidate });
+      }
+    };
+    
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE state with ${peerId}: ${pc.iceConnectionState}`);
+      updateUI();
+    };
+    
+    // Create offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    sendSignal('offer', peerId, { sdp: offer.sdp });
+  }
+  
+  async function handleOffer(data) {
+    const peerId = data.from;
+    console.log('Handling offer from', peerId);
+    
+    const pc = new RTCPeerConnection(iceServers);
+    peerConnections.set(peerId, pc);
+    
+    // Add local stream if broadcasting
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+      });
+    }
+    
+    // Handle data channel
+    pc.ondatachannel = (event) => {
+      const dc = event.channel;
+      dataChannels.set(peerId, dc);
+      dc.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'chat') {
+          addMessage(msg.message, peerId.slice(0, 8));
+        }
+      };
+    };
+    
+    // Handle remote stream
+    pc.ontrack = (event) => {
+      if (event.streams[0]) {
+        console.log('Received remote stream from', peerId);
+        remoteVideo.srcObject = event.streams[0];
+        remoteVideoWrapper.style.display = 'block';
+        addMessage(`Receiving stream from ${peerId.slice(0, 8)}`);
+      }
+    };
+    
+    // Handle ICE candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendSignal('ice-candidate', peerId, { candidate: event.candidate });
+      }
+    };
+    
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE state with ${peerId}: ${pc.iceConnectionState}`);
+      updateUI();
+    };
+    
+    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignal('answer', peerId, { sdp: answer.sdp });
+  }
+  
+  async function handleAnswer(data) {
+    const pc = peerConnections.get(data.from);
+    if (pc) {
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+      console.log('Answer set for', data.from);
+    }
+  }
+  
+  async function handleIceCandidate(data) {
+    const pc = peerConnections.get(data.from);
+    if (pc && data.candidate) {
+      await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+  }
+  
+  function closePeerConnection(peerId) {
+    const pc = peerConnections.get(peerId);
+    if (pc) {
+      pc.close();
+      peerConnections.delete(peerId);
+    }
+    const dc = dataChannels.get(peerId);
+    if (dc) {
+      dc.close();
+      dataChannels.delete(peerId);
+    }
+    if (peerConnections.size === 0) {
+      remoteVideo.srcObject = null;
+      remoteVideoWrapper.style.display = 'none';
+    }
+    updateUI();
+  }
+  
+  // ========== Broadcast/Viewer Functions ==========
+  async function startBroadcast() {
+    myRole = 'broadcaster';
+    myId = `broad_${Math.random().toString(36).slice(2, 10)}`;
+    
+    try {
+      // Get camera/mic with appropriate quality
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: QUALITY.width }, height: { ideal: QUALITY.height }, frameRate: { ideal: QUALITY.frameRate } },
+        audio: true
+      });
+      
+      localVideo.srcObject = localStream;
+      localVideoWrapper.style.display = 'block';
+      
+      broadcastBtn.style.display = 'none';
+      viewerBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      
+      setStatus('🔴 Broadcasting LIVE');
+      addMessage('🎬 You are now broadcasting! Share the room name with viewers.');
+      
+      // Connect to signaling if not already
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        connectWebSocket();
+      } else {
+        // Re-announce presence
+        ws.send(JSON.stringify({
+          type: 'join',
+          room: roomName,
+          peerId: myId
+        }));
+      }
+      
+      updateUI();
+    } catch (err) {
+      console.error('Broadcast error:', err);
+      addMessage(`❌ Failed to start broadcast: ${err.message}`);
+      setStatus('Broadcast failed', true);
+    }
   }
   
   async function startViewer() {
-    await stopEverything();
-    myRole = "viewer";
-    myPeerId = `view_${Math.random().toString(36).slice(2, 10)}`;
-    const controlBar = getElement("controlBarDiv");
-    if (controlBar) controlBar.style.display = "flex";
+    myRole = 'viewer';
+    myId = `view_${Math.random().toString(36).slice(2, 10)}`;
     
+    broadcastBtn.style.display = 'none';
+    viewerBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block';
+    
+    setStatus('👁️ Viewer mode - waiting for broadcaster...');
+    addMessage('🔍 Looking for broadcasters in this room...');
+    
+    // Connect to signaling
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      connectSignaling();
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    
-    if (ws && ws.readyState === WebSocket.OPEN) {
+      connectWebSocket();
+    } else {
       ws.send(JSON.stringify({
-        type: "join",
-        room: currentRoom,
-        peerId: myPeerId,
-        role: myRole
+        type: 'join',
+        room: roomName,
+        peerId: myId
       }));
     }
     
-    setStatus("👁️ Viewer mode - Waiting for broadcaster...", false);
-    addMessage(`🔍 Looking for broadcasters in room "${currentRoom}"...`);
-    updateStats();
+    updateUI();
   }
   
-  function joinRoom() {
-    const roomInput = getElement("roomInput");
-    const serverSelect = getElement("serverSelect");
-    
-    if (!roomInput || !serverSelect) return;
-    
-    const newRoom = roomInput.value.trim();
-    const newServer = serverSelect.value;
-    
-    if (newRoom && newRoom !== currentRoom) {
-      currentRoom = newRoom;
-      addMessage(`Switched to room: ${currentRoom}`);
+  async function stop() {
+    // Stop local stream
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+      localVideo.srcObject = null;
+      localVideoWrapper.style.display = 'none';
     }
     
-    if (newServer && newServer !== currentServer) {
-      currentServer = newServer;
-      addMessage(`Switched to signaling server: ${SIGNALING_SERVERS[newServer] || newServer}`);
-      
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-      if (myRole) {
-        setTimeout(() => connectSignaling(), 500);
-      }
-    }
-  }
-  
-  async function stopEverything() {
-    for (const [peerId, conn] of peerConnections) {
-      if (conn.dataChannel) conn.dataChannel.close();
-      conn.pc.close();
+    // Close all peer connections
+    for (const [peerId, pc] of peerConnections) {
+      pc.close();
     }
     peerConnections.clear();
-    remoteStreams.clear();
+    dataChannels.clear();
     
-    for (const [streamId, stream] of localStreams) {
-      stream.getTracks().forEach(t => t.stop());
-    }
-    localStreams.clear();
+    // Clear remote video
+    remoteVideo.srcObject = null;
+    remoteVideoWrapper.style.display = 'none';
     
-    const localVideo = getElement("localVideo");
-    const remoteVideo = getElement("remoteVideo");
-    if (localVideo) localVideo.srcObject = null;
-    if (remoteVideo) remoteVideo.srcObject = null;
-    
-    setDisplay("localVideoWrapperDiv", "none");
-    setDisplay("remoteVideoWrapperDiv", "none");
-    
-    const controlBar = getElement("controlBarDiv");
-    if (controlBar) controlBar.style.display = "none";
-    
-    myRole = null;
-    currentSelectedPeer = null;
-    setText("videoResSpan", "-");
-    
+    // Leave room
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
-        type: "leave",
-        room: currentRoom,
-        peerId: myPeerId
+        type: 'leave',
+        room: roomName,
+        peerId: myId
       }));
     }
     
-    setStatus("⚡ Choose your role");
-    updateStats();
-    updatePeersList();
+    myRole = null;
+    myId = null;
     
-    const localSelector = getElement("localStreamSelectorDiv");
-    if (localSelector) localSelector.innerHTML = "";
+    broadcastBtn.style.display = 'inline-block';
+    viewerBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    
+    setStatus('Disconnected');
+    addMessage('Stopped broadcast/viewing');
+    updateUI();
   }
   
-  function toggleMute() {
-    for (const [streamId, stream] of localStreams) {
-      stream.getAudioTracks().forEach(t => t.enabled = !t.enabled);
+  function connectToRoom() {
+    const newRoom = roomInput.value.trim();
+    if (newRoom && newRoom !== roomName) {
+      roomName = newRoom;
+      addMessage(`Switched to room: ${roomName}`);
+      
+      // Reconnect if already connected
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'leave',
+          room: roomName,
+          peerId: myId
+        }));
+        ws.send(JSON.stringify({
+          type: 'join',
+          room: roomName,
+          peerId: myId
+        }));
+      }
+    } else if (!ws || ws.readyState !== WebSocket.OPEN) {
+      connectWebSocket();
     }
-    const btn = getElement("muteMicBtn");
-    if (btn) btn.innerHTML = btn.innerHTML === "🎤 Mute" ? "🎤 Unmute" : "🎤 Mute";
-  }
-  
-  function toggleCamera() {
-    for (const [streamId, stream] of localStreams) {
-      stream.getVideoTracks().forEach(t => t.enabled = !t.enabled);
-    }
-    const btn = getElement("toggleCamBtn");
-    if (btn) btn.innerHTML = btn.innerHTML === "📷 Pause" ? "📷 Resume" : "📷 Pause";
   }
   
   function sendChat() {
-    const chatInput = getElement("chatInput");
-    if (!chatInput) return;
-    
     const msg = chatInput.value.trim();
-    if (!msg) return;
+    if (!msg || !myId) return;
     
-    for (const [peerId, conn] of peerConnections) {
-      if (conn.dataChannel && conn.dataChannel.readyState === "open") {
-        conn.dataChannel.send(JSON.stringify({ type: "chat", message: msg }));
+    // Send via data channels
+    for (const [peerId, dc] of dataChannels) {
+      if (dc.readyState === 'open') {
+        dc.send(JSON.stringify({ type: 'chat', message: msg }));
       }
     }
     
-    for (const [peerId, conn] of peerConnections) {
-      sendSignaling("chat", peerId, { message: msg });
-    }
-    
-    addMessage(msg, shortId(myPeerId), true);
-    chatInput.value = "";
+    addMessage(msg, myId.slice(0, 8), true);
+    chatInput.value = '';
   }
   
-  // ========== EVENT LISTENERS ==========
-  function initEventListeners() {
-    const startBroadcast = getElement("startBroadcastBtn");
-    const startViewer = getElement("startViewerBtn");
-    const joinRoom = getElement("joinRoomBtn");
-    const stop = getElement("stopBtn");
-    const mute = getElement("muteMicBtn");
-    const toggleCam = getElement("toggleCamBtn");
-    const addStream = getElement("addStreamBtn");
-    const sendChat = getElement("sendChatBtn");
-    const chatInput = getElement("chatInput");
-    
-    if (startBroadcast) startBroadcast.addEventListener("click", startBroadcast);
-    if (startViewer) startViewer.addEventListener("click", startViewer);
-    if (joinRoom) joinRoom.addEventListener("click", joinRoom);
-    if (stop) stop.addEventListener("click", stopEverything);
-    if (mute) mute.addEventListener("click", toggleMute);
-    if (toggleCam) toggleCam.addEventListener("click", toggleCamera);
-    if (addStream) addStream.addEventListener("click", () => {
-      const type = prompt("Stream type: camera, screen, audio-only", "camera");
-      if (type && ["camera", "screen", "audio-only"].includes(type)) addLocalStream(type);
-    });
-    if (sendChat) sendChat.addEventListener("click", sendChat);
-    if (chatInput) chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChat(); });
-  }
+  // ========== Event Listeners ==========
+  connectBtn.addEventListener('click', connectToRoom);
+  broadcastBtn.addEventListener('click', startBroadcast);
+  viewerBtn.addEventListener('click', startViewer);
+  stopBtn.addEventListener('click', stop);
+  sendChatBtn.addEventListener('click', sendChat);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendChat();
+  });
   
   // Initialize
-  currentQuality.label = `${currentQuality.width}x${currentQuality.height}`;
-  setText("qualityLabelSpan", currentQuality.label);
-  updateStats();
-  setStatus("Choose a server, enter room name, and select your role");
-  addMessage("✨ Multi-server signaling! Choose from XRPL public servers or default.");
-  addMessage("🌍 Share the room name and server with anyone - works anywhere!");
+  updateUI();
+  addMessage('✨ Working P2P! Enter a room name and click Connect, then broadcast or view.');
+  addMessage('📱 Mobile = 360p, Desktop = 720p');
   
-  initEventListeners();
+  // Auto-connect to default room
+  setTimeout(() => connectWebSocket(), 500);
 </script>
 </body>
 </html>
