@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>EnticeChat Live · WebRTC Mesh · NAT Traversal</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>EnticeChat Live · Stable P2P Streaming</title>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -13,19 +14,18 @@
     :root {
       --accent-primary: #FF6B6B;
       --accent-secondary: #4ECDC4;
-      --bg-dark: #03030c;
+      --bg-dark: #0a0a1a;
       --success: #2ecc71;
       --warning: #f39c12;
       --error: #e74c3c;
     }
 
     body {
-      background: radial-gradient(circle at 20% 30%, #0a0a1a, var(--bg-dark));
+      background: radial-gradient(circle at 20% 30%, #0a0a1a, #03030c);
       color: #f0f0f0;
       margin: 0;
-      padding: 12px;
+      padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.4;
       min-height: 100vh;
     }
 
@@ -41,124 +41,185 @@
       background-clip: text;
       color: transparent;
       font-size: clamp(1.5rem, 6vw, 2.5rem);
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
 
     .sub {
       text-align: center;
-      color: #aaa;
-      margin-bottom: 16px;
+      color: #888;
+      margin-bottom: 20px;
       font-size: clamp(0.75rem, 3vw, 0.9rem);
     }
 
-    .info-card {
+    /* Status Cards */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .status-card {
       background: rgba(255,255,255,0.05);
-      border-radius: 20px;
-      padding: 12px 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      margin-bottom: 16px;
       backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 12px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
-    .pill {
-      background: rgba(255,255,255,0.1);
-      padding: 4px 12px;
-      border-radius: 30px;
+    .status-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+
+    .status-value {
+      font-size: 1rem;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .status-value.small {
       font-size: 0.75rem;
-      font-weight: 500;
+      font-family: monospace;
     }
 
-    .connection-stats {
+    /* Connection Panel */
+    .connection-panel {
       background: rgba(0,0,0,0.4);
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .peer-id-section {
+      background: rgba(255,255,255,0.05);
       border-radius: 16px;
-      padding: 10px 12px;
-      margin-bottom: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .peer-id {
       font-family: monospace;
+      font-size: 1.1rem;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 16px;
+      border-radius: 40px;
+      display: inline-block;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      color: white;
+      margin-left: 8px;
+      cursor: pointer;
       font-size: 0.7rem;
     }
 
-    .stat-row {
+    /* Buttons */
+    .button-group {
       display: flex;
-      justify-content: space-between;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .button-row {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 20px;
     }
 
     button {
-      padding: 12px 20px;
-      font-size: 0.95rem;
+      padding: 14px 28px;
+      font-size: 1rem;
       font-weight: 600;
       border: none;
-      border-radius: 50px;
+      border-radius: 60px;
       cursor: pointer;
       transition: all 0.2s ease;
-      width: 100%;
       touch-action: manipulation;
     }
 
     button:active {
-      transform: scale(0.98);
+      transform: scale(0.97);
     }
 
-    .broadcaster {
+    .btn-broadcast {
       background: var(--accent-primary);
       color: white;
+      box-shadow: 0 4px 15px rgba(255,107,107,0.3);
     }
 
-    .viewer {
+    .btn-viewer {
       background: var(--accent-secondary);
       color: white;
+      box-shadow: 0 4px 15px rgba(78,205,196,0.3);
     }
 
-    .danger-btn {
+    .btn-stop {
       background: #e63939;
       color: white;
     }
 
-    .control-bar {
+    .btn-secondary {
+      background: rgba(255,255,255,0.15);
+      color: white;
+    }
+
+    /* Input Group */
+    .input-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
+      margin-top: 15px;
       justify-content: center;
-      margin: 12px 0;
     }
 
-    .control-bar button,
-    .control-bar select {
-      padding: 8px 16px;
-      border-radius: 40px;
-      background: rgba(255,255,255,0.1);
-      color: white;
+    .input-group input {
+      flex: 1;
+      min-width: 200px;
+      padding: 14px 18px;
+      border-radius: 60px;
       border: 1px solid rgba(255,255,255,0.2);
-      cursor: pointer;
-      font-size: 0.85rem;
+      background: rgba(0,0,0,0.4);
+      color: white;
+      font-size: 0.9rem;
+      font-family: monospace;
     }
 
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--accent-secondary);
+    }
+
+    /* Video Grid */
     .video-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 12px;
-      margin-top: 8px;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .video-grid:has(.video-wrapper:nth-child(2):not([style*="display: none"])) {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     .video-wrapper {
       position: relative;
       background: #000;
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
       aspect-ratio: 16 / 9;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     video {
@@ -169,682 +230,556 @@
 
     .video-label {
       position: absolute;
-      bottom: 8px;
-      left: 8px;
+      bottom: 12px;
+      left: 12px;
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(8px);
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.7rem;
+      padding: 5px 12px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      z-index: 2;
     }
 
-    @media (min-width: 768px) {
-      .button-row {
-        flex-direction: row;
-        justify-content: center;
-      }
-      button {
-        width: auto;
-        min-width: 180px;
-      }
-      .video-grid:has(> .video-wrapper[style*="block"] + .video-wrapper[style*="block"]) {
-        grid-template-columns: repeat(2, 1fr);
-      }
+    .connection-status {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-family: monospace;
+    }
+
+    .status-connected { background: var(--success); color: white; }
+    .status-connecting { background: var(--warning); color: black; }
+    .status-failed { background: var(--error); color: white; }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     footer {
       text-align: center;
-      font-size: 0.65rem;
-      margin-top: 20px;
+      font-size: 0.7rem;
+      margin-top: 30px;
       opacity: 0.5;
     }
 
-    .success {
-      color: var(--success);
-    }
-
-    .warning {
-      color: var(--warning);
-    }
-
-    .peer-item {
-      background: rgba(255,255,255,0.05);
-      border-radius: 12px;
-      padding: 6px 10px;
-      margin: 4px 0;
-      font-size: 0.7rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      button { padding: 12px 20px; font-size: 0.9rem; }
+      .peer-id { font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">🌀 WebRTC Mesh · NAT Hole-Punching · No Relays</div>
+  <div class="sub">⚡ Stable P2P · Works on Mobile/Desktop · Free TURN Relays</div>
 
-  <div class="info-card">
-    <span class="pill">🔑 Room: <span id="roomDisplay">enticechat-live</span></span>
-    <span class="pill" id="status">● Ready</span>
-    <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
-    <span class="pill">🎭 Role: <span id="nodeRoleStat">—</span></span>
-    <span class="pill">🔄 Hops: <span id="hopStat">0</span></span>
-  </div>
-
-  <div class="connection-stats">
-    <div class="stat-row">
-      <span>🌐 Connection Mode:</span>
-      <span id="connMode" class="warning">Standby</span>
+  <!-- Status Cards -->
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="status-label">📡 Connection Status</div>
+      <div class="status-value" id="connectionStatus">Initializing...</div>
     </div>
-    <div class="stat-row">
-      <span>🔌 Active Connections:</span>
-      <span id="activeConns">0</span>
+    <div class="status-card">
+      <div class="status-label">👥 Connected Peers</div>
+      <div class="status-value" id="peerCount">0</div>
     </div>
-    <div class="stat-row">
-      <span>📡 NAT Type:</span>
-      <span id="natType">Detecting...</span>
+    <div class="status-card">
+      <div class="status-label">🎭 Role</div>
+      <div class="status-value" id="roleStatus">—</div>
     </div>
-    <div id="peerList" style="margin-top: 8px;"></div>
+    <div class="status-card">
+      <div class="status-label">📶 NAT Type</div>
+      <div class="status-value small" id="natType">Detecting...</div>
+    </div>
   </div>
 
-  <div class="button-row">
-    <button id="startBroadcastBtn" class="broadcaster">🎥 START BROADCAST</button>
-    <button id="joinViewerBtn" class="viewer">👁️ JOIN AS VIEWER</button>
+  <!-- Connection Panel -->
+  <div class="connection-panel">
+    <div class="peer-id-section">
+      <div class="status-label">YOUR PEER ID</div>
+      <div class="peer-id" id="peerIdDisplay">
+        <span class="loading"></span> Connecting...
+      </div>
+      <button class="copy-btn" id="copyIdBtn" style="display:none;">📋 Copy</button>
+    </div>
   </div>
 
-  <div class="control-bar" id="controlBar" style="display:none;">
-    <button id="muteMicBtn">🎤 Mute</button>
-    <select id="qualitySelect">
-      <option value="360p" selected>📱 360p (Mobile Optimized)</option>
-      <option value="480p">📺 480p (Balanced)</option>
-      <option value="720p">💻 720p (WiFi Only)</option>
-    </select>
-    <button id="stopBtn" class="danger-btn">⏹️ Stop</button>
+  <!-- Action Buttons -->
+  <div class="button-group">
+    <button id="startBroadcastBtn" class="btn-broadcast">🎥 Start Broadcast</button>
+    <button id="showJoinBtn" class="btn-viewer">👁️ Join as Viewer</button>
+    <button id="stopBtn" class="btn-stop" style="display:none;">⏹️ Stop Stream</button>
   </div>
 
+  <!-- Join Section (hidden initially) -->
+  <div id="joinSection" style="display:none;">
+    <div class="input-group">
+      <input type="text" id="remotePeerId" placeholder="Enter broadcaster's Peer ID" autocomplete="off">
+      <button id="connectBtn" class="btn-viewer">🔗 Connect</button>
+      <button id="cancelJoinBtn" class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Video Grid -->
   <div class="video-grid">
     <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
       <video id="localVideo" autoplay playsinline muted></video>
       <div class="video-label">📹 You (Broadcaster)</div>
+      <div class="connection-status" id="localStatus">Local</div>
     </div>
-    <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
-      <video id="mainRemoteVideo" autoplay playsinline></video>
+    <div class="video-wrapper" id="remoteVideoWrapper" style="display:none;">
+      <video id="remoteVideo" autoplay playsinline></video>
       <div class="video-label">🔴 Live Stream</div>
+      <div class="connection-status" id="remoteStatus">Connecting...</div>
     </div>
   </div>
-  <footer>🔗 Direct WebRTC · ICE hole-punching · P2P mesh</footer>
+
+  <footer>
+    🔒 Secure P2P · STUN + TURN fallback · Works on 4G/5G/WiFi
+  </footer>
 </div>
 
 <script>
 (function() {
   // ============ CONFIGURATION ============
-  const ROOM = "enticechat-live";
-  
-  // ============ GLOBALS ============
-  let localStream = null;
-  let myRole = null; // 'origin', 'viewer', 'relay'
-  let peerConnections = new Map(); // peerId -> { pc, stream, isRelay }
-  let currentHops = 0;
-  let maxChildren = 4;
-  let healthInterval = null;
-  let isShuttingDown = false;
-  let myPeerId = null;
-  let relayedStream = null; // For relay nodes to forward
-  
-  // ICE Servers (STUN only - free, no relay needed for most NATs)
-  const ICE_SERVERS = {
+  // Free TURN servers for reliable NAT traversal (works on mobile networks)
+  const ICE_CONFIG = {
     iceServers: [
+      // Google STUN servers (for direct connections)
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
       { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" }
+      { urls: "stun:stun4.l.google.com:19302" },
+      
+      // Free TURN servers (relay when STUN fails - critical for mobile/CGNAT)
+      {
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp"
+        ],
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
+      
+      // Backup TURN servers
+      {
+        urls: "turn:turn.anyfirewall.com:443?transport=tcp",
+        username: "webrtc",
+        credential: "webrtc"
+      }
     ],
-    iceCandidatePoolSize: 10
+    iceCandidatePoolSize: 10,
+    iceTransportPolicy: 'all' // Try everything, fallback to relay if needed
   };
-  
+
+  // ============ GLOBALS ============
+  let peer = null;
+  let localStream = null;
+  let activeCall = null;
+  let myPeerId = null;
+  let currentRole = null; // 'broadcaster' or 'viewer'
+  let reconnectAttempts = 0;
+  let maxReconnectAttempts = 3;
+  let connectionMonitor = null;
+
   // ============ DOM Elements ============
-  const statusSpan = document.getElementById("status");
-  const peerCountSpan = document.getElementById("peerCount");
-  const roleSpan = document.getElementById("nodeRoleStat");
-  const hopSpan = document.getElementById("hopStat");
-  const connModeSpan = document.getElementById("connMode");
-  const activeConnsSpan = document.getElementById("activeConns");
-  const natTypeSpan = document.getElementById("natType");
-  const peerListDiv = document.getElementById("peerList");
-  const controlBarDiv = document.getElementById("controlBar");
-  const localVideoWrapper = document.getElementById("localVideoWrapper");
-  const localVideo = document.getElementById("localVideo");
-  const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
-  const mainRemoteVideo = document.getElementById("mainRemoteVideo");
-  const startBtn = document.getElementById("startBroadcastBtn");
-  const joinBtn = document.getElementById("joinViewerBtn");
-  const stopBtn = document.getElementById("stopBtn");
-  const muteBtn = document.getElementById("muteMicBtn");
-  const qualitySelect = document.getElementById("qualitySelect");
+  const connectionStatusSpan = document.getElementById('connectionStatus');
+  const peerCountSpan = document.getElementById('peerCount');
+  const roleStatusSpan = document.getElementById('roleStatus');
+  const natTypeSpan = document.getElementById('natType');
+  const peerIdDisplay = document.getElementById('peerIdDisplay');
+  const copyIdBtn = document.getElementById('copyIdBtn');
+  const startBroadcastBtn = document.getElementById('startBroadcastBtn');
+  const showJoinBtn = document.getElementById('showJoinBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const joinSection = document.getElementById('joinSection');
+  const remotePeerIdInput = document.getElementById('remotePeerId');
+  const connectBtn = document.getElementById('connectBtn');
+  const cancelJoinBtn = document.getElementById('cancelJoinBtn');
+  const localVideoWrapper = document.getElementById('localVideoWrapper');
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideoWrapper = document.getElementById('remoteVideoWrapper');
+  const remoteVideo = document.getElementById('remoteVideo');
+  const remoteStatusSpan = document.getElementById('remoteStatus');
 
   // ============ Helper Functions ============
-  function setStatus(msg, isError = false) {
-    if (isShuttingDown && !isError) return;
-    statusSpan.innerHTML = isError ? `⚠️ ${msg}` : `● ${msg}`;
-    statusSpan.style.color = isError ? "#ff8888" : "#ccc";
-    console.log(`[Status] ${msg}`);
+  function setConnectionStatus(status, isError = false) {
+    connectionStatusSpan.innerHTML = status;
+    connectionStatusSpan.style.color = isError ? '#ff8888' : '#aaa';
   }
 
-  function updateStats() {
-    peerCountSpan.innerText = peerConnections.size;
-    roleSpan.innerText = myRole || "—";
-    hopSpan.innerText = currentHops;
-    activeConnsSpan.innerText = peerConnections.size;
-    
-    // Update peer list UI
-    if (peerListDiv) {
-      if (peerConnections.size === 0) {
-        peerListDiv.innerHTML = '<div style="text-align:center;opacity:0.5;">No connected peers</div>';
-      } else {
-        let html = '';
-        for (let [id, peer] of peerConnections) {
-          const shortId = id.substring(0, 8);
-          const type = peer.isRelay ? '🔄 Relay' : (myRole === 'origin' ? '👤 Viewer' : '📡 Source');
-          html += `<div class="peer-item">
-            <span>${type}</span>
-            <span>${shortId}...</span>
-            <span>${peer.pc?.connectionState || 'connecting'}</span>
-          </div>`;
-        }
-        peerListDiv.innerHTML = html;
-      }
+  function updatePeerCount(count) {
+    peerCountSpan.innerText = count;
+  }
+
+  function updateRole(role) {
+    roleStatusSpan.innerText = role;
+  }
+
+  // Detect NAT type (for debugging)
+  async function detectNAT() {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      pc.createDataChannel("test");
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      
+      return new Promise((resolve) => {
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            const candidate = event.candidate.candidate;
+            if (candidate.includes('srflx')) resolve('Moderate (port-restricted)');
+            else if (candidate.includes('relay')) resolve('Restricted (using relay)');
+          }
+        };
+        setTimeout(() => {
+          resolve('Open (direct)');
+          pc.close();
+        }, 2000);
+      });
+    } catch(e) {
+      return 'Unknown';
     }
   }
 
-  async function detectNATType() {
-    return new Promise((resolve) => {
-      const pc = new RTCPeerConnection(ICE_SERVERS);
-      pc.createDataChannel("test");
-      pc.createOffer()
-        .then(offer => pc.setLocalDescription(offer))
-        .then(() => {
-          const candidates = [];
-          pc.onicecandidate = (event) => {
-            if (event.candidate) {
-              candidates.push(event.candidate.candidate);
-            } else {
-              const hasSrflx = candidates.some(c => c.includes("srflx"));
-              const hasRelay = candidates.some(c => c.includes("relay"));
-              if (hasRelay) resolve("Restricted (TURN needed)");
-              else if (hasSrflx) resolve("Moderate (port-restricted NAT)");
-              else resolve("Open (direct connection)");
-              pc.close();
-            }
-          };
-          setTimeout(() => {
-            resolve("Unknown (timeout)");
-            pc.close();
-          }, 3000);
-        })
-        .catch(() => resolve("Detection failed"));
+  // Initialize PeerJS
+  async function initPeer() {
+    return new Promise((resolve, reject) => {
+      peer = new Peer({
+        config: ICE_CONFIG,
+        debug: 1 // Set to 2 for verbose logging
+      });
+      
+      peer.on('open', async (id) => {
+        myPeerId = id;
+        peerIdDisplay.innerHTML = id;
+        copyIdBtn.style.display = 'inline-block';
+        setConnectionStatus('✅ Connected to signaling');
+        
+        // Detect NAT type
+        const natType = await detectNAT();
+        natTypeSpan.innerHTML = natType;
+        
+        resolve(id);
+      });
+      
+      peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        if (err.type === 'unavailable-id' || err.type === 'disconnected') {
+          setConnectionStatus('⚠️ Connection issue, retrying...', true);
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            setTimeout(() => {
+              peer.reconnect();
+            }, 2000);
+          }
+        } else {
+          setConnectionStatus(`⚠️ ${err.type}`, true);
+        }
+      });
+      
+      peer.on('disconnected', () => {
+        setConnectionStatus('⚠️ Disconnected, reconnecting...', true);
+        peer.reconnect();
+      });
+      
+      peer.on('close', () => {
+        setConnectionStatus('❌ Connection closed', true);
+      });
+      
+      setTimeout(() => {
+        if (!myPeerId) {
+          reject(new Error('Connection timeout'));
+        }
+      }, 10000);
     });
   }
 
-  async function getMediaConstraints(quality) {
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    let actualQuality = quality;
-    if (isMobile && quality !== '360p') actualQuality = '360p';
-    
-    const configs = {
-      '360p': { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 15 } },
-      '480p': { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
-      '720p': { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
-    };
-    const selected = configs[actualQuality] || configs['360p'];
-    return {
-      video: selected,
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    };
-  }
-
-  function generatePeerId() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  }
-
-  // ============ Signaling via BroadcastChannel + Storage (No External Servers) ============
-  class SignalingChannel {
-    constructor(room, peerId) {
-      this.room = room;
-      this.peerId = peerId;
-      this.bc = null;
-      this.messageHandlers = new Map();
-      this.init();
-    }
-
-    init() {
-      // Use BroadcastChannel for same-origin tabs (instant)
-      if (window.BroadcastChannel) {
-        this.bc = new BroadcastChannel(`p2p_${this.room}`);
-        this.bc.onmessage = (event) => {
-          const data = event.data;
-          if (data && data.target !== this.peerId) {
-            const handler = this.messageHandlers.get(data.type);
-            if (handler) handler(data);
-          }
-        };
-      }
-      
-      // Use localStorage for cross-tab/cross-window discovery
-      window.addEventListener('storage', this.handleStorageEvent.bind(this));
-    }
-
-    handleStorageEvent(event) {
-      if (event.key === `p2p_signal_${this.room}` && event.newValue) {
-        try {
-          const data = JSON.parse(event.newValue);
-          if (data && data.target !== this.peerId) {
-            const handler = this.messageHandlers.get(data.type);
-            if (handler) handler(data);
-            // Clean up after reading
-            localStorage.removeItem(`p2p_signal_${this.room}`);
-          }
-        } catch(e) {}
-      }
-    }
-
-    send(type, target, payload) {
-      const message = { type, target, from: this.peerId, payload, timestamp: Date.now() };
-      
-      // Send via BroadcastChannel if available
-      if (this.bc) {
-        this.bc.postMessage(message);
-      }
-      
-      // Also store in localStorage for cross-tab
-      localStorage.setItem(`p2p_signal_${this.room}`, JSON.stringify(message));
-    }
-
-    on(type, handler) {
-      this.messageHandlers.set(type, handler);
-    }
-
-    broadcast(type, payload) {
-      const message = { type, from: this.peerId, payload, broadcast: true, timestamp: Date.now() };
-      if (this.bc) this.bc.postMessage(message);
-      localStorage.setItem(`p2p_broadcast_${this.room}`, JSON.stringify(message));
-    }
-
-    destroy() {
-      if (this.bc) this.bc.close();
-      window.removeEventListener('storage', this.handleStorageEvent);
-    }
-  }
-
-  // ============ WebRTC Peer Connection Manager ============
-  class PeerConnectionManager {
-    constructor(peerId, isOrigin) {
-      this.peerId = peerId;
-      this.isOrigin = isOrigin;
-      this.pc = null;
-      this.onStream = null;
-      this.onDisconnect = null;
-    }
-
-    async createOffer(stream) {
-      this.pc = new RTCPeerConnection(ICE_SERVERS);
-      
-      // Add tracks
-      stream.getTracks().forEach(track => {
-        this.pc.addTrack(track, stream);
-      });
-      
-      // Handle ICE candidates
-      this.pc.onicecandidate = (event) => {
-        if (event.candidate && this.onIceCandidate) {
-          this.onIceCandidate(event.candidate);
-        }
-      };
-      
-      // Handle connection state
-      this.pc.onconnectionstatechange = () => {
-        if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed') {
-          if (this.onDisconnect) this.onDisconnect();
-        }
-      };
-      
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
-      
-      return { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
-    }
-
-    async handleOffer(offerSdp, onStreamCallback) {
-      this.onStream = onStreamCallback;
-      this.pc = new RTCPeerConnection(ICE_SERVERS);
-      
-      this.pc.ontrack = (event) => {
-        if (this.onStream) this.onStream(event.streams[0]);
-      };
-      
-      this.pc.onicecandidate = (event) => {
-        if (event.candidate && this.onIceCandidate) {
-          this.onIceCandidate(event.candidate);
-        }
-      };
-      
-      this.pc.onconnectionstatechange = () => {
-        if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed') {
-          if (this.onDisconnect) this.onDisconnect();
-        }
-      };
-      
-      await this.pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
-      const answer = await this.pc.createAnswer();
-      await this.pc.setLocalDescription(answer);
-      
-      return { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
-    }
-
-    async handleAnswer(answerSdp) {
-      if (!this.pc) throw new Error("No peer connection");
-      await this.pc.setRemoteDescription(new RTCSessionDescription(answerSdp));
-    }
-
-    addIceCandidate(candidate) {
-      if (this.pc) {
-        this.pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn("ICE error:", e));
-      }
-    }
-
-    close() {
-      if (this.pc) {
-        this.pc.close();
-        this.pc = null;
-      }
-    }
-
-    isConnected() {
-      return this.pc && this.pc.connectionState === 'connected';
-    }
-  }
-
-  // ============ Main Application ============
-  let signaling = null;
-  let pendingOffers = new Map();
-
+  // Start broadcasting
   async function startBroadcast() {
-    await stopAll();
-    isShuttingDown = false;
-    myRole = "origin";
-    myPeerId = generatePeerId();
-    maxChildren = /Android|iPhone|iPad/i.test(navigator.userAgent) ? 3 : 6;
-    currentHops = 0;
+    if (currentRole === 'broadcaster') {
+      stopAll();
+    }
     
-    const quality = qualitySelect.value;
-    setStatus("Requesting camera/mic...");
+    setConnectionStatus('Requesting camera/mic...');
     
     try {
-      localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
+      // Mobile-optimized constraints
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const constraints = {
+        video: {
+          width: { ideal: isMobile ? 640 : 1280 },
+          height: { ideal: isMobile ? 360 : 720 },
+          frameRate: { ideal: isMobile ? 15 : 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+      
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
       localVideo.srcObject = localStream;
-      localVideoWrapper.style.display = "block";
-      controlBarDiv.style.display = "flex";
+      localVideoWrapper.style.display = 'block';
       
-      const natType = await detectNATType();
-      natTypeSpan.innerText = natType;
-      connModeSpan.innerText = "Broadcaster";
-      connModeSpan.className = "success";
-      
-      // Initialize signaling
-      signaling = new SignalingChannel(ROOM, myPeerId);
-      
-      // Announce presence
-      signaling.broadcast("announce", { type: "broadcaster", peerId: myPeerId });
-      
-      // Handle connection requests from viewers
-      signaling.on("viewer_request", async (data) => {
-        if (peerConnections.size >= maxChildren) {
-          signaling.send("rejected", data.from, { reason: "max_peers" });
+      // Answer incoming calls
+      peer.on('call', (call) => {
+        if (activeCall) {
+          // Already in a call, reject new one
+          call.close();
           return;
         }
         
-        console.log(`[Signaling] Viewer request from ${data.from}`);
+        setConnectionStatus('📞 Viewer connecting...');
+        call.answer(localStream);
         
-        const conn = new PeerConnectionManager(myPeerId, true);
-        const offer = await conn.createOffer(localStream);
-        
-        conn.onIceCandidate = (candidate) => {
-          signaling.send("ice_candidate", data.from, { candidate });
-        };
-        
-        conn.onDisconnect = () => {
-          peerConnections.delete(data.from);
-          updateStats();
-        };
-        
-        // Store connection
-        peerConnections.set(data.from, { pc: conn, stream: localStream, isRelay: false });
-        updateStats();
-        
-        // Send offer to viewer
-        signaling.send("offer", data.from, { sdp: offer.sdp, type: offer.type });
-      });
-      
-      // Handle ICE candidates from viewers
-      signaling.on("ice_candidate", (data) => {
-        const peer = peerConnections.get(data.from);
-        if (peer && peer.pc) {
-          peer.pc.addIceCandidate(data.payload.candidate);
-        }
-      });
-      
-      // Handle answers from viewers
-      signaling.on("answer", (data) => {
-        const peer = peerConnections.get(data.from);
-        if (peer && peer.pc) {
-          peer.pc.handleAnswer(data.payload).catch(console.warn);
-        }
-      });
-      
-      setStatus(`🔴 LIVE - Room: ${ROOM}`);
-      updateStats();
-      startHealthMonitor();
-      
-    } catch(err) {
-      console.error("Broadcast error:", err);
-      setStatus("Camera/mic access denied", true);
-      await stopAll();
-    }
-  }
-
-  async function joinViewer() {
-    await stopAll();
-    isShuttingDown = false;
-    myRole = "viewer";
-    myPeerId = generatePeerId();
-    controlBarDiv.style.display = "flex";
-    setStatus("Discovering broadcasters...");
-    
-    try {
-      const natType = await detectNATType();
-      natTypeSpan.innerText = natType;
-      connModeSpan.innerText = "Viewer";
-      connModeSpan.className = "warning";
-      
-      // Initialize signaling
-      signaling = new SignalingChannel(ROOM, myPeerId);
-      
-      let broadcasterFound = false;
-      
-      // Listen for broadcaster announcements
-      signaling.on("announce", (data) => {
-        if (data.payload.type === "broadcaster" && !broadcasterFound) {
-          broadcasterFound = true;
-          setStatus(`Broadcaster found! Connecting...`);
-          
-          // Send connection request
-          signaling.send("viewer_request", data.from, { peerId: myPeerId });
-        }
-      });
-      
-      // Handle offer from broadcaster
-      signaling.on("offer", async (data) => {
-        setStatus("Receiving stream...");
-        
-        const conn = new PeerConnectionManager(myPeerId, false);
-        
-        conn.onIceCandidate = (candidate) => {
-          signaling.send("ice_candidate", data.from, { candidate });
-        };
-        
-        conn.onDisconnect = () => {
-          peerConnections.delete(data.from);
-          updateStats();
-          if (mainRemoteWrapper.style.display !== "none") {
-            setStatus("Stream disconnected", true);
-            mainRemoteWrapper.style.display = "none";
-          }
-        };
-        
-        const answer = await conn.handleOffer(data.payload, (stream) => {
-          mainRemoteVideo.srcObject = stream;
-          mainRemoteWrapper.style.display = "block";
-          setStatus("✅ Watching");
-          relayedStream = stream;
-          
-          // Auto-promote to relay if powerful device
-          const isPowerful = !/Android|iPhone|iPad/i.test(navigator.userAgent) && (navigator.hardwareConcurrency || 0) >= 6;
-          if (isPowerful && peerConnections.size < 3) {
-            promoteToRelay(stream);
-          }
+        call.on('stream', (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+          remoteVideoWrapper.style.display = 'block';
+          remoteStatusSpan.innerHTML = 'Connected';
+          remoteStatusSpan.className = 'connection-status status-connected';
+          updatePeerCount(1);
+          setConnectionStatus('✅ Broadcasting');
         });
         
-        peerConnections.set(data.from, { pc: conn, stream: null, isRelay: false });
-        updateStats();
+        call.on('close', () => {
+          remoteVideoWrapper.style.display = 'none';
+          remoteVideo.srcObject = null;
+          updatePeerCount(0);
+          setConnectionStatus('✅ Broadcasting (no viewers)');
+          activeCall = null;
+        });
         
-        // Send answer
-        signaling.send("answer", data.from, { sdp: answer.sdp, type: answer.type });
+        call.on('error', (err) => {
+          console.error('Call error:', err);
+          remoteStatusSpan.innerHTML = 'Failed';
+          remoteStatusSpan.className = 'connection-status status-failed';
+        });
+        
+        activeCall = call;
       });
       
-      // Handle ICE candidates
-      signaling.on("ice_candidate", (data) => {
-        const peer = peerConnections.get(data.from);
-        if (peer && peer.pc) {
-          peer.pc.addIceCandidate(data.payload.candidate);
-        }
-      });
+      currentRole = 'broadcaster';
+      updateRole('📹 Broadcaster');
+      startBroadcastBtn.style.display = 'none';
+      showJoinBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      joinSection.style.display = 'none';
+      setConnectionStatus('🎥 Broadcasting - Share your Peer ID');
       
-      // Announce we're looking
-      signaling.broadcast("discover", { type: "viewer", peerId: myPeerId });
-      
-      // Timeout
-      setTimeout(() => {
-        if (!broadcasterFound && peerConnections.size === 0 && !isShuttingDown) {
-          setStatus("No broadcaster found", true);
-        }
-      }, 10000);
-      
+      // Start connection health monitor
       startHealthMonitor();
       
-    } catch(err) {
-      console.error("Viewer error:", err);
-      setStatus("Failed to discover stream", true);
+    } catch (err) {
+      console.error('Broadcast error:', err);
+      setConnectionStatus('❌ Camera/Mic access denied', true);
+      alert('Please allow camera and microphone access to broadcast');
     }
   }
 
-  function promoteToRelay(stream) {
-    if (myRole === 'relay') return;
-    myRole = 'relay';
-    setStatus("🔄 Acting as relay node (forwarding stream)");
-    connModeSpan.innerText = "Relay Node";
-    
-    // Relay logic: forward to new viewers who connect
-    signaling.on("viewer_request", async (data) => {
-      if (peerConnections.size >= maxChildren) return;
-      
-      const conn = new PeerConnectionManager(myPeerId, true);
-      const offer = await conn.createOffer(stream);
-      
-      conn.onIceCandidate = (candidate) => {
-        signaling.send("ice_candidate", data.from, { candidate });
-      };
-      
-      conn.onDisconnect = () => {
-        peerConnections.delete(data.from);
-        updateStats();
-      };
-      
-      peerConnections.set(data.from, { pc: conn, stream: stream, isRelay: true });
-      currentHops++;
-      updateStats();
-      
-      signaling.send("offer", data.from, { sdp: offer.sdp, type: offer.type });
-    });
+  // Join as viewer
+  function showJoinInterface() {
+    joinSection.style.display = 'block';
+    remotePeerIdInput.focus();
   }
 
-  function startHealthMonitor() {
-    if (healthInterval) clearInterval(healthInterval);
-    healthInterval = setInterval(() => {
-      let connected = 0;
-      for (let [id, peer] of peerConnections) {
-        if (peer.pc && peer.pc.isConnected()) connected++;
-        else peerConnections.delete(id);
-      }
-      if (connected !== peerConnections.size) updateStats();
-    }, 10000);
+  async function connectToBroadcaster() {
+    const remoteId = remotePeerIdInput.value.trim();
+    if (!remoteId) {
+      alert('Please enter a Peer ID');
+      return;
+    }
+    
+    if (remoteId === myPeerId) {
+      alert('You cannot connect to yourself');
+      return;
+    }
+    
+    setConnectionStatus('🔍 Connecting to broadcaster...');
+    remoteStatusSpan.innerHTML = 'Connecting...';
+    remoteStatusSpan.className = 'connection-status status-connecting';
+    remoteVideoWrapper.style.display = 'block';
+    
+    try {
+      // Get local stream if we want to send audio back (optional)
+      // For viewer-only, we don't need local stream, but we create an empty one for the call
+      const viewerStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: false })
+        .catch(() => null); // Silent fail if no mic permission
+      
+      const call = peer.call(remoteId, viewerStream || new MediaStream());
+      
+      call.on('stream', (remoteStream) => {
+        remoteVideo.srcObject = remoteStream;
+        remoteStatusSpan.innerHTML = 'Connected';
+        remoteStatusSpan.className = 'connection-status status-connected';
+        updatePeerCount(1);
+        setConnectionStatus('✅ Watching stream');
+        currentRole = 'viewer';
+        updateRole('👁️ Viewer');
+        
+        // Show stop button
+        startBroadcastBtn.style.display = 'none';
+        showJoinBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
+        joinSection.style.display = 'none';
+      });
+      
+      call.on('error', (err) => {
+        console.error('Call error:', err);
+        remoteStatusSpan.innerHTML = 'Connection failed';
+        remoteStatusSpan.className = 'connection-status status-failed';
+        setConnectionStatus('❌ Failed to connect - check Peer ID', true);
+        setTimeout(() => {
+          remoteVideoWrapper.style.display = 'none';
+        }, 2000);
+      });
+      
+      call.on('close', () => {
+        remoteVideoWrapper.style.display = 'none';
+        remoteVideo.srcObject = null;
+        updatePeerCount(0);
+        setConnectionStatus('📡 Disconnected');
+        activeCall = null;
+        
+        // Reset UI
+        startBroadcastBtn.style.display = 'inline-block';
+        showJoinBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+      });
+      
+      activeCall = call;
+      
+    } catch (err) {
+      console.error('Connection error:', err);
+      setConnectionStatus('❌ Connection failed', true);
+      remoteVideoWrapper.style.display = 'none';
+    }
   }
 
-  async function stopAll() {
-    isShuttingDown = true;
-    if (healthInterval) { clearInterval(healthInterval); healthInterval = null; }
-    
-    if (signaling) {
-      signaling.destroy();
-      signaling = null;
+  // Stop everything
+  function stopAll() {
+    if (activeCall) {
+      activeCall.close();
+      activeCall = null;
     }
     
     if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
+      localStream.getTracks().forEach(track => track.stop());
       localStream = null;
     }
     
-    for (let [id, peer] of peerConnections) {
-      if (peer.pc) peer.pc.close();
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    localVideoWrapper.style.display = 'none';
+    remoteVideoWrapper.style.display = 'none';
+    joinSection.style.display = 'none';
+    
+    updatePeerCount(0);
+    currentRole = null;
+    updateRole('—');
+    
+    // Reset UI buttons
+    startBroadcastBtn.style.display = 'inline-block';
+    showJoinBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    
+    setConnectionStatus('● Ready');
+    
+    if (connectionMonitor) {
+      clearInterval(connectionMonitor);
+      connectionMonitor = null;
     }
-    peerConnections.clear();
-    
-    localVideoWrapper.style.display = "none";
-    mainRemoteWrapper.style.display = "none";
-    controlBarDiv.style.display = "none";
-    if (localVideo.srcObject) localVideo.srcObject = null;
-    if (mainRemoteVideo.srcObject) mainRemoteVideo.srcObject = null;
-    
-    setStatus("Stopped");
-    updateStats();
-    myRole = null;
-    relayedStream = null;
-    connModeSpan.innerText = "Standby";
-    isShuttingDown = false;
   }
 
-  // Event listeners
-  muteBtn.onclick = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        muteBtn.innerHTML = audioTrack.enabled ? "🎤 Mute" : "🔇 Unmute";
+  // Monitor connection health
+  function startHealthMonitor() {
+    if (connectionMonitor) clearInterval(connectionMonitor);
+    
+    connectionMonitor = setInterval(() => {
+      if (!peer || peer.disconnected) {
+        setConnectionStatus('⚠️ Connection lost, reconnecting...', true);
+        if (peer && !peer.destroyed) {
+          peer.reconnect();
+        }
       }
+      
+      // Check if call is still alive
+      if (activeCall && activeCall.peerConnection) {
+        const state = activeCall.peerConnection.connectionState;
+        if (state === 'failed' || state === 'disconnected') {
+          setConnectionStatus('⚠️ Stream interrupted, reconnecting...', true);
+          remoteStatusSpan.innerHTML = 'Reconnecting...';
+        }
+      }
+    }, 10000);
+  }
+
+  // Copy Peer ID to clipboard
+  function copyPeerId() {
+    if (myPeerId) {
+      navigator.clipboard.writeText(myPeerId).then(() => {
+        copyIdBtn.textContent = '✓ Copied!';
+        setTimeout(() => {
+          copyIdBtn.textContent = '📋 Copy';
+        }, 2000);
+      }).catch(() => {
+        alert('Peer ID: ' + myPeerId);
+      });
     }
-  };
-  
-  startBtn.onclick = startBroadcast;
-  joinBtn.onclick = joinViewer;
+  }
+
+  // ============ Event Listeners ============
+  startBroadcastBtn.onclick = startBroadcast;
+  showJoinBtn.onclick = showJoinInterface;
   stopBtn.onclick = stopAll;
+  connectBtn.onclick = connectToBroadcaster;
+  cancelJoinBtn.onclick = () => {
+    joinSection.style.display = 'none';
+    remotePeerIdInput.value = '';
+  };
+  copyIdBtn.onclick = copyPeerId;
   
-  // Initial NAT detection
-  detectNATType().then(type => {
-    natTypeSpan.innerText = type;
+  // Enter key in input field
+  remotePeerIdInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      connectToBroadcaster();
+    }
   });
   
-  setStatus("Ready. Choose role.");
-  updateStats();
+  // ============ Initialize ============
+  async function init() {
+    setConnectionStatus('🔄 Connecting to signaling...');
+    try {
+      await initPeer();
+      setConnectionStatus('● Ready to broadcast or join');
+    } catch (err) {
+      console.error('Init error:', err);
+      setConnectionStatus('❌ Connection failed - refresh to retry', true);
+      peerIdDisplay.innerHTML = 'Failed to connect';
+    }
+  }
+  
+  init();
 })();
 </script>
 </body>
