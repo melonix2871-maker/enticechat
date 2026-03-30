@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EnticeChat · Auto-Mesh P2P Streaming</title>
-  <!-- WebTorrent for DHT discovery (replaces manual signaling) -->
+  <title>EnticeChat · Multi-Viewer Mesh P2P</title>
+  <!-- Buffer polyfill for WebTorrent -->
+  <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
-  <!-- Simple Peer for WebRTC with automatic SDP handling -->
   <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
   <style>
     * {
@@ -17,6 +17,7 @@
     :root {
       --accent-primary: #FF6B6B;
       --accent-secondary: #4ECDC4;
+      --accent-tertiary: #9b59b6;
       --bg-dark: #0a0a1a;
       --success: #2ecc71;
       --warning: #f39c12;
@@ -33,7 +34,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
@@ -54,35 +55,39 @@
       font-size: clamp(0.7rem, 3vw, 0.85rem);
     }
 
-    /* Stats Grid */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 20px;
     }
 
     .stat-card {
       background: rgba(255,255,255,0.05);
       backdrop-filter: blur(10px);
-      border-radius: 16px;
-      padding: 10px;
+      border-radius: 20px;
+      padding: 12px;
       text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     .stat-label {
       font-size: 0.65rem;
       text-transform: uppercase;
+      letter-spacing: 1px;
       color: #888;
     }
 
     .stat-value {
-      font-size: 1.1rem;
+      font-size: 1.3rem;
       font-weight: bold;
     }
 
-    /* DHT Panel */
-    .dht-panel {
+    .stat-value.small {
+      font-size: 0.85rem;
+    }
+
+    .connection-panel {
       background: rgba(0,0,0,0.4);
       border-radius: 20px;
       padding: 15px;
@@ -108,7 +113,45 @@
       word-break: break-all;
     }
 
-    /* Buttons */
+    .signaling-status {
+      font-size: 0.7rem;
+      text-align: center;
+      margin-top: 8px;
+      padding: 6px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .viewer-list {
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 12px;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+    }
+
+    .viewer-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      margin: 4px 0;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-family: monospace;
+    }
+
+    .viewer-type {
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.65rem;
+    }
+    .type-direct { background: var(--success); color: black; }
+    .type-relay { background: var(--accent-tertiary); }
+    .type-viewer { background: var(--accent-secondary); color: black; }
+
     .button-group {
       display: flex;
       flex-wrap: wrap;
@@ -118,7 +161,7 @@
     }
 
     button {
-      padding: 14px 24px;
+      padding: 14px 28px;
       font-size: 0.95rem;
       font-weight: 600;
       border: none;
@@ -135,11 +178,13 @@
     .btn-broadcast {
       background: var(--accent-primary);
       color: white;
+      box-shadow: 0 4px 15px rgba(255,107,107,0.3);
     }
 
     .btn-viewer {
       background: var(--accent-secondary);
       color: white;
+      box-shadow: 0 4px 15px rgba(78,205,196,0.3);
     }
 
     .btn-stop {
@@ -147,7 +192,6 @@
       color: white;
     }
 
-    /* Video Grid */
     .video-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -183,19 +227,21 @@
       left: 12px;
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(8px);
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 20px;
-      font-size: 0.7rem;
+      font-size: 0.75rem;
+      font-weight: 500;
     }
 
-    .peer-badge {
+    .viewer-count-badge {
       position: absolute;
       top: 12px;
       right: 12px;
-      background: rgba(0,0,0,0.6);
-      padding: 4px 8px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      padding: 4px 12px;
       border-radius: 20px;
-      font-size: 0.65rem;
+      font-size: 0.7rem;
     }
 
     .mesh-visualization {
@@ -238,82 +284,91 @@
 
     @media (max-width: 480px) {
       body { padding: 12px; }
-      button { padding: 10px 16px; font-size: 0.85rem; }
+      button { padding: 10px 18px; font-size: 0.85rem; }
+      .stats-grid { gap: 8px; }
+      .stat-value { font-size: 1rem; }
     }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">🌀 Auto-DHT Mesh · Zero Manual SDP · Auto-Reconnect</div>
+  <div class="sub">🌀 Multi-Viewer Mesh · Auto-Discovery · Works on Mobile</div>
 
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-label">STATUS</div><div class="stat-value" id="statusText">● Ready</div></div>
-    <div class="stat-card"><div class="stat-label">PEERS</div><div class="stat-value" id="peerCount">0</div></div>
-    <div class="stat-card"><div class="stat-label">ROLE</div><div class="stat-value" id="roleText">—</div></div>
-    <div class="stat-card"><div class="stat-label">HOPS</div><div class="stat-value" id="hopCount">0</div></div>
+    <div class="stat-card"><div class="stat-label">VIEWERS</div><div class="stat-value" id="viewerCount">0</div></div>
+    <div class="stat-card"><div class="stat-label">RELAYS</div><div class="stat-value" id="relayCount">0</div></div>
+    <div class="stat-card"><div class="stat-label">ROLE</div><div class="stat-value small" id="roleText">—</div></div>
   </div>
 
-  <div class="dht-panel">
+  <div class="connection-panel">
     <div class="room-info">
       <div class="stat-label">AUTO-DISCOVERY ROOM</div>
       <div class="room-hash" id="roomHash">enticechat-live</div>
-      <div style="font-size:0.7rem; margin-top:6px;">🔍 Anyone in this room auto-connects</div>
+      <div class="signaling-status" id="signalingStatus">🔄 Initializing signaling...</div>
     </div>
+    
+    <div class="stat-label" style="margin-bottom: 8px;">📡 ACTIVE PEERS</div>
+    <div class="viewer-list" id="viewerList">
+      <div style="text-align:center; opacity:0.5;">No active viewers</div>
+    </div>
+    
     <div class="mesh-visualization" id="meshVisual"></div>
   </div>
 
   <div class="button-group">
     <button id="startBtn" class="btn-broadcast">🎥 Start Broadcast</button>
-    <button id="viewerBtn" class="btn-viewer">👁️ Auto-Join as Viewer</button>
-    <button id="stopBtn" class="btn-stop" style="display:none;">⏹️ Stop</button>
+    <button id="viewerBtn" class="btn-viewer">👁️ Join as Viewer</button>
+    <button id="stopBtn" class="btn-stop" style="display:none;">⏹️ Stop Stream</button>
   </div>
 
   <div class="video-grid">
     <div class="video-wrapper" id="localWrapper" style="display:none;">
       <video id="localVideo" autoplay playsinline muted></video>
-      <div class="video-label">📹 You</div>
-      <div class="peer-badge" id="localBadge">Broadcaster</div>
+      <div class="video-label">📹 You (Broadcaster)</div>
+      <div class="viewer-count-badge" id="viewerBadge">👥 0 viewers</div>
     </div>
     <div class="video-wrapper" id="remoteWrapper" style="display:none;">
       <video id="remoteVideo" autoplay playsinline></video>
       <div class="video-label">🔴 Live Stream</div>
-      <div class="peer-badge" id="remoteBadge">Connected</div>
+      <div class="viewer-count-badge" id="streamQuality">📡 Connected</div>
     </div>
   </div>
-  <footer>⚡ WebTorrent DHT · Auto-Mesh Relaying · No Manual SDP · Auto-Reconnect</footer>
+  <footer>⚡ Auto-discovery via BroadcastChannel + WebRTC fallback · No manual setup</footer>
 </div>
 
 <script>
 (function() {
   // ============ CONFIGURATION ============
   const ROOM = "enticechat-live";
-  const ROOM_HASH = Array.from(ROOM).map(c => c.charCodeAt(0)).join('');
   
   // ============ GLOBALS ============
-  let client = null;           // WebTorrent client
-  let torrent = null;          // Torrent for signaling
   let localStream = null;
-  let peers = new Map();       // peerId -> { peer, stream, hops, isRelay }
+  let peers = new Map();        // peerId -> { peer, stream, hops, type, connectedAt }
   let myPeerId = null;
-  let myRole = null;           // 'broadcaster' or 'viewer'
+  let myRole = null;            // 'broadcaster', 'viewer', 'relay'
   let currentHops = 0;
-  let maxChildren = 4;
-  let reconnectTimer = null;
   let healthCheckInterval = null;
+  let announceInterval = null;
   let isShuttingDown = false;
+  let signalingChannel = null;   // BroadcastChannel for signaling
   
-  // For mobile optimization
+  // Capacity based on device
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const deviceCores = navigator.hardwareConcurrency || 2;
-  const canBeRelay = !isMobile && deviceCores >= 4;
+  const isPowerful = !isMobile && deviceCores >= 4;
+  let maxDirectViewers = isMobile ? 4 : 8;
   
   // ============ DOM Elements ============
   const statusSpan = document.getElementById('statusText');
-  const peerCountSpan = document.getElementById('peerCount');
+  const viewerCountSpan = document.getElementById('viewerCount');
+  const relayCountSpan = document.getElementById('relayCount');
   const roleSpan = document.getElementById('roleText');
-  const hopSpan = document.getElementById('hopCount');
+  const viewerListDiv = document.getElementById('viewerList');
   const meshVisual = document.getElementById('meshVisual');
+  const viewerBadge = document.getElementById('viewerBadge');
+  const signalingStatusSpan = document.getElementById('signalingStatus');
   const startBtn = document.getElementById('startBtn');
   const viewerBtn = document.getElementById('viewerBtn');
   const stopBtn = document.getElementById('stopBtn');
@@ -321,7 +376,6 @@
   const localVideo = document.getElementById('localVideo');
   const remoteWrapper = document.getElementById('remoteWrapper');
   const remoteVideo = document.getElementById('remoteVideo');
-  const remoteBadge = document.getElementById('remoteBadge');
   
   // ============ Helper Functions ============
   function setStatus(msg, isError = false) {
@@ -330,20 +384,60 @@
     console.log(`[Status] ${msg}`);
   }
   
+  function setSignalingStatus(msg, isError = false) {
+    signalingStatusSpan.innerHTML = msg;
+    signalingStatusSpan.style.color = isError ? '#ff8888' : '#88ff88';
+  }
+  
   function updateStats() {
-    peerCountSpan.innerText = peers.size;
-    roleSpan.innerText = myRole === 'broadcaster' ? '📹 Broadcaster' : (myRole === 'viewer' ? '👁️ Viewer' : '—');
-    hopSpan.innerText = currentHops;
+    let directViewers = 0;
+    let relays = 0;
+    let total = 0;
+    
+    for (let [id, p] of peers) {
+      total++;
+      if (p.type === 'relay') relays++;
+      else if (p.type === 'viewer') directViewers++;
+    }
+    
+    viewerCountSpan.innerText = total;
+    relayCountSpan.innerText = relays;
+    
+    if (viewerBadge) {
+      viewerBadge.innerHTML = `👥 ${total} viewer${total !== 1 ? 's' : ''}`;
+    }
+    
+    // Update viewer list UI
+    if (viewerListDiv) {
+      if (peers.size === 0) {
+        viewerListDiv.innerHTML = '<div style="text-align:center; opacity:0.5;">No active viewers</div>';
+      } else {
+        let html = '';
+        for (let [id, p] of peers) {
+          const shortId = id.substring(0, 10);
+          const typeLabel = p.type === 'relay' ? '🔄 RELAY' : (p.type === 'viewer' ? '👤 VIEWER' : '📡 SOURCE');
+          const typeClass = p.type === 'relay' ? 'type-relay' : (p.type === 'viewer' ? 'type-viewer' : 'type-direct');
+          const hopsInfo = p.hops ? ` (${p.hops} hops)` : '';
+          html += `
+            <div class="viewer-item">
+              <span>${shortId}${hopsInfo}</span>
+              <span class="viewer-type ${typeClass}">${typeLabel}</span>
+            </div>
+          `;
+        }
+        viewerListDiv.innerHTML = html;
+      }
+    }
     
     // Update mesh visualization
     if (meshVisual) {
-      let html = '';
+      let meshHtml = '';
       for (let [id, p] of peers) {
         const shortId = id.substring(0, 6);
-        const type = p.isRelay ? '🔄 Relay' : (myRole === 'broadcaster' ? '👤 Viewer' : '📡 Source');
-        html += `<div class="mesh-node">${type} ${shortId} (${p.hops || 0} hops)</div>`;
+        const icon = p.type === 'relay' ? '🔄' : (p.type === 'viewer' ? '👤' : '📡');
+        meshHtml += `<div class="mesh-node">${icon} ${shortId}</div>`;
       }
-      meshVisual.innerHTML = html || '<span style="opacity:0.5;">Waiting for peers...</span>';
+      meshVisual.innerHTML = meshHtml || '<span style="opacity:0.5;">Waiting for peers...</span>';
     }
   }
   
@@ -358,72 +452,95 @@
     };
   }
   
-  // ============ WebTorrent DHT Signaling (Auto-Discovery, No Manual SDP) ============
-  function initDHT() {
-    return new Promise((resolve, reject) => {
-      try {
-        client = new WebTorrent({ tracker: { announce: [
-          'wss://tracker.webtorrent.dev',
-          'wss://tracker.openwebtorrent.com',
-          'wss://tracker.btorrent.xyz'
-        ] } });
-        
-        client.on('error', (err) => {
-          console.warn('WebTorrent error:', err);
-          // Fallback - continue without DHT
-          resolve(null);
-        });
-        
-        // Create a torrent for signaling - this acts as our DHT room
-        const signalingData = Buffer.from(JSON.stringify({
-          type: 'signaling',
-          room: ROOM,
-          timestamp: Date.now()
-        }));
-        
-        client.seed(signalingData, { name: ROOM }, (tor) => {
-          torrent = tor;
-          setStatus('DHT connected - auto-discovery active');
-          resolve(tor);
-        });
-        
-        setTimeout(() => {
-          if (!torrent) {
-            resolve(null);
+  // ============ BroadcastChannel Signaling (Works without DHT) ============
+  function initSignaling() {
+    try {
+      // Use BroadcastChannel for same-origin communication (works in same browser)
+      if (window.BroadcastChannel) {
+        signalingChannel = new BroadcastChannel(`p2p_${ROOM}`);
+        signalingChannel.onmessage = (event) => {
+          const data = event.data;
+          if (data && data.from !== myPeerId) {
+            handleSignal(data);
           }
-        }, 5000);
-      } catch(e) {
-        console.warn('DHT init failed, using fallback', e);
-        resolve(null);
+        };
+        setSignalingStatus('✅ BroadcastChannel active (same browser)');
       }
-    });
-  }
-  
-  // Broadcast presence via DHT
-  function announcePresence(type, streamInfo = null) {
-    if (!torrent) return;
-    
-    const announce = {
-      type: 'announce',
-      role: type,
-      peerId: myPeerId,
-      room: ROOM,
-      timestamp: Date.now(),
-      canRelay: canBeRelay,
-      hops: currentHops
-    };
-    
-    // Update torrent with new announce (re-seed with updated data)
-    const announceData = Buffer.from(JSON.stringify(announce));
-    if (torrent && !torrent.destroyed) {
-      try {
-        torrent.swarm.add(announceData);
-      } catch(e) {}
+      
+      // Also use localStorage for cross-tab discovery
+      window.addEventListener('storage', (event) => {
+        if (event.key === `p2p_signal_${ROOM}` && event.newValue) {
+          try {
+            const data = JSON.parse(event.newValue);
+            if (data && data.from !== myPeerId) {
+              handleSignal(data);
+            }
+          } catch(e) {}
+        }
+      });
+      
+      return true;
+    } catch(e) {
+      console.warn('Signaling init error:', e);
+      setSignalingStatus('⚠️ Using fallback polling', true);
+      return false;
     }
   }
   
-  // ============ SimplePeer with Automatic SDP ============
-  function createPeer(stream, isInitiator, remoteId = null) {
+  function sendSignal(type, target, payload) {
+    const message = {
+      type: type,
+      to: target,
+      from: myPeerId,
+      payload: payload,
+      room: ROOM,
+      timestamp: Date.now()
+    };
+    
+    // Send via BroadcastChannel
+    if (signalingChannel) {
+      try {
+        signalingChannel.postMessage(message);
+      } catch(e) {}
+    }
+    
+    // Also store in localStorage for cross-tab
+    try {
+      localStorage.setItem(`p2p_signal_${ROOM}`, JSON.stringify(message));
+      setTimeout(() => {
+        localStorage.removeItem(`p2p_signal_${ROOM}`);
+      }, 1000);
+    } catch(e) {}
+  }
+  
+  function broadcastAnnounce(role, extra = {}) {
+    const announce = {
+      type: 'announce',
+      role: role,
+      peerId: myPeerId,
+      room: ROOM,
+      timestamp: Date.now(),
+      canRelay: isPowerful && (role === 'broadcaster' || role === 'relay'),
+      hops: currentHops,
+      viewerCount: peers.size,
+      ...extra
+    };
+    
+    // Send via BroadcastChannel
+    if (signalingChannel) {
+      try {
+        signalingChannel.postMessage(announce);
+      } catch(e) {}
+    }
+    
+    // Store in localStorage
+    try {
+      localStorage.setItem(`p2p_announce_${ROOM}`, JSON.stringify(announce));
+    } catch(e) {}
+  }
+  
+  // ============ SimplePeer with Auto SDP ============
+  function createPeer(stream, isInitiator, remoteId = null, peerType = 'viewer') {
     const peer = new SimplePeer({
       initiator: isInitiator,
       stream: stream,
@@ -442,191 +559,180 @@
       }
     });
     
-    // Auto SDP handling - no manual intervention needed
     peer.on('signal', (data) => {
-      // Send signal via DHT
-      if (remoteId && torrent && !torrent.destroyed) {
-        const signalMsg = {
-          type: 'signal',
-          to: remoteId,
-          from: myPeerId,
-          signal: data,
-          room: ROOM,
-          timestamp: Date.now()
-        };
-        torrent.swarm.add(Buffer.from(JSON.stringify(signalMsg)));
+      if (remoteId) {
+        sendSignal('signal', remoteId, { signal: data });
       }
     });
     
     peer.on('connect', () => {
-      console.log('Peer connected');
+      console.log(`Peer connected: ${remoteId}`);
       if (remoteId && peers.has(remoteId)) {
         peers.get(remoteId).connected = true;
+        peers.get(remoteId).connectedAt = Date.now();
       }
+      updateStats();
     });
     
     peer.on('stream', (remoteStream) => {
-      console.log('Received stream from peer');
+      console.log(`Received stream from ${remoteId}`);
       if (myRole === 'viewer') {
         remoteVideo.srcObject = remoteStream;
         remoteWrapper.style.display = 'block';
-        remoteBadge.innerHTML = '✅ Streaming';
         setStatus('✅ Watching live stream');
       } else if (myRole === 'broadcaster' && remoteId) {
-        // New viewer connected
         const existing = peers.get(remoteId);
         if (existing) {
           existing.stream = remoteStream;
         }
-        updateStats();
       }
+      updateStats();
     });
     
     peer.on('error', (err) => {
-      console.warn('Peer error:', err);
+      console.warn(`Peer error ${remoteId}:`, err);
     });
     
     peer.on('close', () => {
+      console.log(`Peer closed: ${remoteId}`);
       if (remoteId) {
         peers.delete(remoteId);
         updateStats();
+        if (myRole === 'broadcaster') {
+          broadcastAnnounce('broadcaster', { viewerCount: peers.size });
+        }
       }
     });
     
     return peer;
   }
   
-  // ============ DHT Signal Listener (Auto-Discovery) ============
-  function startSignalListener() {
-    if (!torrent) return;
-    
-    const checkInterval = setInterval(() => {
-      if (torrent && torrent.swarm && torrent.swarm.queued) {
-        // Read messages from DHT
-        const messages = torrent.swarm.queued || [];
-        for (const msg of messages) {
-          try {
-            const data = JSON.parse(msg.toString());
-            if (data.room === ROOM && data.from !== myPeerId) {
-              handleSignal(data);
-            }
-          } catch(e) {}
-        }
-      }
-    }, 1000);
-    
-    return checkInterval;
-  }
-  
+  // ============ Signal Handler ============
   function handleSignal(data) {
     if (data.type === 'announce') {
-      // New peer discovered - auto-connect if we're broadcaster
+      // Broadcaster: auto-accept viewers
       if (myRole === 'broadcaster' && data.role === 'viewer' && !peers.has(data.peerId)) {
-        if (peers.size < maxChildren) {
-          console.log(`Auto-connecting to viewer: ${data.peerId}`);
-          const peer = createPeer(localStream, true, data.peerId);
-          peers.set(data.peerId, { peer, stream: null, hops: 1, isRelay: false });
+        if (peers.size < maxDirectViewers) {
+          console.log(`📺 New viewer auto-connected: ${data.peerId}`);
+          const peer = createPeer(localStream, true, data.peerId, 'viewer');
+          peers.set(data.peerId, { 
+            peer, 
+            stream: null, 
+            hops: 1, 
+            type: 'viewer',
+            connectedAt: Date.now()
+          });
           updateStats();
-          
-          // Send connection confirmation
-          const confirmMsg = {
-            type: 'connected',
-            to: data.peerId,
-            from: myPeerId,
-            room: ROOM
-          };
-          torrent.swarm.add(Buffer.from(JSON.stringify(confirmMsg)));
+          broadcastAnnounce('broadcaster', { viewerCount: peers.size });
         }
       }
+      // Viewer: auto-connect to broadcaster
       else if (myRole === 'viewer' && data.role === 'broadcaster' && !peers.has(data.peerId)) {
-        // Viewer auto-connects to broadcaster
-        console.log(`Auto-connecting to broadcaster: ${data.peerId}`);
-        const peer = createPeer(null, true, data.peerId);
-        peers.set(data.peerId, { peer, stream: null, hops: 0, isRelay: false });
+        console.log(`🔍 Broadcaster found, auto-connecting: ${data.peerId}`);
+        const peer = createPeer(null, true, data.peerId, 'broadcaster');
+        peers.set(data.peerId, { 
+          peer, 
+          stream: null, 
+          hops: 0, 
+          type: 'source',
+          connectedAt: Date.now()
+        });
         updateStats();
       }
     }
+    // Handle WebRTC signals
     else if (data.type === 'signal' && data.to === myPeerId) {
-      // Handle WebRTC signal
       const peerConn = peers.get(data.from);
       if (peerConn && peerConn.peer) {
-        peerConn.peer.signal(data.signal);
-      }
-    }
-    else if (data.type === 'connected' && data.to === myPeerId) {
-      // Connection confirmed
-      const peerConn = peers.get(data.from);
-      if (peerConn) {
-        peerConn.connected = true;
-        setStatus(`Connected to ${data.from.substring(0, 8)}`);
+        peerConn.peer.signal(data.payload.signal);
       }
     }
   }
   
-  // ============ Relay Promotion (DHT Hops) ============
-  function promoteToRelay(incomingStream, sourceId) {
-    if (!canBeRelay || myRole === 'relay') return;
+  // ============ Auto-Promote to Relay ============
+  function autoPromoteToRelay() {
+    if (!isPowerful || myRole !== 'viewer') return;
+    if (!remoteVideo.srcObject) return;
     
-    myRole = 'relay';
-    currentHops++;
-    setStatus(`🔄 Acting as relay node (hop ${currentHops})`);
-    
-    // Announce as relay in DHT
-    announcePresence('relay');
-    
-    // Forward stream to new viewers
-    const forwardToNewPeers = (signalData) => {
-      if (signalData.type === 'announce' && signalData.role === 'viewer' && peers.size < maxChildren) {
-        const peer = createPeer(incomingStream, true, signalData.peerId);
-        peers.set(signalData.peerId, { peer, stream: null, hops: currentHops + 1, isRelay: true });
-        updateStats();
-      }
-    };
-    
-    // Listen for new peers to forward to
-    if (torrent) {
-      const relayInterval = setInterval(() => {
-        if (torrent && torrent.swarm && torrent.swarm.queued) {
-          for (const msg of torrent.swarm.queued) {
-            try {
-              const data = JSON.parse(msg.toString());
-              if (data.room === ROOM && data.from !== myPeerId && data.type === 'announce' && data.role === 'viewer') {
-                forwardToNewPeers(data);
+    setTimeout(() => {
+      if (myRole === 'viewer' && remoteVideo.srcObject && !isShuttingDown) {
+        myRole = 'relay';
+        currentHops = 1;
+        setStatus(`🔄 Promoted to relay node - helping distribute stream`);
+        roleSpan.innerText = '🔄 Relay';
+        
+        broadcastAnnounce('relay', { sourceId: myPeerId });
+        
+        // Forward to new viewers
+        const forwardInterval = setInterval(() => {
+          if (isShuttingDown) return;
+          // Look for new viewer announcements in localStorage
+          try {
+            const announceData = localStorage.getItem(`p2p_announce_${ROOM}`);
+            if (announceData) {
+              const data = JSON.parse(announceData);
+              if (data.role === 'viewer' && !peers.has(data.peerId) && peers.size < 5) {
+                console.log(`🔄 Relay forwarding to: ${data.peerId}`);
+                const peer = createPeer(remoteVideo.srcObject, true, data.peerId, 'relay_viewer');
+                peers.set(data.peerId, {
+                  peer,
+                  stream: null,
+                  hops: currentHops + 1,
+                  type: 'relay',
+                  connectedAt: Date.now()
+                });
+                updateStats();
               }
-            } catch(e) {}
-          }
-        }
-      }, 2000);
-      
-      window._relayInterval = relayInterval;
-    }
+            }
+          } catch(e) {}
+        }, 5000);
+        
+        window._relayInterval = forwardInterval;
+      }
+    }, 5000);
   }
   
-  // ============ Auto-Reconnect Logic ============
+  // ============ Health Monitor & Auto-Reconnect ============
   function startHealthMonitor() {
     if (healthCheckInterval) clearInterval(healthCheckInterval);
     
     healthCheckInterval = setInterval(() => {
       if (isShuttingDown) return;
       
-      let activePeers = 0;
+      // Clean up dead peers
+      let changed = false;
       for (let [id, p] of peers) {
-        if (p.peer && !p.peer.destroyed) activePeers++;
-        else peers.delete(id);
+        if (p.peer && (p.peer.destroyed || p.peer._destroyed)) {
+          peers.delete(id);
+          changed = true;
+        }
       }
+      if (changed) updateStats();
       
-      if (activePeers !== peers.size) updateStats();
-      
-      // Auto-reconnect if disconnected
+      // Auto-reconnect for viewers
       if (myRole === 'viewer' && peers.size === 0 && !isShuttingDown) {
         setStatus('Disconnected, auto-reconnecting...');
         setTimeout(() => {
           if (!isShuttingDown && myRole === 'viewer') {
-            announcePresence('viewer');
+            broadcastAnnounce('viewer');
           }
         }, 3000);
       }
+      
+      // Re-announce periodically
+      if (myRole && !isShuttingDown) {
+        broadcastAnnounce(myRole, { viewerCount: peers.size });
+      }
     }, 8000);
+  }
+  
+  function startAnnounceInterval() {
+    if (announceInterval) clearInterval(announceInterval);
+    announceInterval = setInterval(() => {
+      if (myRole && !isShuttingDown) {
+        broadcastAnnounce(myRole, { viewerCount: peers.size });
+      }
+    }, 5000);
   }
   
   // ============ Main Actions ============
@@ -634,8 +740,8 @@
     await stopAll();
     isShuttingDown = false;
     myRole = 'broadcaster';
-    myPeerId = 'bc_' + Math.random().toString(36).substring(2, 10);
-    maxChildren = isMobile ? 3 : 6;
+    myPeerId = 'bc_' + Math.random().toString(36).substring(2, 12);
+    maxDirectViewers = isMobile ? 4 : 8;
     
     setStatus('Requesting camera/mic...');
     
@@ -644,18 +750,16 @@
       localVideo.srcObject = localStream;
       localWrapper.style.display = 'block';
       
-      // Initialize DHT
-      await initDHT();
-      startSignalListener();
-      
-      // Announce presence
-      announcePresence('broadcaster');
+      initSignaling();
+      startAnnounceInterval();
+      broadcastAnnounce('broadcaster');
       
       startBtn.style.display = 'none';
       viewerBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
+      roleSpan.innerText = '📹 Broadcaster';
       
-      setStatus('🔴 LIVE - Auto-discovery active');
+      setStatus(`🔴 LIVE - Accepting up to ${maxDirectViewers} viewers`);
       updateStats();
       startHealthMonitor();
       
@@ -670,33 +774,27 @@
     await stopAll();
     isShuttingDown = false;
     myRole = 'viewer';
-    myPeerId = 'vw_' + Math.random().toString(36).substring(2, 10);
+    myPeerId = 'vw_' + Math.random().toString(36).substring(2, 12);
     
     setStatus('Auto-discovering broadcasters...');
     
     try {
-      // Initialize DHT
-      await initDHT();
-      startSignalListener();
-      
-      // Announce as viewer
-      announcePresence('viewer');
+      initSignaling();
+      startAnnounceInterval();
+      broadcastAnnounce('viewer');
       
       startBtn.style.display = 'none';
       viewerBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
+      roleSpan.innerText = '👁️ Viewer';
       
       setStatus('Searching for stream...');
       updateStats();
       startHealthMonitor();
       
-      // Auto-promote to relay if capable
-      if (canBeRelay) {
-        setTimeout(() => {
-          if (remoteVideo.srcObject && peers.size > 0) {
-            promoteToRelay(remoteVideo.srcObject, 'broadcaster');
-          }
-        }, 5000);
+      // Auto-promote to relay if powerful
+      if (isPowerful) {
+        autoPromoteToRelay();
       }
       
     } catch(err) {
@@ -712,40 +810,37 @@
       clearInterval(healthCheckInterval);
       healthCheckInterval = null;
     }
+    if (announceInterval) {
+      clearInterval(announceInterval);
+      announceInterval = null;
+    }
     if (window._relayInterval) {
       clearInterval(window._relayInterval);
       window._relayInterval = null;
     }
-    if (window._signalInterval) {
-      clearInterval(window._signalInterval);
-      window._signalInterval = null;
-    }
     
-    // Close all peers
+    // Close all peer connections
     for (let [id, p] of peers) {
       if (p.peer) p.peer.destroy();
     }
     peers.clear();
     
-    // Stop local stream
     if (localStream) {
       localStream.getTracks().forEach(t => t.stop());
       localStream = null;
     }
     
-    // Destroy torrent
-    if (torrent && !torrent.destroyed) {
-      try { torrent.destroy(); } catch(e) {}
-      torrent = null;
+    if (signalingChannel) {
+      signalingChannel.close();
+      signalingChannel = null;
     }
     
-    // Destroy client
-    if (client && !client.destroyed) {
-      try { client.destroy(); } catch(e) {}
-      client = null;
-    }
+    // Clean localStorage
+    try {
+      localStorage.removeItem(`p2p_announce_${ROOM}`);
+      localStorage.removeItem(`p2p_signal_${ROOM}`);
+    } catch(e) {}
     
-    // Reset UI
     localWrapper.style.display = 'none';
     remoteWrapper.style.display = 'none';
     localVideo.srcObject = null;
@@ -759,6 +854,7 @@
     currentHops = 0;
     setStatus('Ready');
     updateStats();
+    setSignalingStatus('🔄 Ready');
     
     isShuttingDown = false;
   }
@@ -768,9 +864,9 @@
   viewerBtn.onclick = startViewer;
   stopBtn.onclick = stopAll;
   
-  // Initial setup
   updateStats();
-  setStatus('Ready - Click Start Broadcast or Auto-Join');
+  setStatus('Ready - Start broadcast or join as viewer');
+  setSignalingStatus('🔄 Initialized (no servers needed)');
 })();
 </script>
 </body>
