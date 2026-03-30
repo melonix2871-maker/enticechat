@@ -3,23 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>EnticeChat Live · Hyperswarm DHT · Zero Relays</title>
-  <!-- Load browser-dht for Hyperswarm-compatible DHT -->
-  <script type="importmap">
-    {
-      "imports": {
-        "browser-dht": "https://cdn.skypack.dev/browser-dht@0.0.2"
-      }
-    }
-  </script>
-  <script type="module">
-    // Import DHT library
-    import DHT from 'browser-dht';
-    window.DHT = DHT;
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
+  <title>EnticeChat Live · WebRTC Mesh · NAT Traversal</title>
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     :root {
       --accent-primary: #FF6B6B;
       --accent-secondary: #4ECDC4;
@@ -28,6 +18,7 @@
       --warning: #f39c12;
       --error: #e74c3c;
     }
+
     body {
       background: radial-gradient(circle at 20% 30%, #0a0a1a, var(--bg-dark));
       color: #f0f0f0;
@@ -37,7 +28,12 @@
       line-height: 1.4;
       min-height: 100vh;
     }
-    .container { max-width: 1200px; margin: 0 auto; }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
     h1 {
       text-align: center;
       background: linear-gradient(135deg, #FFB347, var(--accent-primary));
@@ -47,7 +43,14 @@
       font-size: clamp(1.5rem, 6vw, 2.5rem);
       margin-bottom: 4px;
     }
-    .sub { text-align: center; color: #aaa; margin-bottom: 16px; font-size: clamp(0.75rem, 3vw, 0.9rem); }
+
+    .sub {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 16px;
+      font-size: clamp(0.75rem, 3vw, 0.9rem);
+    }
+
     .info-card {
       background: rgba(255,255,255,0.05);
       border-radius: 20px;
@@ -59,6 +62,7 @@
       margin-bottom: 16px;
       backdrop-filter: blur(10px);
     }
+
     .pill {
       background: rgba(255,255,255,0.1);
       padding: 4px 12px;
@@ -66,7 +70,8 @@
       font-size: 0.75rem;
       font-weight: 500;
     }
-    .dht-stats {
+
+    .connection-stats {
       background: rgba(0,0,0,0.4);
       border-radius: 16px;
       padding: 10px 12px;
@@ -74,8 +79,22 @@
       font-family: monospace;
       font-size: 0.7rem;
     }
-    .dht-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-    .button-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
     button {
       padding: 12px 20px;
       font-size: 0.95rem;
@@ -87,10 +106,26 @@
       width: 100%;
       touch-action: manipulation;
     }
-    button:active { transform: scale(0.98); }
-    .broadcaster { background: var(--accent-primary); color: white; }
-    .viewer { background: var(--accent-secondary); color: white; }
-    .danger-btn { background: #e63939; color: white; }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .broadcaster {
+      background: var(--accent-primary);
+      color: white;
+    }
+
+    .viewer {
+      background: var(--accent-secondary);
+      color: white;
+    }
+
+    .danger-btn {
+      background: #e63939;
+      color: white;
+    }
+
     .control-bar {
       display: flex;
       flex-wrap: wrap;
@@ -98,7 +133,9 @@
       justify-content: center;
       margin: 12px 0;
     }
-    .control-bar button, .control-bar select {
+
+    .control-bar button,
+    .control-bar select {
       padding: 8px 16px;
       border-radius: 40px;
       background: rgba(255,255,255,0.1);
@@ -107,7 +144,14 @@
       cursor: pointer;
       font-size: 0.85rem;
     }
-    .video-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 8px; }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
     .video-wrapper {
       position: relative;
       background: #000;
@@ -116,7 +160,13 @@
       aspect-ratio: 16 / 9;
       box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     }
-    video { width: 100%; height: 100%; object-fit: cover; }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
     .video-label {
       position: absolute;
       bottom: 8px;
@@ -127,35 +177,75 @@
       border-radius: 20px;
       font-size: 0.7rem;
     }
+
     @media (min-width: 768px) {
-      .button-row { flex-direction: row; justify-content: center; }
-      button { width: auto; min-width: 180px; }
+      .button-row {
+        flex-direction: row;
+        justify-content: center;
+      }
+      button {
+        width: auto;
+        min-width: 180px;
+      }
       .video-grid:has(> .video-wrapper[style*="block"] + .video-wrapper[style*="block"]) {
         grid-template-columns: repeat(2, 1fr);
       }
     }
-    footer { text-align: center; font-size: 0.65rem; margin-top: 20px; opacity: 0.5; }
-    .success { color: var(--success); }
-    .warning { color: var(--warning); }
+
+    footer {
+      text-align: center;
+      font-size: 0.65rem;
+      margin-top: 20px;
+      opacity: 0.5;
+    }
+
+    .success {
+      color: var(--success);
+    }
+
+    .warning {
+      color: var(--warning);
+    }
+
+    .peer-item {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 6px 10px;
+      margin: 4px 0;
+      font-size: 0.7rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">🌀 Hyperswarm DHT · NAT Hole-Punching · Zero Relays</div>
+  <div class="sub">🌀 WebRTC Mesh · NAT Hole-Punching · No Relays</div>
 
   <div class="info-card">
-    <span class="pill">🔑 Topic: <span id="topicDisplay">enticechat-live</span></span>
-    <span class="pill" id="status">● Initializing DHT</span>
+    <span class="pill">🔑 Room: <span id="roomDisplay">enticechat-live</span></span>
+    <span class="pill" id="status">● Ready</span>
     <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
     <span class="pill">🎭 Role: <span id="nodeRoleStat">—</span></span>
     <span class="pill">🔄 Hops: <span id="hopStat">0</span></span>
   </div>
 
-  <div class="dht-stats">
-    <div class="dht-row"><span>🌐 DHT Mode:</span><span id="dhtMode" class="warning">Bootstrap</span></div>
-    <div class="dht-row"><span>🔌 Active Connections:</span><span id="activeConns">0</span></div>
-    <div class="dht-row"><span>📡 NAT Type:</span><span id="natType">Detecting...</span></div>
+  <div class="connection-stats">
+    <div class="stat-row">
+      <span>🌐 Connection Mode:</span>
+      <span id="connMode" class="warning">Standby</span>
+    </div>
+    <div class="stat-row">
+      <span>🔌 Active Connections:</span>
+      <span id="activeConns">0</span>
+    </div>
+    <div class="stat-row">
+      <span>📡 NAT Type:</span>
+      <span id="natType">Detecting...</span>
+    </div>
+    <div id="peerList" style="margin-top: 8px;"></div>
   </div>
 
   <div class="button-row">
@@ -166,9 +256,9 @@
   <div class="control-bar" id="controlBar" style="display:none;">
     <button id="muteMicBtn">🎤 Mute</button>
     <select id="qualitySelect">
-      <option value="360p" selected>📱 360p (DHT Optimized)</option>
-      <option value="480p">📺 480p</option>
-      <option value="720p">💻 720p</option>
+      <option value="360p" selected>📱 360p (Mobile Optimized)</option>
+      <option value="480p">📺 480p (Balanced)</option>
+      <option value="720p">💻 720p (WiFi Only)</option>
     </select>
     <button id="stopBtn" class="danger-btn">⏹️ Stop</button>
   </div>
@@ -176,443 +266,586 @@
   <div class="video-grid">
     <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
       <video id="localVideo" autoplay playsinline muted></video>
-      <div class="video-label">📹 You</div>
+      <div class="video-label">📹 You (Broadcaster)</div>
     </div>
     <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
       <video id="mainRemoteVideo" autoplay playsinline></video>
       <div class="video-label">🔴 Live Stream</div>
     </div>
   </div>
-  <footer>🔗 Hyperswarm DHT · Direct WebRTC · NAT hole-punching</footer>
+  <footer>🔗 Direct WebRTC · ICE hole-punching · P2P mesh</footer>
 </div>
 
-<script type="module">
-// ============ Main Application (ES Module) ============
-import DHT from 'https://cdn.skypack.dev/browser-dht@0.0.2';
+<script>
+(function() {
+  // ============ CONFIGURATION ============
+  const ROOM = "enticechat-live";
+  
+  // ============ GLOBALS ============
+  let localStream = null;
+  let myRole = null; // 'origin', 'viewer', 'relay'
+  let peerConnections = new Map(); // peerId -> { pc, stream, isRelay }
+  let currentHops = 0;
+  let maxChildren = 4;
+  let healthInterval = null;
+  let isShuttingDown = false;
+  let myPeerId = null;
+  let relayedStream = null; // For relay nodes to forward
+  
+  // ICE Servers (STUN only - free, no relay needed for most NATs)
+  const ICE_SERVERS = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" }
+    ],
+    iceCandidatePoolSize: 10
+  };
+  
+  // ============ DOM Elements ============
+  const statusSpan = document.getElementById("status");
+  const peerCountSpan = document.getElementById("peerCount");
+  const roleSpan = document.getElementById("nodeRoleStat");
+  const hopSpan = document.getElementById("hopStat");
+  const connModeSpan = document.getElementById("connMode");
+  const activeConnsSpan = document.getElementById("activeConns");
+  const natTypeSpan = document.getElementById("natType");
+  const peerListDiv = document.getElementById("peerList");
+  const controlBarDiv = document.getElementById("controlBar");
+  const localVideoWrapper = document.getElementById("localVideoWrapper");
+  const localVideo = document.getElementById("localVideo");
+  const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
+  const mainRemoteVideo = document.getElementById("mainRemoteVideo");
+  const startBtn = document.getElementById("startBroadcastBtn");
+  const joinBtn = document.getElementById("joinViewerBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const muteBtn = document.getElementById("muteMicBtn");
+  const qualitySelect = document.getElementById("qualitySelect");
 
-// ============ CONFIGURATION ============
-const TOPIC = "enticechat-live";
-const TOPIC_BUFFER = new TextEncoder().encode(TOPIC);
+  // ============ Helper Functions ============
+  function setStatus(msg, isError = false) {
+    if (isShuttingDown && !isError) return;
+    statusSpan.innerHTML = isError ? `⚠️ ${msg}` : `● ${msg}`;
+    statusSpan.style.color = isError ? "#ff8888" : "#ccc";
+    console.log(`[Status] ${msg}`);
+  }
 
-// ============ GLOBALS ============
-let dht = null;
-let localStream = null;
-let myRole = null;
-let activePeers = new Map(); // peerId -> { connection, stream, isForwarding }
-let forwardedCount = 0;
-let currentHops = 0;
-let maxChildren = 4;
-let healthInterval = null;
-let isShuttingDown = false;
+  function updateStats() {
+    peerCountSpan.innerText = peerConnections.size;
+    roleSpan.innerText = myRole || "—";
+    hopSpan.innerText = currentHops;
+    activeConnsSpan.innerText = peerConnections.size;
+    
+    // Update peer list UI
+    if (peerListDiv) {
+      if (peerConnections.size === 0) {
+        peerListDiv.innerHTML = '<div style="text-align:center;opacity:0.5;">No connected peers</div>';
+      } else {
+        let html = '';
+        for (let [id, peer] of peerConnections) {
+          const shortId = id.substring(0, 8);
+          const type = peer.isRelay ? '🔄 Relay' : (myRole === 'origin' ? '👤 Viewer' : '📡 Source');
+          html += `<div class="peer-item">
+            <span>${type}</span>
+            <span>${shortId}...</span>
+            <span>${peer.pc?.connectionState || 'connecting'}</span>
+          </div>`;
+        }
+        peerListDiv.innerHTML = html;
+      }
+    }
+  }
 
-// ============ DOM Elements ============
-const statusSpan = document.getElementById("status");
-const peerCountSpan = document.getElementById("peerCount");
-const roleSpan = document.getElementById("nodeRoleStat");
-const hopSpan = document.getElementById("hopStat");
-const dhtModeSpan = document.getElementById("dhtMode");
-const activeConnsSpan = document.getElementById("activeConns");
-const natTypeSpan = document.getElementById("natType");
-const controlBarDiv = document.getElementById("controlBar");
-const localVideoWrapper = document.getElementById("localVideoWrapper");
-const localVideo = document.getElementById("localVideo");
-const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
-const mainRemoteVideo = document.getElementById("mainRemoteVideo");
-const startBtn = document.getElementById("startBroadcastBtn");
-const joinBtn = document.getElementById("joinViewerBtn");
-const stopBtn = document.getElementById("stopBtn");
-const muteBtn = document.getElementById("muteMicBtn");
-const qualitySelect = document.getElementById("qualitySelect");
-
-// ============ Helper Functions ============
-function setStatus(msg, isError = false) {
-  if (isShuttingDown && !isError) return;
-  statusSpan.innerHTML = isError ? `⚠️ ${msg}` : `● ${msg}`;
-  statusSpan.style.color = isError ? "#ff8888" : "#ccc";
-  console.log(`[Status] ${msg}`);
-}
-
-function updateStats() {
-  peerCountSpan.innerText = activePeers.size;
-  roleSpan.innerText = myRole || "—";
-  hopSpan.innerText = currentHops;
-  activeConnsSpan.innerText = activePeers.size;
-}
-
-async function detectNATType() {
-  return new Promise((resolve) => {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    pc.createDataChannel("test");
-    pc.createOffer()
-      .then(offer => pc.setLocalDescription(offer))
-      .then(() => {
-        const candidates = [];
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            candidates.push(event.candidate.candidate);
-          } else {
-            const hasSrflx = candidates.some(c => c.includes("srflx"));
-            const hasRelay = candidates.some(c => c.includes("relay"));
-            if (hasRelay) resolve("Restricted (relay needed)");
-            else if (hasSrflx) resolve("Moderate (port-restricted)");
-            else resolve("Open (direct)");
+  async function detectNATType() {
+    return new Promise((resolve) => {
+      const pc = new RTCPeerConnection(ICE_SERVERS);
+      pc.createDataChannel("test");
+      pc.createOffer()
+        .then(offer => pc.setLocalDescription(offer))
+        .then(() => {
+          const candidates = [];
+          pc.onicecandidate = (event) => {
+            if (event.candidate) {
+              candidates.push(event.candidate.candidate);
+            } else {
+              const hasSrflx = candidates.some(c => c.includes("srflx"));
+              const hasRelay = candidates.some(c => c.includes("relay"));
+              if (hasRelay) resolve("Restricted (TURN needed)");
+              else if (hasSrflx) resolve("Moderate (port-restricted NAT)");
+              else resolve("Open (direct connection)");
+              pc.close();
+            }
+          };
+          setTimeout(() => {
+            resolve("Unknown (timeout)");
             pc.close();
+          }, 3000);
+        })
+        .catch(() => resolve("Detection failed"));
+    });
+  }
+
+  async function getMediaConstraints(quality) {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    let actualQuality = quality;
+    if (isMobile && quality !== '360p') actualQuality = '360p';
+    
+    const configs = {
+      '360p': { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 15 } },
+      '480p': { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
+      '720p': { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
+    };
+    const selected = configs[actualQuality] || configs['360p'];
+    return {
+      video: selected,
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    };
+  }
+
+  function generatePeerId() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+
+  // ============ Signaling via BroadcastChannel + Storage (No External Servers) ============
+  class SignalingChannel {
+    constructor(room, peerId) {
+      this.room = room;
+      this.peerId = peerId;
+      this.bc = null;
+      this.messageHandlers = new Map();
+      this.init();
+    }
+
+    init() {
+      // Use BroadcastChannel for same-origin tabs (instant)
+      if (window.BroadcastChannel) {
+        this.bc = new BroadcastChannel(`p2p_${this.room}`);
+        this.bc.onmessage = (event) => {
+          const data = event.data;
+          if (data && data.target !== this.peerId) {
+            const handler = this.messageHandlers.get(data.type);
+            if (handler) handler(data);
           }
         };
-        setTimeout(() => { resolve("Unknown"); pc.close(); }, 3000);
-      })
-      .catch(() => resolve("Detection failed"));
-  });
-}
-
-async function getMediaConstraints(quality) {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  let actualQuality = quality;
-  if (isMobile && quality !== '360p') actualQuality = '360p';
-  
-  const configs = {
-    '360p': { width: 640, height: 360, frameRate: { ideal: 15 } },
-    '480p': { width: 854, height: 480, frameRate: { ideal: 24 } },
-    '720p': { width: 1280, height: 720, frameRate: { ideal: 30 } }
-  };
-  const selected = configs[actualQuality];
-  return { video: selected, audio: { echoCancellation: true, noiseSuppression: true } };
-}
-
-// ============ WebRTC Direct Connection Manager ============
-class DirectWebRTCManager {
-  constructor() {
-    this.pc = null;
-    this.onStream = null;
-    this.onConnected = null;
-    this.peerId = null;
-  }
-
-  async createOffer(stream, remotePeerId) {
-    this.pc = new RTCPeerConnection({ 
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }] 
-    });
-    
-    stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
-    
-    const offer = await this.pc.createOffer();
-    await this.pc.setLocalDescription(offer);
-    
-    // Wait for ICE gathering
-    await new Promise(resolve => {
-      if (this.pc.iceGatheringState === 'complete') resolve();
-      else this.pc.onicegatheringstatechange = () => {
-        if (this.pc.iceGatheringState === 'complete') resolve();
-      };
-    });
-    
-    return { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
-  }
-
-  async handleOffer(offerSdp, onStreamCallback) {
-    this.onStream = onStreamCallback;
-    this.pc = new RTCPeerConnection({ 
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }] 
-    });
-    
-    this.pc.ontrack = (event) => {
-      if (this.onStream) this.onStream(event.streams[0]);
-    };
-    
-    await this.pc.setRemoteDescription({ sdp: offerSdp.sdp, type: offerSdp.type });
-    const answer = await this.pc.createAnswer();
-    await this.pc.setLocalDescription(answer);
-    
-    return { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
-  }
-
-  async handleAnswer(answerSdp) {
-    if (!this.pc) throw new Error("No peer connection");
-    await this.pc.setRemoteDescription({ sdp: answerSdp.sdp, type: answerSdp.type });
-  }
-
-  close() {
-    if (this.pc) {
-      this.pc.close();
-      this.pc = null;
-    }
-  }
-
-  isConnected() {
-    return this.pc && this.pc.connectionState === 'connected';
-  }
-}
-
-// ============ Hyperswarm DHT Integration ============
-async function initDHT() {
-  try {
-    // Initialize browser-dht (Hyperswarm-compatible)
-    dht = new DHT({ bootstrap: [{ host: 'bootstrap1.libp2p.io', port: 443 }] });
-    
-    dhtModeSpan.innerText = "Active";
-    dhtModeSpan.className = "success";
-    setStatus("DHT initialized");
-    return true;
-  } catch (err) {
-    console.error("DHT init error:", err);
-    dhtModeSpan.innerText = "Fallback";
-    setStatus("Using fallback discovery", true);
-    return false;
-  }
-}
-
-// ============ Core Functions ============
-async function startBroadcast() {
-  await stopAll();
-  isShuttingDown = false;
-  myRole = "origin";
-  maxChildren = /Android|iPhone|iPad/i.test(navigator.userAgent) ? 3 : 6;
-  
-  const quality = qualitySelect.value;
-  setStatus("Requesting camera/mic...");
-  
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
-    localVideo.srcObject = localStream;
-    localVideoWrapper.style.display = "block";
-    controlBarDiv.style.display = "flex";
-    
-    const natType = await detectNATType();
-    natTypeSpan.innerText = natType;
-    
-    // Initialize DHT
-    await initDHT();
-    
-    setStatus("Announcing on DHT, waiting for viewers...");
-    
-    // In browser-dht, we need to announce our presence
-    // For demo, we'll use a simple signaling via localStorage + BroadcastChannel
-    // as a fallback when DHT connection is not fully established
-    
-    // Set up localStorage announcement (same-origin DHT)
-    const announce = () => {
-      const announcement = {
-        type: "broadcaster",
-        topic: TOPIC,
-        timestamp: Date.now(),
-        peerId: "broadcaster_" + Math.random().toString(36).substring(2)
-      };
-      localStorage.setItem(`dht_${TOPIC}`, JSON.stringify(announcement));
-    };
-    announce();
-    const announceInterval = setInterval(announce, 5000);
-    
-    // Listen for viewer connections via localStorage
-    const handleViewerRequest = async (event) => {
-      const data = event.data || JSON.parse(localStorage.getItem(`dht_request_${TOPIC}`));
-      if (data && data.type === "viewer_request" && !activePeers.has(data.peerId)) {
-        if (activePeers.size >= maxChildren) return;
-        
-        setStatus(`Connecting to viewer ${data.peerId.substring(0, 8)}...`);
-        
-        const conn = new DirectWebRTCManager();
-        const offer = await conn.createOffer(localStream, data.peerId);
-        
-        // Store offer for viewer to pick up
-        localStorage.setItem(`offer_${data.peerId}`, JSON.stringify(offer));
-        
-        // Wait for answer
-        const checkAnswer = setInterval(async () => {
-          const answerData = localStorage.getItem(`answer_${data.peerId}`);
-          if (answerData) {
-            clearInterval(checkAnswer);
-            localStorage.removeItem(`answer_${data.peerId}`);
-            try {
-              await conn.handleAnswer(JSON.parse(answerData));
-              activePeers.set(data.peerId, { conn, isForwarding: false });
-              currentHops = Math.min(currentHops + 1, 10);
-              updateStats();
-              setStatus(`Viewer connected (${activePeers.size} active)`);
-            } catch(e) { console.warn("Answer error:", e); }
-          }
-        }, 500);
-        
-        setTimeout(() => clearInterval(checkAnswer), 10000);
       }
-    };
-    
-    window.addEventListener('storage', handleViewerRequest);
-    
-    // Also use BroadcastChannel for real-time
-    if (window.BroadcastChannel) {
-      const bc = new BroadcastChannel(`dht_${TOPIC}`);
-      bc.onmessage = handleViewerRequest;
-      window.dhtBroadcastChannel = bc;
+      
+      // Use localStorage for cross-tab/cross-window discovery
+      window.addEventListener('storage', this.handleStorageEvent.bind(this));
     }
-    
-    window.dhtAnnounceInterval = announceInterval;
-    window.dhtStorageHandler = handleViewerRequest;
-    
-    setStatus("🔴 LIVE (DHT Mesh)");
-    updateStats();
-    startHealthMonitor();
-    
-  } catch(err) {
-    console.error("Broadcast error:", err);
-    setStatus("Camera/mic access denied", true);
-  }
-}
 
-async function joinViewer() {
-  await stopAll();
-  isShuttingDown = false;
-  myRole = "viewer";
-  controlBarDiv.style.display = "flex";
-  setStatus("Discovering broadcasters via DHT...");
-  
-  try {
-    const natType = await detectNATType();
-    natTypeSpan.innerText = natType;
-    
-    await initDHT();
-    
-    const peerId = "viewer_" + Math.random().toString(36).substring(2);
-    
-    // Request connection to broadcaster
-    const request = {
-      type: "viewer_request",
-      topic: TOPIC,
-      timestamp: Date.now(),
-      peerId: peerId
-    };
-    
-    // Send request via localStorage and BroadcastChannel
-    localStorage.setItem(`dht_request_${TOPIC}`, JSON.stringify(request));
-    if (window.BroadcastChannel) {
-      const bc = new BroadcastChannel(`dht_${TOPIC}`);
-      bc.postMessage(request);
-      setTimeout(() => bc.close(), 100);
-    }
-    
-    setStatus("Request sent, waiting for offer...");
-    
-    // Wait for offer from broadcaster
-    const checkOffer = setInterval(async () => {
-      const offerData = localStorage.getItem(`offer_${peerId}`);
-      if (offerData) {
-        clearInterval(checkOffer);
-        localStorage.removeItem(`offer_${peerId}`);
-        
+    handleStorageEvent(event) {
+      if (event.key === `p2p_signal_${this.room}` && event.newValue) {
         try {
-          const offer = JSON.parse(offerData);
-          const conn = new DirectWebRTCManager();
-          
-          const answer = await conn.handleOffer(offer, (stream) => {
-            mainRemoteVideo.srcObject = stream;
-            mainRemoteWrapper.style.display = "block";
-            setStatus("✅ Watching (DHT)");
-          });
-          
-          // Send answer back
-          localStorage.setItem(`answer_${peerId}`, JSON.stringify(answer));
-          
-          activePeers.set("broadcaster", { conn, isForwarding: false });
+          const data = JSON.parse(event.newValue);
+          if (data && data.target !== this.peerId) {
+            const handler = this.messageHandlers.get(data.type);
+            if (handler) handler(data);
+            // Clean up after reading
+            localStorage.removeItem(`p2p_signal_${this.room}`);
+          }
+        } catch(e) {}
+      }
+    }
+
+    send(type, target, payload) {
+      const message = { type, target, from: this.peerId, payload, timestamp: Date.now() };
+      
+      // Send via BroadcastChannel if available
+      if (this.bc) {
+        this.bc.postMessage(message);
+      }
+      
+      // Also store in localStorage for cross-tab
+      localStorage.setItem(`p2p_signal_${this.room}`, JSON.stringify(message));
+    }
+
+    on(type, handler) {
+      this.messageHandlers.set(type, handler);
+    }
+
+    broadcast(type, payload) {
+      const message = { type, from: this.peerId, payload, broadcast: true, timestamp: Date.now() };
+      if (this.bc) this.bc.postMessage(message);
+      localStorage.setItem(`p2p_broadcast_${this.room}`, JSON.stringify(message));
+    }
+
+    destroy() {
+      if (this.bc) this.bc.close();
+      window.removeEventListener('storage', this.handleStorageEvent);
+    }
+  }
+
+  // ============ WebRTC Peer Connection Manager ============
+  class PeerConnectionManager {
+    constructor(peerId, isOrigin) {
+      this.peerId = peerId;
+      this.isOrigin = isOrigin;
+      this.pc = null;
+      this.onStream = null;
+      this.onDisconnect = null;
+    }
+
+    async createOffer(stream) {
+      this.pc = new RTCPeerConnection(ICE_SERVERS);
+      
+      // Add tracks
+      stream.getTracks().forEach(track => {
+        this.pc.addTrack(track, stream);
+      });
+      
+      // Handle ICE candidates
+      this.pc.onicecandidate = (event) => {
+        if (event.candidate && this.onIceCandidate) {
+          this.onIceCandidate(event.candidate);
+        }
+      };
+      
+      // Handle connection state
+      this.pc.onconnectionstatechange = () => {
+        if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed') {
+          if (this.onDisconnect) this.onDisconnect();
+        }
+      };
+      
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
+      
+      return { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
+    }
+
+    async handleOffer(offerSdp, onStreamCallback) {
+      this.onStream = onStreamCallback;
+      this.pc = new RTCPeerConnection(ICE_SERVERS);
+      
+      this.pc.ontrack = (event) => {
+        if (this.onStream) this.onStream(event.streams[0]);
+      };
+      
+      this.pc.onicecandidate = (event) => {
+        if (event.candidate && this.onIceCandidate) {
+          this.onIceCandidate(event.candidate);
+        }
+      };
+      
+      this.pc.onconnectionstatechange = () => {
+        if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed') {
+          if (this.onDisconnect) this.onDisconnect();
+        }
+      };
+      
+      await this.pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
+      const answer = await this.pc.createAnswer();
+      await this.pc.setLocalDescription(answer);
+      
+      return { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
+    }
+
+    async handleAnswer(answerSdp) {
+      if (!this.pc) throw new Error("No peer connection");
+      await this.pc.setRemoteDescription(new RTCSessionDescription(answerSdp));
+    }
+
+    addIceCandidate(candidate) {
+      if (this.pc) {
+        this.pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn("ICE error:", e));
+      }
+    }
+
+    close() {
+      if (this.pc) {
+        this.pc.close();
+        this.pc = null;
+      }
+    }
+
+    isConnected() {
+      return this.pc && this.pc.connectionState === 'connected';
+    }
+  }
+
+  // ============ Main Application ============
+  let signaling = null;
+  let pendingOffers = new Map();
+
+  async function startBroadcast() {
+    await stopAll();
+    isShuttingDown = false;
+    myRole = "origin";
+    myPeerId = generatePeerId();
+    maxChildren = /Android|iPhone|iPad/i.test(navigator.userAgent) ? 3 : 6;
+    currentHops = 0;
+    
+    const quality = qualitySelect.value;
+    setStatus("Requesting camera/mic...");
+    
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
+      localVideo.srcObject = localStream;
+      localVideoWrapper.style.display = "block";
+      controlBarDiv.style.display = "flex";
+      
+      const natType = await detectNATType();
+      natTypeSpan.innerText = natType;
+      connModeSpan.innerText = "Broadcaster";
+      connModeSpan.className = "success";
+      
+      // Initialize signaling
+      signaling = new SignalingChannel(ROOM, myPeerId);
+      
+      // Announce presence
+      signaling.broadcast("announce", { type: "broadcaster", peerId: myPeerId });
+      
+      // Handle connection requests from viewers
+      signaling.on("viewer_request", async (data) => {
+        if (peerConnections.size >= maxChildren) {
+          signaling.send("rejected", data.from, { reason: "max_peers" });
+          return;
+        }
+        
+        console.log(`[Signaling] Viewer request from ${data.from}`);
+        
+        const conn = new PeerConnectionManager(myPeerId, true);
+        const offer = await conn.createOffer(localStream);
+        
+        conn.onIceCandidate = (candidate) => {
+          signaling.send("ice_candidate", data.from, { candidate });
+        };
+        
+        conn.onDisconnect = () => {
+          peerConnections.delete(data.from);
           updateStats();
+        };
+        
+        // Store connection
+        peerConnections.set(data.from, { pc: conn, stream: localStream, isRelay: false });
+        updateStats();
+        
+        // Send offer to viewer
+        signaling.send("offer", data.from, { sdp: offer.sdp, type: offer.type });
+      });
+      
+      // Handle ICE candidates from viewers
+      signaling.on("ice_candidate", (data) => {
+        const peer = peerConnections.get(data.from);
+        if (peer && peer.pc) {
+          peer.pc.addIceCandidate(data.payload.candidate);
+        }
+      });
+      
+      // Handle answers from viewers
+      signaling.on("answer", (data) => {
+        const peer = peerConnections.get(data.from);
+        if (peer && peer.pc) {
+          peer.pc.handleAnswer(data.payload).catch(console.warn);
+        }
+      });
+      
+      setStatus(`🔴 LIVE - Room: ${ROOM}`);
+      updateStats();
+      startHealthMonitor();
+      
+    } catch(err) {
+      console.error("Broadcast error:", err);
+      setStatus("Camera/mic access denied", true);
+      await stopAll();
+    }
+  }
+
+  async function joinViewer() {
+    await stopAll();
+    isShuttingDown = false;
+    myRole = "viewer";
+    myPeerId = generatePeerId();
+    controlBarDiv.style.display = "flex";
+    setStatus("Discovering broadcasters...");
+    
+    try {
+      const natType = await detectNATType();
+      natTypeSpan.innerText = natType;
+      connModeSpan.innerText = "Viewer";
+      connModeSpan.className = "warning";
+      
+      // Initialize signaling
+      signaling = new SignalingChannel(ROOM, myPeerId);
+      
+      let broadcasterFound = false;
+      
+      // Listen for broadcaster announcements
+      signaling.on("announce", (data) => {
+        if (data.payload.type === "broadcaster" && !broadcasterFound) {
+          broadcasterFound = true;
+          setStatus(`Broadcaster found! Connecting...`);
+          
+          // Send connection request
+          signaling.send("viewer_request", data.from, { peerId: myPeerId });
+        }
+      });
+      
+      // Handle offer from broadcaster
+      signaling.on("offer", async (data) => {
+        setStatus("Receiving stream...");
+        
+        const conn = new PeerConnectionManager(myPeerId, false);
+        
+        conn.onIceCandidate = (candidate) => {
+          signaling.send("ice_candidate", data.from, { candidate });
+        };
+        
+        conn.onDisconnect = () => {
+          peerConnections.delete(data.from);
+          updateStats();
+          if (mainRemoteWrapper.style.display !== "none") {
+            setStatus("Stream disconnected", true);
+            mainRemoteWrapper.style.display = "none";
+          }
+        };
+        
+        const answer = await conn.handleOffer(data.payload, (stream) => {
+          mainRemoteVideo.srcObject = stream;
+          mainRemoteWrapper.style.display = "block";
+          setStatus("✅ Watching");
+          relayedStream = stream;
           
           // Auto-promote to relay if powerful device
-          if (/Android|iPhone|iPad/i.test(navigator.userAgent) === false && navigator.hardwareConcurrency >= 6) {
-            setStatus("Promoting to relay node...");
-            // Store that we can relay
-            localStorage.setItem(`relay_${TOPIC}`, JSON.stringify({ peerId, timestamp: Date.now() }));
+          const isPowerful = !/Android|iPhone|iPad/i.test(navigator.userAgent) && (navigator.hardwareConcurrency || 0) >= 6;
+          if (isPowerful && peerConnections.size < 3) {
+            promoteToRelay(stream);
           }
-          
-        } catch(err) {
-          console.error("Connection error:", err);
-          setStatus("Failed to connect", true);
+        });
+        
+        peerConnections.set(data.from, { pc: conn, stream: null, isRelay: false });
+        updateStats();
+        
+        // Send answer
+        signaling.send("answer", data.from, { sdp: answer.sdp, type: answer.type });
+      });
+      
+      // Handle ICE candidates
+      signaling.on("ice_candidate", (data) => {
+        const peer = peerConnections.get(data.from);
+        if (peer && peer.pc) {
+          peer.pc.addIceCandidate(data.payload.candidate);
         }
-      }
-    }, 1000);
-    
-    setTimeout(() => {
-      clearInterval(checkOffer);
-      if (mainRemoteWrapper.style.display === "none") {
-        setStatus("No broadcaster found", true);
-      }
-    }, 15000);
-    
-    window.viewerCheckInterval = checkOffer;
-    
-  } catch(err) {
-    console.error("Viewer error:", err);
-    setStatus("Failed to discover stream", true);
-  }
-}
-
-function startHealthMonitor() {
-  if (healthInterval) clearInterval(healthInterval);
-  healthInterval = setInterval(() => {
-    let healthyCount = 0;
-    for (let [id, peer] of activePeers) {
-      if (peer.conn && peer.conn.isConnected()) healthyCount++;
-      else activePeers.delete(id);
+      });
+      
+      // Announce we're looking
+      signaling.broadcast("discover", { type: "viewer", peerId: myPeerId });
+      
+      // Timeout
+      setTimeout(() => {
+        if (!broadcasterFound && peerConnections.size === 0 && !isShuttingDown) {
+          setStatus("No broadcaster found", true);
+        }
+      }, 10000);
+      
+      startHealthMonitor();
+      
+    } catch(err) {
+      console.error("Viewer error:", err);
+      setStatus("Failed to discover stream", true);
     }
-    if (healthyCount !== activePeers.size) updateStats();
-    
-    if (activePeers.size === 0 && myRole === 'viewer' && !isShuttingDown) {
-      setStatus("Connection lost, reconnecting...");
-      joinViewer();
-    }
-  }, 10000);
-}
+  }
 
-async function stopAll() {
-  isShuttingDown = true;
-  if (healthInterval) { clearInterval(healthInterval); healthInterval = null; }
-  
-  if (window.dhtAnnounceInterval) clearInterval(window.dhtAnnounceInterval);
-  if (window.viewerCheckInterval) clearInterval(window.viewerCheckInterval);
-  if (window.dhtBroadcastChannel) window.dhtBroadcastChannel.close();
-  if (window.dhtStorageHandler) window.removeEventListener('storage', window.dhtStorageHandler);
-  
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
+  function promoteToRelay(stream) {
+    if (myRole === 'relay') return;
+    myRole = 'relay';
+    setStatus("🔄 Acting as relay node (forwarding stream)");
+    connModeSpan.innerText = "Relay Node";
+    
+    // Relay logic: forward to new viewers who connect
+    signaling.on("viewer_request", async (data) => {
+      if (peerConnections.size >= maxChildren) return;
+      
+      const conn = new PeerConnectionManager(myPeerId, true);
+      const offer = await conn.createOffer(stream);
+      
+      conn.onIceCandidate = (candidate) => {
+        signaling.send("ice_candidate", data.from, { candidate });
+      };
+      
+      conn.onDisconnect = () => {
+        peerConnections.delete(data.from);
+        updateStats();
+      };
+      
+      peerConnections.set(data.from, { pc: conn, stream: stream, isRelay: true });
+      currentHops++;
+      updateStats();
+      
+      signaling.send("offer", data.from, { sdp: offer.sdp, type: offer.type });
+    });
   }
-  
-  for (let [id, peer] of activePeers) {
-    if (peer.conn) peer.conn.close();
+
+  function startHealthMonitor() {
+    if (healthInterval) clearInterval(healthInterval);
+    healthInterval = setInterval(() => {
+      let connected = 0;
+      for (let [id, peer] of peerConnections) {
+        if (peer.pc && peer.pc.isConnected()) connected++;
+        else peerConnections.delete(id);
+      }
+      if (connected !== peerConnections.size) updateStats();
+    }, 10000);
   }
-  activePeers.clear();
-  
-  if (dht) {
-    try { dht.destroy(); } catch(e) {}
-    dht = null;
+
+  async function stopAll() {
+    isShuttingDown = true;
+    if (healthInterval) { clearInterval(healthInterval); healthInterval = null; }
+    
+    if (signaling) {
+      signaling.destroy();
+      signaling = null;
+    }
+    
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+    
+    for (let [id, peer] of peerConnections) {
+      if (peer.pc) peer.pc.close();
+    }
+    peerConnections.clear();
+    
+    localVideoWrapper.style.display = "none";
+    mainRemoteWrapper.style.display = "none";
+    controlBarDiv.style.display = "none";
+    if (localVideo.srcObject) localVideo.srcObject = null;
+    if (mainRemoteVideo.srcObject) mainRemoteVideo.srcObject = null;
+    
+    setStatus("Stopped");
+    updateStats();
+    myRole = null;
+    relayedStream = null;
+    connModeSpan.innerText = "Standby";
+    isShuttingDown = false;
   }
+
+  // Event listeners
+  muteBtn.onclick = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        muteBtn.innerHTML = audioTrack.enabled ? "🎤 Mute" : "🔇 Unmute";
+      }
+    }
+  };
   
-  localVideoWrapper.style.display = "none";
-  mainRemoteWrapper.style.display = "none";
-  controlBarDiv.style.display = "none";
-  if (localVideo.srcObject) localVideo.srcObject = null;
-  if (mainRemoteVideo.srcObject) mainRemoteVideo.srcObject = null;
+  startBtn.onclick = startBroadcast;
+  joinBtn.onclick = joinViewer;
+  stopBtn.onclick = stopAll;
   
-  setStatus("Stopped");
+  // Initial NAT detection
+  detectNATType().then(type => {
+    natTypeSpan.innerText = type;
+  });
+  
+  setStatus("Ready. Choose role.");
   updateStats();
-  myRole = null;
-  isShuttingDown = false;
-}
-
-// Event listeners
-muteBtn.onclick = () => {
-  if (localStream) {
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      muteBtn.innerHTML = audioTrack.enabled ? "🎤 Mute" : "🔇 Unmute";
-    }
-  }
-};
-
-startBtn.onclick = startBroadcast;
-joinBtn.onclick = joinViewer;
-stopBtn.onclick = stopAll;
-
-setStatus("DHT ready");
-updateStats();
+})();
 </script>
 </body>
 </html>
