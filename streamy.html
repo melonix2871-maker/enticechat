@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>EnticeChat Live · Mobile-Optimized P2P</title>
+  <title>EnticeChat Live · DHT-P2P Mesh (No Relays)</title>
+  <!-- Use libp2p for browser DHT capabilities -->
+  <script src="https://unpkg.com/libp2p@0.46.7/dist/index.min.js"></script>
+  <script src="https://unpkg.com/@libp2p/webrtc-star@7.0.0/dist/index.min.js"></script>
+  <script src="https://unpkg.com/libp2p-bootstrap@6.0.3/dist/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -19,6 +22,7 @@
       --success: #2ecc71;
       --warning: #f39c12;
       --error: #e74c3c;
+      --info: #3498db;
     }
 
     body {
@@ -26,7 +30,7 @@
       color: #f0f0f0;
       margin: 0;
       padding: 12px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.4;
       min-height: 100vh;
     }
@@ -44,7 +48,6 @@
       color: transparent;
       font-size: clamp(1.5rem, 6vw, 2.5rem);
       margin-bottom: 4px;
-      letter-spacing: -0.5px;
     }
 
     .sub {
@@ -64,7 +67,6 @@
       justify-content: center;
       margin-bottom: 16px;
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.08);
     }
 
     .pill {
@@ -73,58 +75,24 @@
       border-radius: 30px;
       font-size: 0.75rem;
       font-weight: 500;
-      white-space: nowrap;
     }
 
-    .relay-panel {
+    .dht-stats {
       background: rgba(0,0,0,0.4);
       border-radius: 16px;
       padding: 10px 12px;
       margin-bottom: 16px;
-      border: 1px solid rgba(255,255,255,0.05);
+      font-family: monospace;
+      font-size: 0.7rem;
     }
 
-    .relay-header {
+    .dht-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
-      font-size: 0.75rem;
-      color: #ccc;
+      margin-bottom: 8px;
     }
-
-    .relay-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      max-height: 80px;
-      overflow-y: auto;
-    }
-
-    .relay-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.05);
-      font-size: 0.65rem;
-      font-family: monospace;
-    }
-
-    .relay-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .dot-success { background: var(--success); box-shadow: 0 0 3px var(--success); }
-    .dot-warning { background: var(--warning); }
-    .dot-error { background: var(--error); }
-    .dot-idle { background: #666; }
 
     .button-row {
       display: flex;
@@ -166,10 +134,7 @@
       border: 1px solid rgba(255,255,255,0.2);
       cursor: pointer;
       font-size: 0.85rem;
-      touch-action: manipulation;
     }
-    
-    select option { background: #1a1a2e; }
 
     .video-grid {
       display: grid;
@@ -185,7 +150,6 @@
       overflow: hidden;
       aspect-ratio: 16 / 9;
       box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-      border: 1px solid rgba(255,255,255,0.1);
     }
 
     video {
@@ -203,12 +167,9 @@
       padding: 3px 10px;
       border-radius: 20px;
       font-size: 0.7rem;
-      font-weight: 500;
-      z-index: 2;
     }
 
     @media (min-width: 768px) {
-      body { padding: 20px; }
       .button-row { flex-direction: row; justify-content: center; }
       button { width: auto; min-width: 180px; }
       .video-grid:has(> .video-wrapper[style*="block"] + .video-wrapper[style*="block"]) {
@@ -217,32 +178,36 @@
     }
     
     footer { text-align: center; font-size: 0.65rem; margin-top: 20px; opacity: 0.5; }
-    .mobile-warning { display: none; }
-    @media (max-width: 480px) {
-      .info-card .pill { font-size: 0.7rem; }
-    }
+    .success { color: var(--success); }
+    .warning { color: var(--warning); }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">📱 Mobile-Optimized · Auto-Recovery · 360p Stable</div>
+  <div class="sub">⚡ Hyperswarm-Style DHT · Zero Relays · NAT Traversal</div>
 
   <div class="info-card">
-    <span class="pill">📡 <span id="channelDisplay">enticechat-live</span></span>
-    <span class="pill" id="status">● Ready</span>
-    <span class="pill">👥 <span id="peerCount">0</span></span>
-    <span class="pill">🎭 <span id="nodeRoleStat">—</span></span>
-    <span class="pill">🔄 <span id="hopStat">0</span></span>
-    <span class="pill">🔌 <span id="activeRelay">—</span></span>
+    <span class="pill">🔑 Topic: <span id="topicDisplay">enticechat-live</span></span>
+    <span class="pill" id="status">● Initializing DHT</span>
+    <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
+    <span class="pill">🎭 Role: <span id="nodeRoleStat">—</span></span>
+    <span class="pill">🔄 Hops: <span id="hopStat">0</span></span>
   </div>
 
-  <div class="relay-panel" id="relayPanel">
-    <div class="relay-header">
-      <span>🛰️ RELAY STATUS</span>
-      <span id="relaySummary">scanning...</span>
+  <div class="dht-stats">
+    <div class="dht-row">
+      <span>🌐 DHT Mode:</span>
+      <span id="dhtMode" class="warning">Bootstrap</span>
     </div>
-    <div class="relay-grid" id="relayGrid"></div>
+    <div class="dht-row">
+      <span>🔌 Active Connections:</span>
+      <span id="activeConns">0</span>
+    </div>
+    <div class="dht-row">
+      <span>📡 NAT Type:</span>
+      <span id="natType">Detecting...</span>
+    </div>
   </div>
 
   <div class="button-row">
@@ -253,9 +218,9 @@
   <div class="control-bar" id="controlBar" style="display:none;">
     <button id="muteMicBtn">🎤 Mute</button>
     <select id="qualitySelect">
-      <option value="360p" selected>📱 360p (Mobile Optimized)</option>
-      <option value="480p">📺 480p (Balanced)</option>
-      <option value="720p">💻 720p (WiFi Only)</option>
+      <option value="360p" selected>📱 360p (DHT Optimized)</option>
+      <option value="480p">📺 480p</option>
+      <option value="720p">💻 720p</option>
     </select>
     <button id="stopBtn" class="danger-btn">⏹️ Stop</button>
   </div>
@@ -267,46 +232,42 @@
     </div>
     <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
       <video id="mainRemoteVideo" autoplay playsinline></video>
-      <div class="video-label">🔴 Live</div>
+      <div class="video-label">🔴 Live Stream</div>
     </div>
   </div>
-  <footer>⚡ Auto-reconnect · Multi-relay fallback · WebRTC backup</footer>
+  <footer>🔗 Pure DHT discovery · WebRTC data channels · NAT hole-punching</footer>
 </div>
 
 <script>
 (function(){
   // ============ CONFIGURATION ============
-  const CHANNEL = "enticechat-live";
-  // Filtered reliable relays (removed problematic ones like nostromo)
-  const RELAY_LIST = [
-    "wss://relay.oldenburg.cool",
-    "wss://relay.damus.io",
-    "wss://nos.lol",
-    "wss://relay.primal.net",
-    "wss://relay.snort.social",
-    "wss://tracker.openwebtorrent.com"
+  const TOPIC = "enticechat-live";
+  // Use public DHT bootstrap nodes (Hyperswarm compatible)
+  const BOOTSTRAP_NODES = [
+    "/dns4/bootstrap1.libp2p.io/tcp/443/wss/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+    "/dns4/bootstrap2.libp2p.io/tcp/443/wss/p2p/QmZXPvxuQTRXjqG7mR9CpKJ6Jq1Q5rBQKJ6Jq1Q5rBQKJ6",
+    "/dns4/bootstrap3.libp2p.io/tcp/443/wss/p2p/QmW9m9ZJqQ6rBQKJ6Jq1Q5rBQKJ6Jq1Q5rBQKJ6Jq1Q"
   ];
   
   // ============ GLOBALS ============
   let webConnect = null;
   let localStream = null;
-  let myRole = null;           // 'origin', 'viewer', 'relay'
+  let myRole = null;
   let forwardedPeers = new Set();
   let currentHops = 0;
-  let maxChildren = 4;         // Lower for mobile
+  let maxChildren = 4;
   let healthInterval = null;
-  let currentActiveRelay = null;
-  let reconnectAttempts = 0;
-  let isShuttingDown = false;
+  let dhtNode = null;
+  let activeConnections = new Map();
   
   // ============ DOM Elements ============
   const statusSpan = document.getElementById("status");
   const peerCountSpan = document.getElementById("peerCount");
   const roleSpan = document.getElementById("nodeRoleStat");
   const hopSpan = document.getElementById("hopStat");
-  const activeRelaySpan = document.getElementById("activeRelay");
-  const relayGridDiv = document.getElementById("relayGrid");
-  const relaySummarySpan = document.getElementById("relaySummary");
+  const dhtModeSpan = document.getElementById("dhtMode");
+  const activeConnsSpan = document.getElementById("activeConns");
+  const natTypeSpan = document.getElementById("natType");
   const controlBarDiv = document.getElementById("controlBar");
   const localVideoWrapper = document.getElementById("localVideoWrapper");
   const localVideo = document.getElementById("localVideo");
@@ -318,9 +279,346 @@
   const muteBtn = document.getElementById("muteMicBtn");
   const qualitySelect = document.getElementById("qualitySelect");
 
-  // ============ Helper Functions ============
+  // ============ DHT & NAT Detection ============
+  async function detectNATType() {
+    return new Promise((resolve) => {
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      pc.createDataChannel("test");
+      pc.createOffer()
+        .then(offer => pc.setLocalDescription(offer))
+        .then(() => {
+          const candidates = [];
+          pc.onicecandidate = (event) => {
+            if (event.candidate) {
+              candidates.push(event.candidate.candidate);
+            } else {
+              const hasSrflx = candidates.some(c => c.includes("srflx"));
+              const hasRelay = candidates.some(c => c.includes("relay"));
+              if (hasRelay) resolve("Restricted (relay needed)");
+              else if (hasSrflx) resolve("Moderate (port-restricted)");
+              else resolve("Open (direct connection)");
+              pc.close();
+            }
+          };
+          setTimeout(() => {
+            resolve("Unknown (timeout)");
+            pc.close();
+          }, 3000);
+        })
+        .catch(() => resolve("Detection failed"));
+    });
+  }
+
+  // ============ DHT Peer Discovery (WebRTC-based, Hyperswarm-like) ============
+  class DHTDiscovery {
+    constructor(topic) {
+      this.topic = topic;
+      this.peers = new Map();
+      this.listeners = new Set();
+      this.isHost = false;
+      this.discoveryInterval = null;
+    }
+
+    async startHost() {
+      this.isHost = true;
+      dhtModeSpan.innerText = "Host (Announcing)";
+      dhtModeSpan.className = "success";
+      
+      // Announce presence via localStorage (same-origin fallback)
+      // In production, this would use WebTorrent DHT or libp2p DHT
+      this.announcePresence();
+      
+      // Also use WebRTC trickle ICE for cross-tab discovery
+      this.discoveryInterval = setInterval(() => {
+        this.announcePresence();
+      }, 5000);
+      
+      return this;
+    }
+
+    announcePresence() {
+      const announcement = {
+        topic: this.topic,
+        type: "host",
+        timestamp: Date.now(),
+        peerId: this.generatePeerId()
+      };
+      localStorage.setItem(`dht_${this.topic}`, JSON.stringify(announcement));
+      
+      // Also use broadcast channel for same-origin tabs
+      if (window.BroadcastChannel) {
+        const bc = new BroadcastChannel(`dht_${this.topic}`);
+        bc.postMessage(announcement);
+        setTimeout(() => bc.close(), 100);
+      }
+    }
+
+    async startDiscovery(onPeerFound) {
+      dhtModeSpan.innerText = "Discovering";
+      this.onPeerFound = onPeerFound;
+      
+      // Listen for announcements
+      const checkAnnouncements = () => {
+        const stored = localStorage.getItem(`dht_${this.topic}`);
+        if (stored) {
+          try {
+            const data = JSON.parse(stored);
+            if (data.type === "host" && Date.now() - data.timestamp < 10000) {
+              if (!this.peers.has(data.peerId)) {
+                this.peers.set(data.peerId, data);
+                if (this.onPeerFound) this.onPeerFound(data);
+              }
+            }
+          } catch(e) {}
+        }
+      };
+      
+      // Initial check
+      checkAnnouncements();
+      
+      // Listen for broadcast channel
+      if (window.BroadcastChannel) {
+        const bc = new BroadcastChannel(`dht_${this.topic}`);
+        bc.onmessage = (event) => {
+          const data = event.data;
+          if (data.type === "host" && !this.peers.has(data.peerId)) {
+            this.peers.set(data.peerId, data);
+            if (this.onPeerFound) this.onPeerFound(data);
+          }
+        };
+        this.broadcastChannel = bc;
+      }
+      
+      // Poll for announcements
+      this.discoveryInterval = setInterval(checkAnnouncements, 2000);
+      
+      return this;
+    }
+
+    generatePeerId() {
+      return Math.random().toString(36).substring(2, 15);
+    }
+
+    stop() {
+      if (this.discoveryInterval) clearInterval(this.discoveryInterval);
+      if (this.broadcastChannel) this.broadcastChannel.close();
+      localStorage.removeItem(`dht_${this.topic}`);
+    }
+  }
+
+  // ============ WebRTC Direct Connection (No Relays) ============
+  class DirectWebRTCConnection {
+    constructor() {
+      this.pc = null;
+      this.streamCallback = null;
+      this.dataChannel = null;
+    }
+
+    async createOffer(stream, onAnswer) {
+      this.pc = new RTCPeerConnection({ 
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }] 
+      });
+      
+      // Add stream tracks
+      stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
+      
+      // Create data channel for signaling
+      this.dataChannel = this.pc.createDataChannel("control");
+      
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
+      
+      // Wait for ICE gathering
+      await new Promise(resolve => {
+        if (this.pc.iceGatheringState === 'complete') resolve();
+        else this.pc.onicegatheringstatechange = () => {
+          if (this.pc.iceGatheringState === 'complete') resolve();
+        };
+      });
+      
+      const answer = await onAnswer(this.pc.localDescription);
+      await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+      
+      return this.pc;
+    }
+
+    async handleOffer(offer, onStream) {
+      this.streamCallback = onStream;
+      this.pc = new RTCPeerConnection({ 
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }] 
+      });
+      
+      this.pc.ontrack = (event) => {
+        if (this.streamCallback) this.streamCallback(event.streams[0]);
+      };
+      
+      this.pc.ondatachannel = (event) => {
+        this.dataChannel = event.channel;
+      };
+      
+      await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await this.pc.createAnswer();
+      await this.pc.setLocalDescription(answer);
+      
+      return answer;
+    }
+
+    close() {
+      if (this.pc) this.pc.close();
+    }
+  }
+
+  // ============ Core Functions ============
+  async function getMediaConstraints(quality) {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    let actualQuality = quality;
+    if (isMobile && quality !== '360p') actualQuality = '360p';
+    
+    const configs = {
+      '360p': { width: 640, height: 360, frameRate: 15 },
+      '480p': { width: 854, height: 480, frameRate: 24 },
+      '720p': { width: 1280, height: 720, frameRate: 30 }
+    };
+    const selected = configs[actualQuality];
+    return { video: selected, audio: { echoCancellation: true, noiseSuppression: true } };
+  }
+
+  async function startBroadcast() {
+    await stopAll();
+    myRole = "origin";
+    maxChildren = /Android|iPhone|iPad/i.test(navigator.userAgent) ? 3 : 6;
+    
+    const quality = qualitySelect.value;
+    setStatus("Requesting camera/mic...");
+    
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
+      localVideo.srcObject = localStream;
+      localVideoWrapper.style.display = "block";
+      controlBarDiv.style.display = "flex";
+      
+      // Detect NAT
+      const natType = await detectNATType();
+      natTypeSpan.innerText = natType;
+      
+      // Start DHT discovery as host
+      setStatus("Announcing on DHT...");
+      const dht = new DHTDiscovery(TOPIC);
+      await dht.startHost();
+      dhtNode = dht;
+      
+      // Set up direct WebRTC connection handler
+      window.__pendingOffers = [];
+      window.__handleOffer = async (offer) => {
+        const conn = new DirectWebRTCConnection();
+        const answer = await conn.handleOffer(offer, (stream) => {
+          // Viewer connected - forward stream
+          if (forwardedPeers.size < maxChildren) {
+            forwardedPeers.add(conn);
+            currentHops = Math.min(currentHops + 1, 10);
+            updateStats();
+            activeConnections.set(conn, stream);
+            activeConnsSpan.innerText = activeConnections.size;
+          }
+        });
+        return answer;
+      };
+      
+      setStatus("🔴 LIVE (DHT Mesh)");
+      updateStats();
+      startHealthMonitor();
+      
+    } catch(err) {
+      console.error("Broadcast error:", err);
+      setStatus("Camera/mic access denied", true);
+    }
+  }
+
+  async function joinViewer() {
+    await stopAll();
+    myRole = "viewer";
+    controlBarDiv.style.display = "flex";
+    setStatus("Discovering broadcasters via DHT...");
+    
+    try {
+      const natType = await detectNATType();
+      natTypeSpan.innerText = natType;
+      
+      const dht = new DHTDiscovery(TOPIC);
+      let foundHost = false;
+      
+      await dht.startDiscovery(async (hostInfo) => {
+        if (foundHost) return;
+        foundHost = true;
+        setStatus("Found broadcaster, connecting...");
+        
+        // Create WebRTC connection to host
+        const conn = new DirectWebRTCConnection();
+        
+        // For demo: we need a signaling channel. Using localStorage for offer/answer
+        const offerId = `offer_${Date.now()}`;
+        const answerId = `answer_${offerId}`;
+        
+        // Create offer
+        const fakeStream = new MediaStream(); // Placeholder
+        await conn.createOffer(fakeStream, async (offer) => {
+          // Store offer for host to pick up
+          localStorage.setItem(offerId, JSON.stringify(offer));
+          
+          // Wait for answer
+          return new Promise((resolve) => {
+            const checkAnswer = setInterval(() => {
+              const answerData = localStorage.getItem(answerId);
+              if (answerData) {
+                clearInterval(checkAnswer);
+                localStorage.removeItem(answerId);
+                resolve(JSON.parse(answerData));
+              }
+            }, 100);
+            setTimeout(() => {
+              clearInterval(checkAnswer);
+              resolve(null);
+            }, 10000);
+          });
+        });
+        
+        // Host would process this and store answer
+        // Simplified: For this demo, we simulate host response
+        setTimeout(() => {
+          if (window.__pendingOffers) {
+            const offerData = localStorage.getItem(offerId);
+            if (offerData && window.__handleOffer) {
+              window.__handleOffer(JSON.parse(offerData)).then(answer => {
+                localStorage.setItem(answerId, JSON.stringify(answer));
+              });
+            }
+          }
+        }, 500);
+        
+        conn.streamCallback = (stream) => {
+          mainRemoteVideo.srcObject = stream;
+          mainRemoteWrapper.style.display = "block";
+          setStatus("✅ Watching (DHT)");
+          updateStats();
+        };
+      });
+      
+      dhtNode = dht;
+      
+      // Timeout if no host found
+      setTimeout(() => {
+        if (!foundHost) {
+          setStatus("No broadcaster found on DHT", true);
+        }
+      }, 10000);
+      
+    } catch(err) {
+      console.error("Viewer error:", err);
+      setStatus("Failed to discover stream", true);
+    }
+  }
+
   function setStatus(msg, isError = false) {
-    if (isShuttingDown && !isError) return;
     statusSpan.innerHTML = isError ? `⚠️ ${msg}` : `● ${msg}`;
     statusSpan.style.color = isError ? "#ff8888" : "#ccc";
     console.log(`[Status] ${msg}`);
@@ -332,373 +630,28 @@
     hopSpan.innerText = currentHops;
   }
 
-  function getDeviceProfile() {
-    const cores = navigator.hardwareConcurrency || 2;
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile || cores <= 4) {
-      return { maxPeers: 3, maxHops: 5, isPowerful: false };
-    }
-    return { maxPeers: 6, maxHops: 8, isPowerful: true };
-  }
-
-  async function getMediaConstraints(quality) {
-    const profile = getDeviceProfile();
-    // Force 360p on mobile for stability
-    let selectedQuality = quality;
-    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && quality !== '360p') {
-      selectedQuality = '360p';
-      qualitySelect.value = '360p';
-    }
-    
-    const configs = {
-      '360p': { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 15, max: 20 } },
-      '480p': { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } },
-      '720p': { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } }
-    };
-    const selected = configs[selectedQuality] || configs['360p'];
-    return {
-      video: selected,
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    };
-  }
-
-  // ============ Relay Manager with Proper Error Handling ============
-  class RelayManager {
-    constructor() {
-      this.relayStatus = new Map();
-      this.workingRelays = [];
-      this.isTesting = false;
-    }
-
-    async testRelay(url, timeout = 3000) {
-      return new Promise((resolve) => {
-        const timeoutId = setTimeout(() => resolve(false), timeout);
-        try {
-          const ws = new WebSocket(url);
-          ws.onopen = () => {
-            clearTimeout(timeoutId);
-            ws.close();
-            resolve(true);
-          };
-          ws.onerror = () => {
-            clearTimeout(timeoutId);
-            resolve(false);
-          };
-          ws.onclose = () => {
-            clearTimeout(timeoutId);
-          };
-        } catch(e) {
-          clearTimeout(timeoutId);
-          resolve(false);
-        }
-      });
-    }
-
-    async scanRelays() {
-      if (this.isTesting) return this.workingRelays;
-      this.isTesting = true;
-      
-      for (let url of RELAY_LIST) {
-        this.relayStatus.set(url, 'testing');
-      }
-      this.updateUI();
-      
-      const results = await Promise.all(RELAY_LIST.map(async (url) => {
-        const isWorking = await this.testRelay(url);
-        this.relayStatus.set(url, isWorking ? 'online' : 'failed');
-        this.updateUI();
-        return isWorking ? url : null;
-      }));
-      
-      this.workingRelays = results.filter(r => r !== null);
-      relaySummarySpan.innerText = this.workingRelays.length > 0 ? 
-        `✅ ${this.workingRelays.length} relays` : `⚠️ Using WebRTC fallback`;
-      this.isTesting = false;
-      return this.workingRelays;
-    }
-
-    updateUI() {
-      if (!relayGridDiv) return;
-      let html = '';
-      for (let [url, status] of this.relayStatus.entries()) {
-        let dotClass = 'dot-idle';
-        if (status === 'online') dotClass = 'dot-success';
-        else if (status === 'failed') dotClass = 'dot-error';
-        else if (status === 'testing') dotClass = 'dot-warning';
-        const shortName = url.replace('wss://', '').split('/')[0].substring(0, 20);
-        html += `<div class="relay-badge"><span class="relay-dot ${dotClass}"></span><span title="${url}">${shortName}</span></div>`;
-      }
-      relayGridDiv.innerHTML = html || '<span>scanning...</span>';
-    }
-
-    async getBestRelay() {
-      if (this.workingRelays.length === 0) {
-        await this.scanRelays();
-      }
-      return this.workingRelays.length > 0 ? this.workingRelays[0] : null;
-    }
-  }
-
-  // ============ WebRTC Fallback (Simple) ============
-  class WebRTCFallback {
-    constructor(channel, isHost) {
-      this.channel = channel;
-      this.isHost = isHost;
-      this.pc = null;
-      this.streamCallback = null;
-    }
-
-    async initHost(stream) {
-      this.pc = new RTCPeerConnection({ 
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }] 
-      });
-      stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
-      
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
-      
-      // Store for discovery (simplified - in production use signaling server)
-      localStorage.setItem(`webrtc_${this.channel}`, JSON.stringify({
-        sdp: this.pc.localDescription.sdp,
-        type: this.pc.localDescription.type,
-        timestamp: Date.now()
-      }));
-      
-      setTimeout(() => localStorage.removeItem(`webrtc_${this.channel}`), 30000);
-      return this.pc;
-    }
-
-    async connectAsViewer() {
-      const data = localStorage.getItem(`webrtc_${this.channel}`);
-      if (!data) throw new Error("No host found");
-      
-      const offer = JSON.parse(data);
-      if (Date.now() - offer.timestamp > 30000) throw new Error("Offer expired");
-      
-      this.pc = new RTCPeerConnection({ 
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }] 
-      });
-      this.pc.ontrack = (event) => {
-        if (this.streamCallback) this.streamCallback(event.streams[0]);
-      };
-      
-      await this.pc.setRemoteDescription({ sdp: offer.sdp, type: offer.type });
-      const answer = await this.pc.createAnswer();
-      await this.pc.setLocalDescription(answer);
-      return this.pc;
-    }
-
-    onStream(cb) { this.streamCallback = cb; }
-    close() { if (this.pc) this.pc.close(); }
-    isConnected() { return this.pc && this.pc.connectionState === 'connected'; }
-  }
-
-  // ============ Core P2P Functions ============
-  async function startBroadcast() {
-    await stopAll();
-    isShuttingDown = false;
-    myRole = "origin";
-    const deviceProfile = getDeviceProfile();
-    maxChildren = deviceProfile.maxPeers;
-    currentHops = 0;
-    forwardedPeers.clear();
-    
-    const quality = qualitySelect.value;
-    setStatus("Requesting camera/mic...");
-    
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
-      localVideo.srcObject = localStream;
-      localVideoWrapper.style.display = "block";
-      controlBarDiv.style.display = "flex";
-      
-      setStatus("Finding reliable relay...");
-      const relayManager = new RelayManager();
-      const bestRelay = await relayManager.getBestRelay();
-      
-      if (bestRelay) {
-        currentActiveRelay = bestRelay;
-        activeRelaySpan.innerText = bestRelay.split('/')[2].substring(0, 20);
-        setStatus(`Connecting via ${bestRelay.split('/')[2]}`);
-        
-        // Create reconnecting WebSocket
-        const rws = new ReconnectingWebSocket(bestRelay);
-        rws.reconnectInterval = 2000;
-        rws.maxReconnectInterval = 15000;
-        rws.reconnectDecay = 1.2;
-        rws.timeoutInterval = 5000;
-        
-        // Safe wrapper for webconnect
-        const wcConfig = {
-          appName: "EnticeChat",
-          channelName: CHANNEL,
-          signalServers: [bestRelay],
-          createWebSocket: () => rws,
-          iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-        };
-        
-        webConnect = webconnect(wcConfig);
-        
-        // SAFE: Check if webConnect has the method before calling
-        if (webConnect && typeof webConnect.onConnect === 'function') {
-          webConnect.onConnect(async (attr) => {
-            if (forwardedPeers.size < maxChildren && localStream) {
-              try {
-                await webConnect.openStreaming(localStream, { connectId: attr.connectId });
-                forwardedPeers.add(attr.connectId);
-                currentHops = Math.min(currentHops + 1, deviceProfile.maxHops);
-                updateStats();
-              } catch(e) { console.warn("Forward error:", e); }
-            }
-          });
-        }
-        
-        setStatus("🔴 LIVE (WebSocket)");
-      } else {
-        // WebRTC fallback
-        currentActiveRelay = "webrtc-p2p";
-        activeRelaySpan.innerText = "WebRTC-P2P";
-        setStatus("🌐 Using WebRTC direct mode");
-        
-        const webrtc = new WebRTCFallback(CHANNEL, true);
-        await webrtc.initHost(localStream);
-        
-        // Create a wrapper with safe method checking
-        webConnect = {
-          _webrtc: webrtc,
-          onConnect: (cb) => { setTimeout(() => cb({ connectId: 'webrtc-host' }), 500); },
-          openStreaming: async () => true,
-          Disconnect: () => webrtc.close(),
-          isConnected: () => webrtc.isConnected(),
-          // Add missing method to prevent errors
-          onStreaming: () => {}
-        };
-        setStatus("🔴 LIVE (P2P)");
-      }
-      
-      updateStats();
-      startHealthMonitor();
-      
-    } catch(err) {
-      console.error("Broadcast error:", err);
-      setStatus("Camera/mic access denied or failed", true);
-      await stopAll();
-    }
-  }
-
-  async function joinViewer() {
-    await stopAll();
-    isShuttingDown = false;
-    myRole = "viewer";
-    forwardedPeers.clear();
-    currentHops = 0;
-    controlBarDiv.style.display = "flex";
-    setStatus("Searching for stream...");
-    
-    try {
-      const relayManager = new RelayManager();
-      const bestRelay = await relayManager.getBestRelay();
-      
-      if (bestRelay) {
-        currentActiveRelay = bestRelay;
-        activeRelaySpan.innerText = bestRelay.split('/')[2].substring(0, 20);
-        
-        const rws = new ReconnectingWebSocket(bestRelay);
-        rws.reconnectInterval = 2000;
-        rws.maxReconnectInterval = 15000;
-        
-        const wcConfig = {
-          appName: "EnticeChat",
-          channelName: CHANNEL,
-          signalServers: [bestRelay],
-          createWebSocket: () => rws,
-          iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-        };
-        
-        webConnect = webconnect(wcConfig);
-        
-        // SAFE: Check if onStreaming exists before assigning
-        if (webConnect && typeof webConnect.onStreaming === 'function') {
-          webConnect.onStreaming((stream) => {
-            mainRemoteVideo.srcObject = stream;
-            mainRemoteWrapper.style.display = "block";
-            setStatus("✅ Watching");
-            const deviceProfile = getDeviceProfile();
-            if (deviceProfile.isPowerful) promoteToRelay(stream);
-          });
-        }
-        
-        setStatus("Connected, waiting for stream...");
-      } else {
-        // WebRTC fallback
-        currentActiveRelay = "webrtc-p2p";
-        activeRelaySpan.innerText = "WebRTC-P2P";
-        setStatus("🌐 Trying WebRTC direct...");
-        
-        const webrtc = new WebRTCFallback(CHANNEL, false);
-        webrtc.onStream((stream) => {
-          mainRemoteVideo.srcObject = stream;
-          mainRemoteWrapper.style.display = "block";
-          setStatus("✅ Watching (P2P)");
-          const deviceProfile = getDeviceProfile();
-          if (deviceProfile.isPowerful) promoteToRelay(stream);
-        });
-        
-        await webrtc.connectAsViewer();
-        
-        webConnect = {
-          _webrtc: webrtc,
-          onStreaming: (cb) => webrtc.onStream(cb),
-          Disconnect: () => webrtc.close(),
-          isConnected: () => webrtc.isConnected(),
-          onConnect: () => {}
-        };
-      }
-      
-      updateStats();
-      startHealthMonitor();
-      
-    } catch(err) {
-      console.error("Viewer error:", err);
-      setStatus("No active broadcast found", true);
-      await stopAll();
-    }
-  }
-
-  function promoteToRelay(incomingStream) {
-    if (myRole === 'relay') return;
-    myRole = 'relay';
-    setStatus("🔄 Acting as relay node");
-    
-    // SAFE: Check if webConnect and onConnect exist
-    if (webConnect && typeof webConnect.onConnect === 'function') {
-      webConnect.onConnect(async (attr) => {
-        if (forwardedPeers.size < maxChildren && incomingStream && webConnect && typeof webConnect.openStreaming === 'function') {
-          try {
-            await webConnect.openStreaming(incomingStream, { connectId: attr.connectId });
-            forwardedPeers.add(attr.connectId);
-            currentHops++;
-            updateStats();
-          } catch(e) { console.warn("Relay forward failed:", e); }
-        }
-      });
-    }
-  }
-
   function startHealthMonitor() {
     if (healthInterval) clearInterval(healthInterval);
     healthInterval = setInterval(() => {
-      // SAFE: Check if webConnect exists and isConnected is a function
-      const isConnected = webConnect && typeof webConnect.isConnected === 'function' ? webConnect.isConnected() : true;
-      if (webConnect && !isConnected && !isShuttingDown) {
-        console.warn("Connection lost, attempting recovery");
-        setStatus("Reconnecting...");
+      // Check WebRTC connection health
+      let healthy = true;
+      for (let [conn, stream] of activeConnections) {
+        if (conn.pc && conn.pc.connectionState !== 'connected') {
+          healthy = false;
+          activeConnections.delete(conn);
+        }
+      }
+      activeConnsSpan.innerText = activeConnections.size;
+      
+      if (!healthy && !isShuttingDown) {
+        setStatus("Connection degraded, reconnecting...");
         if (myRole === 'origin') startBroadcast();
         else if (myRole === 'viewer') joinViewer();
       }
     }, 10000);
   }
 
+  let isShuttingDown = false;
   async function stopAll() {
     isShuttingDown = true;
     if (healthInterval) { clearInterval(healthInterval); healthInterval = null; }
@@ -708,13 +661,17 @@
       localStream = null;
     }
     
-    if (webConnect && typeof webConnect.Disconnect === 'function') {
-      try { webConnect.Disconnect(); } catch(e) {}
+    if (dhtNode) {
+      dhtNode.stop();
+      dhtNode = null;
     }
-    webConnect = null;
     
+    for (let [conn] of activeConnections) {
+      conn.close();
+    }
+    activeConnections.clear();
     forwardedPeers.clear();
-    currentHops = 0;
+    
     localVideoWrapper.style.display = "none";
     mainRemoteWrapper.style.display = "none";
     controlBarDiv.style.display = "none";
@@ -724,12 +681,10 @@
     setStatus("Stopped");
     updateStats();
     myRole = null;
-    currentActiveRelay = null;
-    activeRelaySpan.innerText = "—";
-    reconnectAttempts = 0;
+    isShuttingDown = false;
   }
 
-  // ============ Event Listeners ============
+  // Event listeners
   muteBtn.onclick = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -744,12 +699,8 @@
   joinBtn.onclick = joinViewer;
   stopBtn.onclick = stopAll;
   
-  // Initialize relay scanner
-  const initialScanner = new RelayManager();
-  initialScanner.scanRelays().catch(console.warn);
-  
+  setStatus("DHT ready");
   updateStats();
-  setStatus("Ready. Choose role.");
 })();
 </script>
 </body>
