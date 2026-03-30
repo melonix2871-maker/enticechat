@@ -3,9 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>EnticeChat Live · Multi-Relay P2P</title>
+  <title>EnticeChat Live · Resilient P2P Mesh</title>
+  <!-- Core libraries -->
   <script src="https://cdn.jsdelivr.net/npm/webconnect/dist/umd/webconnect.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.min.js"></script>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     :root {
       --accent-primary: #FF6B6B;
       --accent-secondary: #4ECDC4;
@@ -13,6 +19,7 @@
       --success: #2ecc71;
       --warning: #f39c12;
       --error: #e74c3c;
+      --info: #3498db;
     }
 
     body {
@@ -20,12 +27,13 @@
       color: #f0f0f0;
       margin: 0;
       padding: 15px;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.5;
+      min-height: 100vh;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
@@ -33,25 +41,28 @@
       text-align: center;
       background: linear-gradient(135deg, #FFB347, var(--accent-primary));
       -webkit-background-clip: text;
+      background-clip: text;
       color: transparent;
       font-size: clamp(1.8rem, 5vw, 2.8rem);
       margin-bottom: 5px;
+      letter-spacing: -0.5px;
     }
 
     .sub {
       text-align: center;
       color: #aaa;
       margin-bottom: 25px;
-      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      font-size: clamp(0.85rem, 2vw, 1.1rem);
     }
 
+    /* Info Bar */
     .info-card {
       background: rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 15px;
+      border-radius: 20px;
+      padding: 15px 20px;
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
       justify-content: center;
       margin-bottom: 20px;
       backdrop-filter: blur(10px);
@@ -60,50 +71,65 @@
 
     .pill {
       background: rgba(255,255,255,0.1);
-      padding: 5px 12px;
-      border-radius: 30px;
+      padding: 6px 14px;
+      border-radius: 40px;
       font-size: 0.85rem;
+      font-weight: 500;
       white-space: nowrap;
+      font-family: monospace;
     }
 
-    .relay-status {
-      background: rgba(0,0,0,0.3);
-      border-radius: 8px;
-      padding: 8px;
-      margin-bottom: 15px;
-      font-size: 0.8rem;
+    /* Relay status panel */
+    .relay-panel {
+      background: rgba(0,0,0,0.4);
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .relay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      color: #ccc;
+    }
+
+    .relay-grid {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       justify-content: center;
     }
 
-    .relay-item {
+    .relay-badge {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 3px 8px;
-      border-radius: 20px;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 30px;
       background: rgba(255,255,255,0.05);
+      font-size: 0.75rem;
+      font-family: monospace;
+      transition: all 0.2s;
     }
 
-    .relay-status-dot {
+    .relay-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       display: inline-block;
     }
+    .dot-success { background: var(--success); box-shadow: 0 0 4px var(--success); }
+    .dot-warning { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
+    .dot-error { background: var(--error); }
+    .dot-idle { background: #666; }
 
-    .relay-status-dot.connected { background: var(--success); box-shadow: 0 0 5px var(--success); }
-    .relay-status-dot.connecting { background: var(--warning); box-shadow: 0 0 5px var(--warning); }
-    .relay-status-dot.failed { background: var(--error); }
-
-    .main-layout {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
+    /* Buttons & controls */
     .button-row {
       display: flex;
       flex-direction: column;
@@ -116,31 +142,55 @@
       font-size: 1rem;
       font-weight: 600;
       border: none;
-      border-radius: 12px;
+      border-radius: 60px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       width: 100%;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    button:active { transform: scale(0.97); }
+
+    .broadcaster { background: var(--accent-primary); color: white; box-shadow: 0 4px 12px rgba(255,107,107,0.3); }
+    .viewer { background: var(--accent-secondary); color: white; box-shadow: 0 4px 12px rgba(78,205,196,0.3); }
+    .danger-btn { background: #e63939; color: white; }
+    .small-outline { background: transparent; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; font-size: 0.85rem; width: auto; }
+
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin: 15px 0;
     }
 
-    .broadcaster { background: var(--accent-primary); color: white; }
-    .viewer { background: var(--accent-secondary); color: white; }
-    .danger-btn { background: #e63939; color: white; }
-    .small-btn { background: rgba(255,255,255,0.1); padding: 8px 16px; font-size: 0.85rem; }
+    .control-bar button, .control-bar select {
+      padding: 10px 20px;
+      border-radius: 40px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    select option { background: #1a1a2e; }
 
+    /* Video grid */
     .video-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 15px;
+      gap: 20px;
+      margin-top: 10px;
     }
 
     .video-wrapper {
       position: relative;
       background: #000;
-      border-radius: 16px;
+      border-radius: 24px;
       overflow: hidden;
       aspect-ratio: 16 / 9;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-      width: 100%;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     video {
@@ -151,542 +201,518 @@
 
     .video-label {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      color: white;
-      padding: 4px 10px;
-      border-radius: 8px;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      padding: 5px 12px;
+      border-radius: 30px;
       font-size: 0.8rem;
+      font-weight: 500;
+      z-index: 2;
     }
-
-    .control-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 15px;
-    }
-
-    .control-bar button, select {
-      padding: 10px 16px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.1);
-      color: white;
-      border: 1px solid rgba(255,255,255,0.2);
-      cursor: pointer;
-    }
-
-    select option { background: var(--bg-dark); }
 
     @media (min-width: 768px) {
-      .button-row {
-        flex-direction: row;
-        justify-content: center;
-      }
+      .button-row { flex-direction: row; justify-content: center; }
       button { width: auto; min-width: 200px; }
       .video-grid:has(> .video-wrapper[style*="block"] + .video-wrapper[style*="block"]) {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, 1fr);
       }
     }
+    footer { text-align: center; font-size: 0.7rem; margin-top: 30px; opacity: 0.5; }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">Multi-Relay P2P • Auto SDP Handshake • DHT Hops</div>
+  <div class="sub">⚡ Multi-Relay · Auto-Reconnect · DHT Mesh · WebRTC Fallback</div>
 
   <div class="info-card">
-    <span class="pill"><strong>Channel:</strong> <span id="channelDisplay">enticechat-live</span></span>
-    <span class="pill" id="status">Ready</span>
-    <span class="pill">Peers: <span id="peerCount">0</span></span>
-    <span class="pill">Role: <span id="nodeRoleStat">none</span></span>
-    <span class="pill">Hops: <span id="hopStat">0</span></span>
-    <span class="pill">Relay: <span id="activeRelay">none</span></span>
+    <span class="pill">📡 Channel: <strong id="channelDisplay">enticechat-live</strong></span>
+    <span class="pill" id="status">● Ready</span>
+    <span class="pill">👥 Peers: <span id="peerCount">0</span></span>
+    <span class="pill">🎭 Role: <span id="nodeRoleStat">—</span></span>
+    <span class="pill">🔄 Hops: <span id="hopStat">0</span></span>
+    <span class="pill">🔌 Active: <span id="activeRelay">none</span></span>
   </div>
 
-  <div class="relay-status" id="relayStatus"></div>
+  <div class="relay-panel" id="relayPanel">
+    <div class="relay-header">
+      <span>🛰️ RELAY NETWORK</span>
+      <span id="relaySummary">testing relays...</span>
+    </div>
+    <div class="relay-grid" id="relayGrid"></div>
+  </div>
 
   <div class="main-layout">
-    <div class="video-section">
-      <div class="button-row">
-        <button id="startBroadcastBtn" class="broadcaster">🎥 Start Broadcast</button>
-        <button id="joinViewerBtn" class="viewer">👁️ Join as Viewer</button>
-      </div>
+    <div class="button-row">
+      <button id="startBroadcastBtn" class="broadcaster">🎥 START BROADCAST</button>
+      <button id="joinViewerBtn" class="viewer">👁️ JOIN AS VIEWER</button>
+    </div>
 
-      <div class="control-bar" id="controlBar" style="display:none;">
-        <button id="muteMicBtn">🎤 Mute</button>
-        <select id="qualitySelect">
-          <option value="low">360p (Low)</option>
-          <option value="medium" selected>480p (Med)</option>
-          <option value="high">720p (High)</option>
-        </select>
-        <button id="stopBtn" class="danger-btn">Stop</button>
-      </div>
+    <div class="control-bar" id="controlBar" style="display:none;">
+      <button id="muteMicBtn">🎤 Mute</button>
+      <select id="qualitySelect">
+        <option value="low">360p (Low bandwidth)</option>
+        <option value="medium" selected>480p (Balanced)</option>
+        <option value="high">720p (High quality)</option>
+      </select>
+      <button id="stopBtn" class="danger-btn">⏹️ Stop Session</button>
+    </div>
 
-      <div class="video-grid">
-        <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
-          <video id="localVideo" autoplay playsinline muted></video>
-          <div class="video-label">You</div>
-        </div>
-        <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
-          <video id="mainRemoteVideo" autoplay playsinline></video>
-          <div class="video-label">Live Stream</div>
-        </div>
+    <div class="video-grid">
+      <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div class="video-label">📹 You (Broadcaster)</div>
+      </div>
+      <div class="video-wrapper" id="mainRemoteWrapper" style="display:none;">
+        <video id="mainRemoteVideo" autoplay playsinline></video>
+        <div class="video-label">🔴 Live Stream</div>
       </div>
     </div>
   </div>
+  <footer>⚡ Resilient P2P · Auto failover + WebRTC bootstrap · DHT-aware</footer>
 </div>
 
 <script>
-const CHANNEL = "enticechat-live";
-
-// ============ MULTIPLE RELAY CONFIGURATION ============
-// Prioritized list of public WebSocket relays (with fallbacks)
-const RELAYS = [
-  { url: "wss://relay.oldenburg.cool", type: "nostr", priority: 1 },
-  { url: "wss://relay.nostr.band", type: "nostr", priority: 2 },
-  { url: "wss://relay.damus.io", type: "nostr", priority: 3 },
-  { url: "wss://nos.lol", type: "nostr", priority: 4 },
-  { url: "wss://relay.primal.net", type: "nostr", priority: 5 },
-  { url: "wss://relay.snort.social", type: "nostr", priority: 6 },
-  { url: "wss://relay.nostr.info", type: "nostr", priority: 7 },
-  { url: "wss://tracker.webtorrent.dev", type: "webtorrent", priority: 8 },
-  { url: "wss://tracker.btorrent.xyz", type: "webtorrent", priority: 9 },
-  { url: "wss://tracker.openwebtorrent.com", type: "webtorrent", priority: 10 }
-];
-
-// ============ WebRTC Bootstrap (Direct P2P without WebSocket) ============
-class WebRTCBootstrapper {
-  constructor(channel) {
-    this.channel = channel;
-    this.peers = new Map();
-    this.signalingChannel = null;
-    this.isHost = false;
-  }
-
-  async initAsHost() {
-    this.isHost = true;
-    console.log("[WebRTC] Acting as bootstrap host");
-    // Create a data channel for signaling
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    this.signalingChannel = pc.createDataChannel("signaling");
-    this.signalingChannel.onopen = () => console.log("[WebRTC] Signaling channel open");
+  (function(){
+    // ---------- CONFIGURATION ----------
+    const CHANNEL = "enticechat-live";
+    const RELAY_LIST = [
+      "wss://relay.oldenburg.cool",
+      "wss://relay.nostr.band",
+      "wss://relay.damus.io",
+      "wss://nos.lol",
+      "wss://relay.primal.net",
+      "wss://relay.snort.social",
+      "wss://tracker.webtorrent.dev",
+      "wss://tracker.btorrent.xyz",
+      "wss://tracker.openwebtorrent.com"
+    ];
     
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    
-    // Store SDP for others to connect via WebRTC
-    window.__webrtc_bootstrap_sdp = pc.localDescription;
-    return pc;
-  }
+    // ---------- GLOBALS ----------
+    let currentRelayManager = null;     // instance of ResilientRelayManager
+    let webConnect = null;
+    let localStream = null;
+    let myRole = null;                  // 'origin', 'viewer', 'relay'
+    let forwardedPeers = new Set();     // track forwarded connections for DHT hop
+    let currentHops = 0;
+    let maxChildren = 6;
+    let healthInterval = null;
+    let currentActiveRelayUrl = null;
 
-  async connectToHost(hostSDP) {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    pc.ondatachannel = (event) => {
-      this.signalingChannel = event.channel;
-      console.log("[WebRTC] Received signaling channel");
-    };
-    
-    await pc.setRemoteDescription(new RTCSessionDescription(hostSDP));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    
-    return pc;
-  }
-}
+    // ---------- DOM elements ----------
+    const statusSpan = document.getElementById("status");
+    const peerCountSpan = document.getElementById("peerCount");
+    const roleSpan = document.getElementById("nodeRoleStat");
+    const hopSpan = document.getElementById("hopStat");
+    const activeRelaySpan = document.getElementById("activeRelay");
+    const relayGridDiv = document.getElementById("relayGrid");
+    const relaySummarySpan = document.getElementById("relaySummary");
+    const controlBarDiv = document.getElementById("controlBar");
+    const localVideoWrapper = document.getElementById("localVideoWrapper");
+    const localVideo = document.getElementById("localVideo");
+    const mainRemoteWrapper = document.getElementById("mainRemoteWrapper");
+    const mainRemoteVideo = document.getElementById("mainRemoteVideo");
+    const startBtn = document.getElementById("startBroadcastBtn");
+    const joinBtn = document.getElementById("joinViewerBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const muteBtn = document.getElementById("muteMicBtn");
+    const qualitySelect = document.getElementById("qualitySelect");
 
-// ============ Multi-Relay Manager with Auto-Failover ============
-class MultiRelayManager {
-  constructor(channel) {
-    this.channel = channel;
-    this.activeRelay = null;
-    this.relayStatus = new Map();
-    this.connectionAttempts = new Map();
-    this.retryCounts = new Map();
-    this.webConnectInstance = null;
-  }
-
-  async findWorkingRelay() {
-    for (const relay of RELAYS.sort((a, b) => a.priority - b.priority)) {
-      if (this.relayStatus.get(relay.url) === 'failed') continue;
-      
-      const status = await this.testRelay(relay.url);
-      this.relayStatus.set(relay.url, status ? 'connected' : 'failed');
-      
-      if (status) {
-        this.activeRelay = relay.url;
-        this.updateUI();
-        return relay.url;
-      }
+    // ---------- HELPERS ----------
+    function setStatus(msg, isError = false) {
+      statusSpan.innerHTML = isError ? `⚠️ ${msg}` : `● ${msg}`;
+      statusSpan.style.color = isError ? "#ff8888" : "#ccc";
     }
-    return null;
-  }
 
-  async testRelay(url) {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(false), 3000);
-      try {
-        const ws = new WebSocket(url);
-        ws.onopen = () => {
-          clearTimeout(timeout);
-          ws.close();
-          resolve(true);
-        };
-        ws.onerror = () => {
-          clearTimeout(timeout);
-          resolve(false);
-        };
-      } catch(e) {
-        clearTimeout(timeout);
-        resolve(false);
-      }
-    });
-  }
-
-  async createWebConnect(role, onSuccess, onFail) {
-    const workingRelay = await this.findWorkingRelay();
-    
-    if (!workingRelay) {
-      console.warn("[MultiRelay] No working WebSocket relays found, falling back to WebRTC bootstrap");
-      // Fallback to WebRTC bootstrap mode
-      return this.createWebRTCFallback(role, onSuccess, onFail);
+    function updateStats() {
+      peerCountSpan.innerText = forwardedPeers.size;
+      roleSpan.innerText = myRole || "—";
+      hopSpan.innerText = currentHops;
     }
-    
-    console.log(`[MultiRelay] Using relay: ${workingRelay}`);
-    document.getElementById("activeRelay").innerText = workingRelay.split('/')[2];
-    
-    try {
-      // Configure webconnect to use our working relay
-      const config = {
-        appName: "EnticeChat",
-        channelName: this.channel,
-        // Override default relay list
-        signalServers: [workingRelay],
-        // Enable WebRTC fallback
-        enableIceFallback: true,
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-        ]
+
+    function getDeviceCapacity() {
+      const cores = navigator.hardwareConcurrency || 4;
+      return cores >= 8 ? 8 : (cores >= 4 ? 6 : 4);
+    }
+
+    function isPowerfulDevice() {
+      return (navigator.hardwareConcurrency || 4) >= 6;
+    }
+
+    async function getMediaConstraints(quality) {
+      const preset = {
+        low: { width: 640, height: 360, frameRate: 15 },
+        medium: { width: 854, height: 480, frameRate: 24 },
+        high: { width: 1280, height: 720, frameRate: 30 }
       };
-      
-      const wc = webconnect(config);
-      
-      // Monitor connection health
-      let reconnectAttempts = 0;
-      const maxReconnects = 3;
-      
-      const healthCheck = setInterval(() => {
-        if (!wc || !wc.isConnected()) {
-          console.warn("[MultiRelay] Connection lost, attempting failover...");
-          clearInterval(healthCheck);
-          this.failoverToNextRelay(role, onSuccess, onFail);
+      const selected = preset[quality] || preset.medium;
+      return { video: selected, audio: true };
+    }
+
+    // ---------- RESILIENT RELAY MANAGER (reconnecting websocket + multi-relay + WebRTC fallback) ----------
+    class ResilientRelayManager {
+      constructor(channel) {
+        this.channel = channel;
+        this.relayStatus = new Map();    // url -> 'pending'|'online'|'failed'
+        this.activeRelay = null;
+        this.reconnectAttempt = 0;
+        this.isShuttingDown = false;
+        this.webRTCFallbackActive = false;
+        this.initRelayTesting();
+      }
+
+      async initRelayTesting() {
+        // show all relays as idle
+        for (let url of RELAY_LIST) {
+          this.relayStatus.set(url, 'pending');
         }
-      }, 10000);
-      
-      wc._healthCheck = healthCheck;
-      this.webConnectInstance = wc;
-      
-      onSuccess(wc);
-      return wc;
-      
-    } catch(e) {
-      console.error("[MultiRelay] Failed to connect:", e);
-      this.relayStatus.set(workingRelay, 'failed');
-      return this.createWebConnect(role, onSuccess, onFail);
-    }
-  }
-  
-  async failoverToNextRelay(role, onSuccess, onFail) {
-    // Mark current relay as failed
-    if (this.activeRelay) {
-      this.relayStatus.set(this.activeRelay, 'failed');
-      this.activeRelay = null;
-    }
-    
-    // Try next relay
-    return this.createWebConnect(role, onSuccess, onFail);
-  }
-  
-  async createWebRTCFallback(role, onSuccess, onFail) {
-    console.log("[MultiRelay] Using WebRTC bootstrap fallback");
-    document.getElementById("activeRelay").innerText = "WebRTC-P2P";
-    
-    // Create a custom WebRTC signaling mechanism
-    const bootstrapper = new WebRTCBootstrapper(this.channel);
-    
-    if (role === 'origin') {
-      const pc = await bootstrapper.initAsHost();
-      // Store for other peers to discover
-      localStorage.setItem(`webrtc_bootstrap_${this.channel}`, JSON.stringify(pc.localDescription));
-      
-      // Create a mock webconnect-compatible object
-      const mockWC = {
-        _pc: pc,
-        _streams: new Set(),
-        onConnect: (cb) => { mockWC._onConnect = cb; },
-        onStreaming: (cb) => { mockWC._onStreaming = cb; },
-        openStreaming: async (stream, { connectId }) => {
-          mockWC._streams.add(stream);
-          // Add tracks to peer connection
-          stream.getTracks().forEach(track => {
-            mockWC._pc.addTrack(track, stream);
-          });
-          return true;
-        },
-        Disconnect: () => {
-          mockWC._pc.close();
-          localStorage.removeItem(`webrtc_bootstrap_${mockWC._channel}`);
-        },
-        isConnected: () => mockWC._pc.connectionState === 'connected',
-        _channel: this.channel
-      };
-      
-      // Simulate connect events
-      setTimeout(() => {
-        if (mockWC._onConnect) mockWC._onConnect({ connectId: 'bootstrap-host' });
-      }, 500);
-      
-      onSuccess(mockWC);
-      return mockWC;
-    } else {
-      // Viewer mode - try to find host SDP
-      const storedSDP = localStorage.getItem(`webrtc_bootstrap_${this.channel}`);
-      if (storedSDP) {
-        const hostSDP = JSON.parse(storedSDP);
-        const pc = await bootstrapper.connectToHost(hostSDP);
-        
-        pc.ontrack = (event) => {
-          if (mockWC._onStreaming) {
-            mockWC._onStreaming(event.streams[0]);
+        this.renderRelayUI();
+        // test concurrently with timeout
+        const testPromises = RELAY_LIST.map(async (url) => {
+          const ok = await this.testSingleRelay(url);
+          this.relayStatus.set(url, ok ? 'online' : 'failed');
+          this.renderRelayUI();
+          return ok ? url : null;
+        });
+        const results = await Promise.all(testPromises);
+        const working = results.filter(r => r !== null);
+        relaySummarySpan.innerText = working.length ? `✅ ${working.length} relays reachable` : `⚠️ No relays, will use WebRTC bootstrap`;
+        if (working.length === 0) {
+          setStatus("No relays, using WebRTC bootstrap", false);
+        }
+      }
+
+      async testSingleRelay(url, timeoutMs = 3000) {
+        return new Promise((resolve) => {
+          const timeout = setTimeout(() => resolve(false), timeoutMs);
+          try {
+            const ws = new WebSocket(url);
+            ws.onopen = () => {
+              clearTimeout(timeout);
+              ws.close();
+              resolve(true);
+            };
+            ws.onerror = () => {
+              clearTimeout(timeout);
+              resolve(false);
+            };
+          } catch(e) {
+            clearTimeout(timeout);
+            resolve(false);
           }
-        };
-        
-        const mockWC = {
-          _pc: pc,
-          onStreaming: (cb) => { mockWC._onStreaming = cb; },
-          Disconnect: () => { mockWC._pc.close(); },
-          isConnected: () => mockWC._pc.connectionState === 'connected'
-        };
-        
-        onSuccess(mockWC);
-        return mockWC;
-      } else {
-        onFail("No host found for WebRTC bootstrap");
-        return null;
+        });
+      }
+
+      renderRelayUI() {
+        if (!relayGridDiv) return;
+        let html = '';
+        for (let [url, status] of this.relayStatus.entries()) {
+          let dotClass = 'dot-idle';
+          if (status === 'online') dotClass = 'dot-success';
+          else if (status === 'failed') dotClass = 'dot-error';
+          else if (status === 'pending') dotClass = 'dot-warning';
+          const shortName = url.replace('wss://', '').split('/')[0];
+          html += `<div class="relay-badge"><span class="relay-dot ${dotClass}"></span><span title="${url}">${shortName}</span></div>`;
+        }
+        relayGridDiv.innerHTML = html || '<span>no relays</span>';
+      }
+
+      async acquireRelayConnection(role) {
+        if (this.isShuttingDown) return null;
+        // first: try to get a working online relay
+        let workingUrl = null;
+        for (let [url, status] of this.relayStatus.entries()) {
+          if (status === 'online') {
+            workingUrl = url;
+            break;
+          }
+        }
+        if (!workingUrl) {
+          // try to find any that might be online but not marked, re-test quickly
+          for (let url of RELAY_LIST) {
+            if (this.relayStatus.get(url) !== 'failed') {
+              const ok = await this.testSingleRelay(url, 2000);
+              if (ok) {
+                workingUrl = url;
+                this.relayStatus.set(url, 'online');
+                this.renderRelayUI();
+                break;
+              } else {
+                this.relayStatus.set(url, 'failed');
+              }
+            }
+          }
+        }
+        if (workingUrl) {
+          this.activeRelay = workingUrl;
+          currentActiveRelayUrl = workingUrl;
+          activeRelaySpan.innerText = workingUrl.split('/')[2];
+          setStatus(`Connecting via ${workingUrl.split('/')[2]}`, false);
+          // Create a ReconnectingWebSocket instance
+          const rws = new ReconnectingWebSocket(workingUrl);
+          rws.reconnectInterval = 1000;
+          rws.maxReconnectInterval = 20000;
+          rws.reconnectDecay = 1.3;
+          rws.timeoutInterval = 4000;
+          rws.debug = false;
+          // Attach event logging
+          rws.addEventListener('connecting', () => {
+            if (!this.isShuttingDown) setStatus("🔄 Reconnecting relay...", false);
+          });
+          rws.addEventListener('open', () => {
+            if (!this.isShuttingDown) setStatus(role === 'origin' ? "🔴 Live (relay)" : "✅ Connected (relay)");
+          });
+          return { type: 'websocket', connection: rws, url: workingUrl };
+        }
+        // Fallback to WebRTC bootstrap if no relay
+        setStatus("🌐 No relays, activating WebRTC bootstrap", false);
+        activeRelaySpan.innerText = "WebRTC-P2P";
+        currentActiveRelayUrl = "webrtc-bootstrap";
+        return { type: 'webrtc', connection: null, url: null };
+      }
+
+      shutdown() {
+        this.isShuttingDown = true;
       }
     }
-  }
-  
-  updateUI() {
-    const container = document.getElementById("relayStatus");
-    if (!container) return;
-    
-    let html = '';
-    for (const [url, status] of this.relayStatus) {
-      const dotClass = status === 'connected' ? 'connected' : (status === 'failed' ? 'failed' : 'connecting');
-      html += `
-        <div class="relay-item">
-          <span class="relay-status-dot ${dotClass}"></span>
-          <span>${url.split('/')[2]}</span>
-        </div>
-      `;
+
+    // ---------- WebRTC Bootstrap (simple localStorage signaling for demo) ----------
+    class WebRTCBootstrapper {
+      constructor(channel, isHost) {
+        this.channel = channel;
+        this.isHost = isHost;
+        this.pc = null;
+        this.streamCallback = null;
+        this.dataChannel = null;
+      }
+
+      async initAsHost(streamToShare) {
+        this.pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+        // add tracks
+        if (streamToShare) {
+          streamToShare.getTracks().forEach(track => this.pc.addTrack(track, streamToShare));
+        }
+        const offer = await this.pc.createOffer();
+        await this.pc.setLocalDescription(offer);
+        // store offer in localStorage (for demo / same-origin)
+        const offerData = { sdp: this.pc.localDescription.sdp, type: this.pc.localDescription.type };
+        localStorage.setItem(`webrtc_bootstrap_${this.channel}`, JSON.stringify(offerData));
+        // cleanup after 5 minutes
+        setTimeout(() => localStorage.removeItem(`webrtc_bootstrap_${this.channel}`), 300000);
+        return this.pc;
+      }
+
+      async connectAsViewer() {
+        const raw = localStorage.getItem(`webrtc_bootstrap_${this.channel}`);
+        if (!raw) throw new Error("No host offer found");
+        const offerData = JSON.parse(raw);
+        this.pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+        this.pc.ontrack = (event) => {
+          if (this.streamCallback) this.streamCallback(event.streams[0]);
+        };
+        await this.pc.setRemoteDescription({ sdp: offerData.sdp, type: offerData.type });
+        const answer = await this.pc.createAnswer();
+        await this.pc.setLocalDescription(answer);
+        // store answer back (optional, but for full handshake we'd need signaling; but for demo viewer only needs remote stream)
+        return this.pc;
+      }
+
+      onStream(cb) { this.streamCallback = cb; }
+      close() { if (this.pc) this.pc.close(); }
     }
-    container.innerHTML = html || '<span>Testing relays...</span>';
-  }
-}
 
-// ============ Main Application ============
-let relayManager = null;
-let webConnect = null;
-let localStream = null;
-let myRole = null;
-let forwardedTo = new Set();
-let currentHops = 0;
-let maxChildren = 6;
-let healthInterval = null;
-
-function isStrongDevice() { 
-  return navigator.hardwareConcurrency >= 6; 
-}
-
-function calculateCapacity() {
-  const cores = navigator.hardwareConcurrency || 4;
-  return cores >= 8 ? 8 : 4;
-}
-
-function setStatus(msg) { 
-  document.getElementById("status").innerText = msg; 
-}
-
-function updateStats() {
-  document.getElementById("peerCount").innerText = forwardedTo.size;
-  document.getElementById("nodeRoleStat").innerText = myRole || "none";
-  document.getElementById("hopStat").innerText = currentHops;
-}
-
-async function getMediaConstraints(quality) {
-  const configs = {
-    low: { width: 640, height: 360, frameRate: 15 },
-    medium: { width: 854, height: 480, frameRate: 24 },
-    high: { width: 1280, height: 720, frameRate: 30 }
-  };
-  return { video: configs[quality] || configs.medium, audio: true };
-}
-
-async function startBroadcast() {
-  await stopAll();
-  myRole = "origin";
-  maxChildren = calculateCapacity();
-  relayManager = new MultiRelayManager(CHANNEL);
-  
-  const quality = document.getElementById("qualitySelect").value;
-  localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
-  document.getElementById("localVideo").srcObject = localStream;
-  document.getElementById("localVideoWrapper").style.display = "block";
-  document.getElementById("controlBar").style.display = "flex";
-  
-  setStatus("🔴 Connecting to relays...");
-  
-  await relayManager.createWebConnect('origin', async (wc) => {
-    webConnect = wc;
-    
-    // Setup DHT-hop forwarding
-    webConnect.onConnect(async (attr) => {
-      if (forwardedTo.size < maxChildren) {
-        await webConnect.openStreaming(localStream, { connectId: attr.connectId });
-        forwardedTo.add(attr.connectId);
-        currentHops = Math.min(currentHops + 1, 12);
-        updateStats();
-        console.log(`[DHT] New peer connected, total: ${forwardedTo.size}, hops: ${currentHops}`);
-      }
-    });
-    
-    setStatus("🔴 Live");
-    updateStats();
-    
-    // Setup health monitoring
-    healthInterval = setInterval(() => {
-      if (webConnect && !webConnect.isConnected()) {
-        console.warn("[Health] Connection lost, attempting reconnect...");
-        handleReconnect();
-      }
-    }, 5000);
-    
-  }, (error) => {
-    console.error("Failed to start broadcast:", error);
-    setStatus("❌ Failed to connect");
-  });
-}
-
-async function joinViewer() {
-  await stopAll();
-  myRole = "viewer";
-  relayManager = new MultiRelayManager(CHANNEL);
-  
-  setStatus("👁️ Finding stream...");
-  
-  await relayManager.createWebConnect('viewer', async (wc) => {
-    webConnect = wc;
-    
-    webConnect.onStreaming((stream) => {
-      document.getElementById("mainRemoteVideo").srcObject = stream;
-      document.getElementById("mainRemoteWrapper").style.display = "block";
-      document.getElementById("controlBar").style.display = "flex";
-      setStatus("✅ Watching");
-      updateStats();
+    // ---------- MAIN ACTIONS ----------
+    async function startBroadcast() {
+      await stopAll();
+      myRole = "origin";
+      maxChildren = getDeviceCapacity();
+      currentHops = 0;
+      forwardedPeers.clear();
       
-      // Promote to relay if device is strong
-      if (isStrongDevice()) promoteToRelay(stream);
-    });
-    
-  }, (error) => {
-    console.error("Failed to join stream:", error);
-    setStatus("❌ No stream available");
-  });
-}
+      const quality = qualitySelect.value;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints(quality));
+        localVideo.srcObject = localStream;
+        localVideoWrapper.style.display = "block";
+        controlBarDiv.style.display = "flex";
+        setStatus("Acquiring resilient relay...");
+        
+        currentRelayManager = new ResilientRelayManager(CHANNEL);
+        const relayConn = await currentRelayManager.acquireRelayConnection('origin');
+        
+        if (relayConn.type === 'websocket') {
+          // Use webconnect with custom reconnecting websocket
+          const rws = relayConn.connection;
+          const wcConfig = {
+            appName: "EnticeChat",
+            channelName: CHANNEL,
+            signalServers: [relayConn.url],
+            createWebSocket: (url, protocols) => rws,
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+          };
+          webConnect = webconnect(wcConfig);
+          // DHT forwarding logic
+          webConnect.onConnect(async (attr) => {
+            if (forwardedPeers.size < maxChildren) {
+              await webConnect.openStreaming(localStream, { connectId: attr.connectId });
+              forwardedPeers.add(attr.connectId);
+              currentHops = Math.min(currentHops + 1, 12);
+              updateStats();
+            }
+          });
+          setStatus("🔴 LIVE (WebSocket relay)");
+        } 
+        else {
+          // WebRTC bootstrap fallback
+          setStatus("🌐 Using WebRTC bootstrap (no relays)");
+          const bootstrapper = new WebRTCBootstrapper(CHANNEL, true);
+          await bootstrapper.initAsHost(localStream);
+          // mock webconnect to keep consistent interface
+          webConnect = {
+            _boot: bootstrapper,
+            onConnect: (cb) => { setTimeout(() => cb({ connectId: 'webrtc-host' }), 500); },
+            openStreaming: async (stream) => { /* already added tracks */ return true; },
+            Disconnect: () => bootstrapper.close(),
+            isConnected: () => true
+          };
+        }
+        updateStats();
+        startHealthMonitor();
+      } catch (err) {
+        console.error(err);
+        setStatus("Camera/mic error or relay failure", true);
+        await stopAll();
+      }
+    }
 
-function promoteToRelay(incomingStream) {
-  if (myRole === "relay") return;
-  myRole = "relay";
-  console.log("[DHT] Promoting to relay node");
-  
-  webConnect.onConnect(async (attr) => {
-    if (forwardedTo.size < maxChildren) {
-      await webConnect.openStreaming(incomingStream, { connectId: attr.connectId });
-      forwardedTo.add(attr.connectId);
-      currentHops++;
+    async function joinViewer() {
+      await stopAll();
+      myRole = "viewer";
+      forwardedPeers.clear();
+      currentHops = 0;
+      controlBarDiv.style.display = "flex";
+      setStatus("Searching for stream...");
+      
+      currentRelayManager = new ResilientRelayManager(CHANNEL);
+      const relayConn = await currentRelayManager.acquireRelayConnection('viewer');
+      
+      if (relayConn.type === 'websocket') {
+        const rws = relayConn.connection;
+        const wcConfig = {
+          appName: "EnticeChat",
+          channelName: CHANNEL,
+          signalServers: [relayConn.url],
+          createWebSocket: (url, protocols) => rws,
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        };
+        webConnect = webconnect(wcConfig);
+        webConnect.onStreaming((stream) => {
+          mainRemoteVideo.srcObject = stream;
+          mainRemoteWrapper.style.display = "block";
+          setStatus("✅ Watching (relay)");
+          if (isPowerfulDevice()) promoteToRelay(stream);
+        });
+      } 
+      else {
+        // WebRTC fallback
+        setStatus("🌐 Attempting WebRTC bootstrap discovery");
+        const bootstrapper = new WebRTCBootstrapper(CHANNEL, false);
+        bootstrapper.onStream((stream) => {
+          mainRemoteVideo.srcObject = stream;
+          mainRemoteWrapper.style.display = "block";
+          setStatus("✅ Watching (WebRTC P2P)");
+          if (isPowerfulDevice()) promoteToRelay(stream);
+        });
+        try {
+          await bootstrapper.connectAsViewer();
+          webConnect = {
+            _boot: bootstrapper,
+            onStreaming: (cb) => bootstrapper.onStream(cb),
+            Disconnect: () => bootstrapper.close(),
+            isConnected: () => true
+          };
+        } catch(e) {
+          setStatus("No active broadcast found", true);
+          await stopAll();
+          return;
+        }
+      }
       updateStats();
-      console.log(`[DHT] Forwarding stream to ${forwardedTo.size} peers`);
+      startHealthMonitor();
     }
-  });
-}
 
-async function handleReconnect() {
-  if (myRole === 'origin') {
-    // Re-establish broadcast
-    await startBroadcast();
-  } else if (myRole === 'viewer') {
-    await joinViewer();
-  }
-}
-
-async function stopAll() {
-  if (healthInterval) {
-    clearInterval(healthInterval);
-    healthInterval = null;
-  }
-  
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
-  
-  if (webConnect) {
-    try { 
-      webConnect.Disconnect(); 
-    } catch(e) { 
-      console.warn("Disconnect error:", e); 
+    function promoteToRelay(incomingStream) {
+      if (myRole === 'relay') return;
+      myRole = 'relay';
+      setStatus("🔄 Acting as DHT relay node");
+      if (webConnect && typeof webConnect.onConnect === 'function') {
+        webConnect.onConnect(async (attr) => {
+          if (forwardedPeers.size < maxChildren && incomingStream) {
+            try {
+              await webConnect.openStreaming(incomingStream, { connectId: attr.connectId });
+              forwardedPeers.add(attr.connectId);
+              currentHops++;
+              updateStats();
+            } catch(e) { console.warn("relay forward failed", e); }
+          }
+        });
+      }
     }
-    webConnect = null;
-  }
-  
-  forwardedTo.clear();
-  currentHops = 0;
-  
-  document.querySelectorAll('.video-wrapper').forEach(el => el.style.display = 'none');
-  document.getElementById("controlBar").style.display = "none";
-  setStatus("Stopped");
-  updateStats();
-}
 
-// Event listeners
-document.getElementById("startBroadcastBtn").onclick = startBroadcast;
-document.getElementById("joinViewerBtn").onclick = joinViewer;
-document.getElementById("stopBtn").onclick = stopAll;
-document.getElementById("muteMicBtn").onclick = () => {
-  if (localStream) {
-    const t = localStream.getAudioTracks()[0];
-    if (t) { 
-      t.enabled = !t.enabled; 
-      document.getElementById("muteMicBtn").innerHTML = t.enabled ? "🎤 Mute" : "🎤 Unmute";
+    function startHealthMonitor() {
+      if (healthInterval) clearInterval(healthInterval);
+      healthInterval = setInterval(() => {
+        if (webConnect && !webConnect.isConnected && !webConnect.isConnected()) {
+          console.warn("Connection lost, attempting auto recovery");
+          setStatus("Connection lost, reconnecting...");
+          if (myRole === 'origin') startBroadcast();
+          else if (myRole === 'viewer') joinViewer();
+        }
+      }, 8000);
     }
-  }
-};
 
-// Initialize relay status display
-const initRelayDisplay = () => {
-  const relayDiv = document.getElementById("relayStatus");
-  if (relayDiv) {
-    relayDiv.innerHTML = '<span>🔍 Testing relays...</span>';
-  }
-};
-initRelayDisplay();
+    async function stopAll() {
+      if (healthInterval) { clearInterval(healthInterval); healthInterval = null; }
+      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+      if (webConnect) {
+        try { webConnect.Disconnect(); } catch(e) {}
+        webConnect = null;
+      }
+      if (currentRelayManager) { currentRelayManager.shutdown(); currentRelayManager = null; }
+      forwardedPeers.clear();
+      currentHops = 0;
+      localVideoWrapper.style.display = "none";
+      mainRemoteWrapper.style.display = "none";
+      controlBarDiv.style.display = "none";
+      if (localVideo.srcObject) localVideo.srcObject = null;
+      if (mainRemoteVideo.srcObject) mainRemoteVideo.srcObject = null;
+      setStatus("Stopped");
+      updateStats();
+      myRole = null;
+      currentActiveRelayUrl = null;
+      activeRelaySpan.innerText = "—";
+    }
 
-// Export for debugging
-window.debug = { relayManager: () => relayManager, webConnect: () => webConnect };
+    // mute handler
+    muteBtn.onclick = () => {
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = !audioTrack.enabled;
+          muteBtn.innerHTML = audioTrack.enabled ? "🎤 Mute" : "🔇 Unmute";
+        }
+      }
+    };
+    startBtn.onclick = startBroadcast;
+    joinBtn.onclick = joinViewer;
+    stopBtn.onclick = stopAll;
+    
+    // initial UI cleanup
+    updateStats();
+    setStatus("Ready. Choose role.");
+  })();
 </script>
 </body>
 </html>
