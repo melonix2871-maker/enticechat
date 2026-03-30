@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EnticeChat Live · Stable P2P Streaming</title>
-  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <title>EnticeChat · Auto-Mesh P2P Streaming</title>
+  <!-- WebTorrent for DHT discovery (replaces manual signaling) -->
+  <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
+  <!-- Simple Peer for WebRTC with automatic SDP handling -->
+  <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -41,89 +44,68 @@
       background-clip: text;
       color: transparent;
       font-size: clamp(1.5rem, 6vw, 2.5rem);
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .sub {
       text-align: center;
       color: #888;
       margin-bottom: 20px;
-      font-size: clamp(0.75rem, 3vw, 0.9rem);
+      font-size: clamp(0.7rem, 3vw, 0.85rem);
     }
 
-    /* Status Cards */
-    .status-grid {
+    /* Stats Grid */
+    .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
       margin-bottom: 20px;
     }
 
-    .status-card {
+    .stat-card {
       background: rgba(255,255,255,0.05);
       backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    /* DHT Panel */
+    .dht-panel {
+      background: rgba(0,0,0,0.4);
       border-radius: 20px;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .room-info {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
       padding: 12px;
       text-align: center;
-      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 15px;
     }
 
-    .status-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #888;
-      margin-bottom: 6px;
-    }
-
-    .status-value {
-      font-size: 1rem;
-      font-weight: 600;
-      word-break: break-all;
-    }
-
-    .status-value.small {
-      font-size: 0.75rem;
+    .room-hash {
       font-family: monospace;
-    }
-
-    /* Connection Panel */
-    .connection-panel {
-      background: rgba(0,0,0,0.4);
-      border-radius: 24px;
-      padding: 20px;
-      margin-bottom: 20px;
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .peer-id-section {
-      background: rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    .peer-id {
-      font-family: monospace;
-      font-size: 1.1rem;
+      font-size: 0.8rem;
       background: rgba(0,0,0,0.5);
-      padding: 10px 16px;
-      border-radius: 40px;
+      padding: 8px 12px;
+      border-radius: 30px;
       display: inline-block;
-      margin-top: 8px;
       word-break: break-all;
-    }
-
-    .copy-btn {
-      background: rgba(255,255,255,0.2);
-      border: none;
-      padding: 6px 12px;
-      border-radius: 20px;
-      color: white;
-      margin-left: 8px;
-      cursor: pointer;
-      font-size: 0.7rem;
     }
 
     /* Buttons */
@@ -136,8 +118,8 @@
     }
 
     button {
-      padding: 14px 28px;
-      font-size: 1rem;
+      padding: 14px 24px;
+      font-size: 0.95rem;
       font-weight: 600;
       border: none;
       border-radius: 60px;
@@ -153,49 +135,16 @@
     .btn-broadcast {
       background: var(--accent-primary);
       color: white;
-      box-shadow: 0 4px 15px rgba(255,107,107,0.3);
     }
 
     .btn-viewer {
       background: var(--accent-secondary);
       color: white;
-      box-shadow: 0 4px 15px rgba(78,205,196,0.3);
     }
 
     .btn-stop {
       background: #e63939;
       color: white;
-    }
-
-    .btn-secondary {
-      background: rgba(255,255,255,0.15);
-      color: white;
-    }
-
-    /* Input Group */
-    .input-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 15px;
-      justify-content: center;
-    }
-
-    .input-group input {
-      flex: 1;
-      min-width: 200px;
-      padding: 14px 18px;
-      border-radius: 60px;
-      border: 1px solid rgba(255,255,255,0.2);
-      background: rgba(0,0,0,0.4);
-      color: white;
-      font-size: 0.9rem;
-      font-family: monospace;
-    }
-
-    .input-group input:focus {
-      outline: none;
-      border-color: var(--accent-secondary);
     }
 
     /* Video Grid */
@@ -234,552 +183,594 @@
       left: 12px;
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(8px);
-      padding: 5px 12px;
-      border-radius: 30px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      z-index: 2;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
     }
 
-    .connection-status {
+    .peer-badge {
       position: absolute;
       top: 12px;
       right: 12px;
       background: rgba(0,0,0,0.6);
-      padding: 4px 10px;
+      padding: 4px 8px;
       border-radius: 20px;
-      font-size: 0.7rem;
-      font-family: monospace;
+      font-size: 0.65rem;
     }
 
-    .status-connected { background: var(--success); color: white; }
-    .status-connecting { background: var(--warning); color: black; }
-    .status-failed { background: var(--error); color: white; }
+    .mesh-visualization {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    .mesh-node {
+      background: rgba(78,205,196,0.2);
+      border: 1px solid var(--accent-secondary);
+      border-radius: 30px;
+      padding: 3px 8px;
+      font-size: 0.65rem;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.65rem;
+      margin-top: 25px;
+      opacity: 0.5;
+    }
 
     .loading {
       display: inline-block;
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       border: 2px solid rgba(255,255,255,0.3);
       border-radius: 50%;
       border-top-color: white;
-      animation: spin 0.8s linear infinite;
-      margin-right: 8px;
+      animation: spin 0.6s linear infinite;
+      margin-right: 6px;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    footer {
-      text-align: center;
-      font-size: 0.7rem;
-      margin-top: 30px;
-      opacity: 0.5;
-    }
-
     @media (max-width: 480px) {
       body { padding: 12px; }
-      button { padding: 12px 20px; font-size: 0.9rem; }
-      .peer-id { font-size: 0.8rem; }
+      button { padding: 10px 16px; font-size: 0.85rem; }
     }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>🎙️ EnticeChat Live</h1>
-  <div class="sub">⚡ Stable P2P · Works on Mobile/Desktop · Free TURN Relays</div>
+  <div class="sub">🌀 Auto-DHT Mesh · Zero Manual SDP · Auto-Reconnect</div>
 
-  <!-- Status Cards -->
-  <div class="status-grid">
-    <div class="status-card">
-      <div class="status-label">📡 Connection Status</div>
-      <div class="status-value" id="connectionStatus">Initializing...</div>
-    </div>
-    <div class="status-card">
-      <div class="status-label">👥 Connected Peers</div>
-      <div class="status-value" id="peerCount">0</div>
-    </div>
-    <div class="status-card">
-      <div class="status-label">🎭 Role</div>
-      <div class="status-value" id="roleStatus">—</div>
-    </div>
-    <div class="status-card">
-      <div class="status-label">📶 NAT Type</div>
-      <div class="status-value small" id="natType">Detecting...</div>
-    </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">STATUS</div><div class="stat-value" id="statusText">● Ready</div></div>
+    <div class="stat-card"><div class="stat-label">PEERS</div><div class="stat-value" id="peerCount">0</div></div>
+    <div class="stat-card"><div class="stat-label">ROLE</div><div class="stat-value" id="roleText">—</div></div>
+    <div class="stat-card"><div class="stat-label">HOPS</div><div class="stat-value" id="hopCount">0</div></div>
   </div>
 
-  <!-- Connection Panel -->
-  <div class="connection-panel">
-    <div class="peer-id-section">
-      <div class="status-label">YOUR PEER ID</div>
-      <div class="peer-id" id="peerIdDisplay">
-        <span class="loading"></span> Connecting...
-      </div>
-      <button class="copy-btn" id="copyIdBtn" style="display:none;">📋 Copy</button>
+  <div class="dht-panel">
+    <div class="room-info">
+      <div class="stat-label">AUTO-DISCOVERY ROOM</div>
+      <div class="room-hash" id="roomHash">enticechat-live</div>
+      <div style="font-size:0.7rem; margin-top:6px;">🔍 Anyone in this room auto-connects</div>
     </div>
+    <div class="mesh-visualization" id="meshVisual"></div>
   </div>
 
-  <!-- Action Buttons -->
   <div class="button-group">
-    <button id="startBroadcastBtn" class="btn-broadcast">🎥 Start Broadcast</button>
-    <button id="showJoinBtn" class="btn-viewer">👁️ Join as Viewer</button>
-    <button id="stopBtn" class="btn-stop" style="display:none;">⏹️ Stop Stream</button>
+    <button id="startBtn" class="btn-broadcast">🎥 Start Broadcast</button>
+    <button id="viewerBtn" class="btn-viewer">👁️ Auto-Join as Viewer</button>
+    <button id="stopBtn" class="btn-stop" style="display:none;">⏹️ Stop</button>
   </div>
 
-  <!-- Join Section (hidden initially) -->
-  <div id="joinSection" style="display:none;">
-    <div class="input-group">
-      <input type="text" id="remotePeerId" placeholder="Enter broadcaster's Peer ID" autocomplete="off">
-      <button id="connectBtn" class="btn-viewer">🔗 Connect</button>
-      <button id="cancelJoinBtn" class="btn-secondary">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Video Grid -->
   <div class="video-grid">
-    <div class="video-wrapper" id="localVideoWrapper" style="display:none;">
+    <div class="video-wrapper" id="localWrapper" style="display:none;">
       <video id="localVideo" autoplay playsinline muted></video>
-      <div class="video-label">📹 You (Broadcaster)</div>
-      <div class="connection-status" id="localStatus">Local</div>
+      <div class="video-label">📹 You</div>
+      <div class="peer-badge" id="localBadge">Broadcaster</div>
     </div>
-    <div class="video-wrapper" id="remoteVideoWrapper" style="display:none;">
+    <div class="video-wrapper" id="remoteWrapper" style="display:none;">
       <video id="remoteVideo" autoplay playsinline></video>
       <div class="video-label">🔴 Live Stream</div>
-      <div class="connection-status" id="remoteStatus">Connecting...</div>
+      <div class="peer-badge" id="remoteBadge">Connected</div>
     </div>
   </div>
-
-  <footer>
-    🔒 Secure P2P · STUN + TURN fallback · Works on 4G/5G/WiFi
-  </footer>
+  <footer>⚡ WebTorrent DHT · Auto-Mesh Relaying · No Manual SDP · Auto-Reconnect</footer>
 </div>
 
 <script>
 (function() {
   // ============ CONFIGURATION ============
-  // Free TURN servers for reliable NAT traversal (works on mobile networks)
-  const ICE_CONFIG = {
-    iceServers: [
-      // Google STUN servers (for direct connections)
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" },
-      
-      // Free TURN servers (relay when STUN fails - critical for mobile/CGNAT)
-      {
-        urls: [
-          "turn:openrelay.metered.ca:80",
-          "turn:openrelay.metered.ca:443",
-          "turn:openrelay.metered.ca:443?transport=tcp"
-        ],
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      
-      // Backup TURN servers
-      {
-        urls: "turn:turn.anyfirewall.com:443?transport=tcp",
-        username: "webrtc",
-        credential: "webrtc"
-      }
-    ],
-    iceCandidatePoolSize: 10,
-    iceTransportPolicy: 'all' // Try everything, fallback to relay if needed
-  };
-
+  const ROOM = "enticechat-live";
+  const ROOM_HASH = Array.from(ROOM).map(c => c.charCodeAt(0)).join('');
+  
   // ============ GLOBALS ============
-  let peer = null;
+  let client = null;           // WebTorrent client
+  let torrent = null;          // Torrent for signaling
   let localStream = null;
-  let activeCall = null;
+  let peers = new Map();       // peerId -> { peer, stream, hops, isRelay }
   let myPeerId = null;
-  let currentRole = null; // 'broadcaster' or 'viewer'
-  let reconnectAttempts = 0;
-  let maxReconnectAttempts = 3;
-  let connectionMonitor = null;
-
+  let myRole = null;           // 'broadcaster' or 'viewer'
+  let currentHops = 0;
+  let maxChildren = 4;
+  let reconnectTimer = null;
+  let healthCheckInterval = null;
+  let isShuttingDown = false;
+  
+  // For mobile optimization
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const deviceCores = navigator.hardwareConcurrency || 2;
+  const canBeRelay = !isMobile && deviceCores >= 4;
+  
   // ============ DOM Elements ============
-  const connectionStatusSpan = document.getElementById('connectionStatus');
+  const statusSpan = document.getElementById('statusText');
   const peerCountSpan = document.getElementById('peerCount');
-  const roleStatusSpan = document.getElementById('roleStatus');
-  const natTypeSpan = document.getElementById('natType');
-  const peerIdDisplay = document.getElementById('peerIdDisplay');
-  const copyIdBtn = document.getElementById('copyIdBtn');
-  const startBroadcastBtn = document.getElementById('startBroadcastBtn');
-  const showJoinBtn = document.getElementById('showJoinBtn');
+  const roleSpan = document.getElementById('roleText');
+  const hopSpan = document.getElementById('hopCount');
+  const meshVisual = document.getElementById('meshVisual');
+  const startBtn = document.getElementById('startBtn');
+  const viewerBtn = document.getElementById('viewerBtn');
   const stopBtn = document.getElementById('stopBtn');
-  const joinSection = document.getElementById('joinSection');
-  const remotePeerIdInput = document.getElementById('remotePeerId');
-  const connectBtn = document.getElementById('connectBtn');
-  const cancelJoinBtn = document.getElementById('cancelJoinBtn');
-  const localVideoWrapper = document.getElementById('localVideoWrapper');
+  const localWrapper = document.getElementById('localWrapper');
   const localVideo = document.getElementById('localVideo');
-  const remoteVideoWrapper = document.getElementById('remoteVideoWrapper');
+  const remoteWrapper = document.getElementById('remoteWrapper');
   const remoteVideo = document.getElementById('remoteVideo');
-  const remoteStatusSpan = document.getElementById('remoteStatus');
-
+  const remoteBadge = document.getElementById('remoteBadge');
+  
   // ============ Helper Functions ============
-  function setConnectionStatus(status, isError = false) {
-    connectionStatusSpan.innerHTML = status;
-    connectionStatusSpan.style.color = isError ? '#ff8888' : '#aaa';
+  function setStatus(msg, isError = false) {
+    statusSpan.innerHTML = isError ? `⚠️ ${msg}` : `● ${msg}`;
+    statusSpan.style.color = isError ? '#ff8888' : '#ccc';
+    console.log(`[Status] ${msg}`);
   }
-
-  function updatePeerCount(count) {
-    peerCountSpan.innerText = count;
-  }
-
-  function updateRole(role) {
-    roleStatusSpan.innerText = role;
-  }
-
-  // Detect NAT type (for debugging)
-  async function detectNAT() {
-    try {
-      const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-      pc.createDataChannel("test");
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      
-      return new Promise((resolve) => {
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            const candidate = event.candidate.candidate;
-            if (candidate.includes('srflx')) resolve('Moderate (port-restricted)');
-            else if (candidate.includes('relay')) resolve('Restricted (using relay)');
-          }
-        };
-        setTimeout(() => {
-          resolve('Open (direct)');
-          pc.close();
-        }, 2000);
-      });
-    } catch(e) {
-      return 'Unknown';
+  
+  function updateStats() {
+    peerCountSpan.innerText = peers.size;
+    roleSpan.innerText = myRole === 'broadcaster' ? '📹 Broadcaster' : (myRole === 'viewer' ? '👁️ Viewer' : '—');
+    hopSpan.innerText = currentHops;
+    
+    // Update mesh visualization
+    if (meshVisual) {
+      let html = '';
+      for (let [id, p] of peers) {
+        const shortId = id.substring(0, 6);
+        const type = p.isRelay ? '🔄 Relay' : (myRole === 'broadcaster' ? '👤 Viewer' : '📡 Source');
+        html += `<div class="mesh-node">${type} ${shortId} (${p.hops || 0} hops)</div>`;
+      }
+      meshVisual.innerHTML = html || '<span style="opacity:0.5;">Waiting for peers...</span>';
     }
   }
-
-  // Initialize PeerJS
-  async function initPeer() {
+  
+  async function getMediaConstraints() {
+    return {
+      video: {
+        width: { ideal: isMobile ? 640 : 1280 },
+        height: { ideal: isMobile ? 360 : 720 },
+        frameRate: { ideal: isMobile ? 15 : 24 }
+      },
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    };
+  }
+  
+  // ============ WebTorrent DHT Signaling (Auto-Discovery, No Manual SDP) ============
+  function initDHT() {
     return new Promise((resolve, reject) => {
-      peer = new Peer({
-        config: ICE_CONFIG,
-        debug: 1 // Set to 2 for verbose logging
-      });
-      
-      peer.on('open', async (id) => {
-        myPeerId = id;
-        peerIdDisplay.innerHTML = id;
-        copyIdBtn.style.display = 'inline-block';
-        setConnectionStatus('✅ Connected to signaling');
+      try {
+        client = new WebTorrent({ tracker: { announce: [
+          'wss://tracker.webtorrent.dev',
+          'wss://tracker.openwebtorrent.com',
+          'wss://tracker.btorrent.xyz'
+        ] } });
         
-        // Detect NAT type
-        const natType = await detectNAT();
-        natTypeSpan.innerHTML = natType;
+        client.on('error', (err) => {
+          console.warn('WebTorrent error:', err);
+          // Fallback - continue without DHT
+          resolve(null);
+        });
         
-        resolve(id);
-      });
-      
-      peer.on('error', (err) => {
-        console.error('Peer error:', err);
-        if (err.type === 'unavailable-id' || err.type === 'disconnected') {
-          setConnectionStatus('⚠️ Connection issue, retrying...', true);
-          if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            setTimeout(() => {
-              peer.reconnect();
-            }, 2000);
+        // Create a torrent for signaling - this acts as our DHT room
+        const signalingData = Buffer.from(JSON.stringify({
+          type: 'signaling',
+          room: ROOM,
+          timestamp: Date.now()
+        }));
+        
+        client.seed(signalingData, { name: ROOM }, (tor) => {
+          torrent = tor;
+          setStatus('DHT connected - auto-discovery active');
+          resolve(tor);
+        });
+        
+        setTimeout(() => {
+          if (!torrent) {
+            resolve(null);
           }
-        } else {
-          setConnectionStatus(`⚠️ ${err.type}`, true);
-        }
-      });
-      
-      peer.on('disconnected', () => {
-        setConnectionStatus('⚠️ Disconnected, reconnecting...', true);
-        peer.reconnect();
-      });
-      
-      peer.on('close', () => {
-        setConnectionStatus('❌ Connection closed', true);
-      });
-      
-      setTimeout(() => {
-        if (!myPeerId) {
-          reject(new Error('Connection timeout'));
-        }
-      }, 10000);
+        }, 5000);
+      } catch(e) {
+        console.warn('DHT init failed, using fallback', e);
+        resolve(null);
+      }
     });
   }
-
-  // Start broadcasting
-  async function startBroadcast() {
-    if (currentRole === 'broadcaster') {
-      stopAll();
-    }
+  
+  // Broadcast presence via DHT
+  function announcePresence(type, streamInfo = null) {
+    if (!torrent) return;
     
-    setConnectionStatus('Requesting camera/mic...');
+    const announce = {
+      type: 'announce',
+      role: type,
+      peerId: myPeerId,
+      room: ROOM,
+      timestamp: Date.now(),
+      canRelay: canBeRelay,
+      hops: currentHops
+    };
+    
+    // Update torrent with new announce (re-seed with updated data)
+    const announceData = Buffer.from(JSON.stringify(announce));
+    if (torrent && !torrent.destroyed) {
+      try {
+        torrent.swarm.add(announceData);
+      } catch(e) {}
+    }
+  }
+  
+  // ============ SimplePeer with Automatic SDP ============
+  function createPeer(stream, isInitiator, remoteId = null) {
+    const peer = new SimplePeer({
+      initiator: isInitiator,
+      stream: stream,
+      trickle: true,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          {
+            urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443'],
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
+        ]
+      }
+    });
+    
+    // Auto SDP handling - no manual intervention needed
+    peer.on('signal', (data) => {
+      // Send signal via DHT
+      if (remoteId && torrent && !torrent.destroyed) {
+        const signalMsg = {
+          type: 'signal',
+          to: remoteId,
+          from: myPeerId,
+          signal: data,
+          room: ROOM,
+          timestamp: Date.now()
+        };
+        torrent.swarm.add(Buffer.from(JSON.stringify(signalMsg)));
+      }
+    });
+    
+    peer.on('connect', () => {
+      console.log('Peer connected');
+      if (remoteId && peers.has(remoteId)) {
+        peers.get(remoteId).connected = true;
+      }
+    });
+    
+    peer.on('stream', (remoteStream) => {
+      console.log('Received stream from peer');
+      if (myRole === 'viewer') {
+        remoteVideo.srcObject = remoteStream;
+        remoteWrapper.style.display = 'block';
+        remoteBadge.innerHTML = '✅ Streaming';
+        setStatus('✅ Watching live stream');
+      } else if (myRole === 'broadcaster' && remoteId) {
+        // New viewer connected
+        const existing = peers.get(remoteId);
+        if (existing) {
+          existing.stream = remoteStream;
+        }
+        updateStats();
+      }
+    });
+    
+    peer.on('error', (err) => {
+      console.warn('Peer error:', err);
+    });
+    
+    peer.on('close', () => {
+      if (remoteId) {
+        peers.delete(remoteId);
+        updateStats();
+      }
+    });
+    
+    return peer;
+  }
+  
+  // ============ DHT Signal Listener (Auto-Discovery) ============
+  function startSignalListener() {
+    if (!torrent) return;
+    
+    const checkInterval = setInterval(() => {
+      if (torrent && torrent.swarm && torrent.swarm.queued) {
+        // Read messages from DHT
+        const messages = torrent.swarm.queued || [];
+        for (const msg of messages) {
+          try {
+            const data = JSON.parse(msg.toString());
+            if (data.room === ROOM && data.from !== myPeerId) {
+              handleSignal(data);
+            }
+          } catch(e) {}
+        }
+      }
+    }, 1000);
+    
+    return checkInterval;
+  }
+  
+  function handleSignal(data) {
+    if (data.type === 'announce') {
+      // New peer discovered - auto-connect if we're broadcaster
+      if (myRole === 'broadcaster' && data.role === 'viewer' && !peers.has(data.peerId)) {
+        if (peers.size < maxChildren) {
+          console.log(`Auto-connecting to viewer: ${data.peerId}`);
+          const peer = createPeer(localStream, true, data.peerId);
+          peers.set(data.peerId, { peer, stream: null, hops: 1, isRelay: false });
+          updateStats();
+          
+          // Send connection confirmation
+          const confirmMsg = {
+            type: 'connected',
+            to: data.peerId,
+            from: myPeerId,
+            room: ROOM
+          };
+          torrent.swarm.add(Buffer.from(JSON.stringify(confirmMsg)));
+        }
+      }
+      else if (myRole === 'viewer' && data.role === 'broadcaster' && !peers.has(data.peerId)) {
+        // Viewer auto-connects to broadcaster
+        console.log(`Auto-connecting to broadcaster: ${data.peerId}`);
+        const peer = createPeer(null, true, data.peerId);
+        peers.set(data.peerId, { peer, stream: null, hops: 0, isRelay: false });
+        updateStats();
+      }
+    }
+    else if (data.type === 'signal' && data.to === myPeerId) {
+      // Handle WebRTC signal
+      const peerConn = peers.get(data.from);
+      if (peerConn && peerConn.peer) {
+        peerConn.peer.signal(data.signal);
+      }
+    }
+    else if (data.type === 'connected' && data.to === myPeerId) {
+      // Connection confirmed
+      const peerConn = peers.get(data.from);
+      if (peerConn) {
+        peerConn.connected = true;
+        setStatus(`Connected to ${data.from.substring(0, 8)}`);
+      }
+    }
+  }
+  
+  // ============ Relay Promotion (DHT Hops) ============
+  function promoteToRelay(incomingStream, sourceId) {
+    if (!canBeRelay || myRole === 'relay') return;
+    
+    myRole = 'relay';
+    currentHops++;
+    setStatus(`🔄 Acting as relay node (hop ${currentHops})`);
+    
+    // Announce as relay in DHT
+    announcePresence('relay');
+    
+    // Forward stream to new viewers
+    const forwardToNewPeers = (signalData) => {
+      if (signalData.type === 'announce' && signalData.role === 'viewer' && peers.size < maxChildren) {
+        const peer = createPeer(incomingStream, true, signalData.peerId);
+        peers.set(signalData.peerId, { peer, stream: null, hops: currentHops + 1, isRelay: true });
+        updateStats();
+      }
+    };
+    
+    // Listen for new peers to forward to
+    if (torrent) {
+      const relayInterval = setInterval(() => {
+        if (torrent && torrent.swarm && torrent.swarm.queued) {
+          for (const msg of torrent.swarm.queued) {
+            try {
+              const data = JSON.parse(msg.toString());
+              if (data.room === ROOM && data.from !== myPeerId && data.type === 'announce' && data.role === 'viewer') {
+                forwardToNewPeers(data);
+              }
+            } catch(e) {}
+          }
+        }
+      }, 2000);
+      
+      window._relayInterval = relayInterval;
+    }
+  }
+  
+  // ============ Auto-Reconnect Logic ============
+  function startHealthMonitor() {
+    if (healthCheckInterval) clearInterval(healthCheckInterval);
+    
+    healthCheckInterval = setInterval(() => {
+      if (isShuttingDown) return;
+      
+      let activePeers = 0;
+      for (let [id, p] of peers) {
+        if (p.peer && !p.peer.destroyed) activePeers++;
+        else peers.delete(id);
+      }
+      
+      if (activePeers !== peers.size) updateStats();
+      
+      // Auto-reconnect if disconnected
+      if (myRole === 'viewer' && peers.size === 0 && !isShuttingDown) {
+        setStatus('Disconnected, auto-reconnecting...');
+        setTimeout(() => {
+          if (!isShuttingDown && myRole === 'viewer') {
+            announcePresence('viewer');
+          }
+        }, 3000);
+      }
+    }, 8000);
+  }
+  
+  // ============ Main Actions ============
+  async function startBroadcast() {
+    await stopAll();
+    isShuttingDown = false;
+    myRole = 'broadcaster';
+    myPeerId = 'bc_' + Math.random().toString(36).substring(2, 10);
+    maxChildren = isMobile ? 3 : 6;
+    
+    setStatus('Requesting camera/mic...');
     
     try {
-      // Mobile-optimized constraints
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const constraints = {
-        video: {
-          width: { ideal: isMobile ? 640 : 1280 },
-          height: { ideal: isMobile ? 360 : 720 },
-          frameRate: { ideal: isMobile ? 15 : 30 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      };
-      
-      localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      localStream = await navigator.mediaDevices.getUserMedia(await getMediaConstraints());
       localVideo.srcObject = localStream;
-      localVideoWrapper.style.display = 'block';
+      localWrapper.style.display = 'block';
       
-      // Answer incoming calls
-      peer.on('call', (call) => {
-        if (activeCall) {
-          // Already in a call, reject new one
-          call.close();
-          return;
-        }
-        
-        setConnectionStatus('📞 Viewer connecting...');
-        call.answer(localStream);
-        
-        call.on('stream', (remoteStream) => {
-          remoteVideo.srcObject = remoteStream;
-          remoteVideoWrapper.style.display = 'block';
-          remoteStatusSpan.innerHTML = 'Connected';
-          remoteStatusSpan.className = 'connection-status status-connected';
-          updatePeerCount(1);
-          setConnectionStatus('✅ Broadcasting');
-        });
-        
-        call.on('close', () => {
-          remoteVideoWrapper.style.display = 'none';
-          remoteVideo.srcObject = null;
-          updatePeerCount(0);
-          setConnectionStatus('✅ Broadcasting (no viewers)');
-          activeCall = null;
-        });
-        
-        call.on('error', (err) => {
-          console.error('Call error:', err);
-          remoteStatusSpan.innerHTML = 'Failed';
-          remoteStatusSpan.className = 'connection-status status-failed';
-        });
-        
-        activeCall = call;
-      });
+      // Initialize DHT
+      await initDHT();
+      startSignalListener();
       
-      currentRole = 'broadcaster';
-      updateRole('📹 Broadcaster');
-      startBroadcastBtn.style.display = 'none';
-      showJoinBtn.style.display = 'none';
+      // Announce presence
+      announcePresence('broadcaster');
+      
+      startBtn.style.display = 'none';
+      viewerBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
-      joinSection.style.display = 'none';
-      setConnectionStatus('🎥 Broadcasting - Share your Peer ID');
       
-      // Start connection health monitor
+      setStatus('🔴 LIVE - Auto-discovery active');
+      updateStats();
       startHealthMonitor();
       
-    } catch (err) {
+    } catch(err) {
       console.error('Broadcast error:', err);
-      setConnectionStatus('❌ Camera/Mic access denied', true);
-      alert('Please allow camera and microphone access to broadcast');
+      setStatus('Camera/mic access denied', true);
+      await stopAll();
     }
   }
-
-  // Join as viewer
-  function showJoinInterface() {
-    joinSection.style.display = 'block';
-    remotePeerIdInput.focus();
-  }
-
-  async function connectToBroadcaster() {
-    const remoteId = remotePeerIdInput.value.trim();
-    if (!remoteId) {
-      alert('Please enter a Peer ID');
-      return;
-    }
+  
+  async function startViewer() {
+    await stopAll();
+    isShuttingDown = false;
+    myRole = 'viewer';
+    myPeerId = 'vw_' + Math.random().toString(36).substring(2, 10);
     
-    if (remoteId === myPeerId) {
-      alert('You cannot connect to yourself');
-      return;
-    }
-    
-    setConnectionStatus('🔍 Connecting to broadcaster...');
-    remoteStatusSpan.innerHTML = 'Connecting...';
-    remoteStatusSpan.className = 'connection-status status-connecting';
-    remoteVideoWrapper.style.display = 'block';
+    setStatus('Auto-discovering broadcasters...');
     
     try {
-      // Get local stream if we want to send audio back (optional)
-      // For viewer-only, we don't need local stream, but we create an empty one for the call
-      const viewerStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: false })
-        .catch(() => null); // Silent fail if no mic permission
+      // Initialize DHT
+      await initDHT();
+      startSignalListener();
       
-      const call = peer.call(remoteId, viewerStream || new MediaStream());
+      // Announce as viewer
+      announcePresence('viewer');
       
-      call.on('stream', (remoteStream) => {
-        remoteVideo.srcObject = remoteStream;
-        remoteStatusSpan.innerHTML = 'Connected';
-        remoteStatusSpan.className = 'connection-status status-connected';
-        updatePeerCount(1);
-        setConnectionStatus('✅ Watching stream');
-        currentRole = 'viewer';
-        updateRole('👁️ Viewer');
-        
-        // Show stop button
-        startBroadcastBtn.style.display = 'none';
-        showJoinBtn.style.display = 'none';
-        stopBtn.style.display = 'inline-block';
-        joinSection.style.display = 'none';
-      });
+      startBtn.style.display = 'none';
+      viewerBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
       
-      call.on('error', (err) => {
-        console.error('Call error:', err);
-        remoteStatusSpan.innerHTML = 'Connection failed';
-        remoteStatusSpan.className = 'connection-status status-failed';
-        setConnectionStatus('❌ Failed to connect - check Peer ID', true);
+      setStatus('Searching for stream...');
+      updateStats();
+      startHealthMonitor();
+      
+      // Auto-promote to relay if capable
+      if (canBeRelay) {
         setTimeout(() => {
-          remoteVideoWrapper.style.display = 'none';
-        }, 2000);
-      });
+          if (remoteVideo.srcObject && peers.size > 0) {
+            promoteToRelay(remoteVideo.srcObject, 'broadcaster');
+          }
+        }, 5000);
+      }
       
-      call.on('close', () => {
-        remoteVideoWrapper.style.display = 'none';
-        remoteVideo.srcObject = null;
-        updatePeerCount(0);
-        setConnectionStatus('📡 Disconnected');
-        activeCall = null;
-        
-        // Reset UI
-        startBroadcastBtn.style.display = 'inline-block';
-        showJoinBtn.style.display = 'inline-block';
-        stopBtn.style.display = 'none';
-      });
-      
-      activeCall = call;
-      
-    } catch (err) {
-      console.error('Connection error:', err);
-      setConnectionStatus('❌ Connection failed', true);
-      remoteVideoWrapper.style.display = 'none';
+    } catch(err) {
+      console.error('Viewer error:', err);
+      setStatus('Failed to start', true);
     }
   }
-
-  // Stop everything
-  function stopAll() {
-    if (activeCall) {
-      activeCall.close();
-      activeCall = null;
+  
+  async function stopAll() {
+    isShuttingDown = true;
+    
+    if (healthCheckInterval) {
+      clearInterval(healthCheckInterval);
+      healthCheckInterval = null;
+    }
+    if (window._relayInterval) {
+      clearInterval(window._relayInterval);
+      window._relayInterval = null;
+    }
+    if (window._signalInterval) {
+      clearInterval(window._signalInterval);
+      window._signalInterval = null;
     }
     
+    // Close all peers
+    for (let [id, p] of peers) {
+      if (p.peer) p.peer.destroy();
+    }
+    peers.clear();
+    
+    // Stop local stream
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      localStream.getTracks().forEach(t => t.stop());
       localStream = null;
     }
     
+    // Destroy torrent
+    if (torrent && !torrent.destroyed) {
+      try { torrent.destroy(); } catch(e) {}
+      torrent = null;
+    }
+    
+    // Destroy client
+    if (client && !client.destroyed) {
+      try { client.destroy(); } catch(e) {}
+      client = null;
+    }
+    
+    // Reset UI
+    localWrapper.style.display = 'none';
+    remoteWrapper.style.display = 'none';
     localVideo.srcObject = null;
     remoteVideo.srcObject = null;
-    localVideoWrapper.style.display = 'none';
-    remoteVideoWrapper.style.display = 'none';
-    joinSection.style.display = 'none';
     
-    updatePeerCount(0);
-    currentRole = null;
-    updateRole('—');
-    
-    // Reset UI buttons
-    startBroadcastBtn.style.display = 'inline-block';
-    showJoinBtn.style.display = 'inline-block';
+    startBtn.style.display = 'inline-block';
+    viewerBtn.style.display = 'inline-block';
     stopBtn.style.display = 'none';
     
-    setConnectionStatus('● Ready');
+    myRole = null;
+    currentHops = 0;
+    setStatus('Ready');
+    updateStats();
     
-    if (connectionMonitor) {
-      clearInterval(connectionMonitor);
-      connectionMonitor = null;
-    }
+    isShuttingDown = false;
   }
-
-  // Monitor connection health
-  function startHealthMonitor() {
-    if (connectionMonitor) clearInterval(connectionMonitor);
-    
-    connectionMonitor = setInterval(() => {
-      if (!peer || peer.disconnected) {
-        setConnectionStatus('⚠️ Connection lost, reconnecting...', true);
-        if (peer && !peer.destroyed) {
-          peer.reconnect();
-        }
-      }
-      
-      // Check if call is still alive
-      if (activeCall && activeCall.peerConnection) {
-        const state = activeCall.peerConnection.connectionState;
-        if (state === 'failed' || state === 'disconnected') {
-          setConnectionStatus('⚠️ Stream interrupted, reconnecting...', true);
-          remoteStatusSpan.innerHTML = 'Reconnecting...';
-        }
-      }
-    }, 10000);
-  }
-
-  // Copy Peer ID to clipboard
-  function copyPeerId() {
-    if (myPeerId) {
-      navigator.clipboard.writeText(myPeerId).then(() => {
-        copyIdBtn.textContent = '✓ Copied!';
-        setTimeout(() => {
-          copyIdBtn.textContent = '📋 Copy';
-        }, 2000);
-      }).catch(() => {
-        alert('Peer ID: ' + myPeerId);
-      });
-    }
-  }
-
+  
   // ============ Event Listeners ============
-  startBroadcastBtn.onclick = startBroadcast;
-  showJoinBtn.onclick = showJoinInterface;
+  startBtn.onclick = startBroadcast;
+  viewerBtn.onclick = startViewer;
   stopBtn.onclick = stopAll;
-  connectBtn.onclick = connectToBroadcaster;
-  cancelJoinBtn.onclick = () => {
-    joinSection.style.display = 'none';
-    remotePeerIdInput.value = '';
-  };
-  copyIdBtn.onclick = copyPeerId;
   
-  // Enter key in input field
-  remotePeerIdInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      connectToBroadcaster();
-    }
-  });
-  
-  // ============ Initialize ============
-  async function init() {
-    setConnectionStatus('🔄 Connecting to signaling...');
-    try {
-      await initPeer();
-      setConnectionStatus('● Ready to broadcast or join');
-    } catch (err) {
-      console.error('Init error:', err);
-      setConnectionStatus('❌ Connection failed - refresh to retry', true);
-      peerIdDisplay.innerHTML = 'Failed to connect';
-    }
-  }
-  
-  init();
+  // Initial setup
+  updateStats();
+  setStatus('Ready - Click Start Broadcast or Auto-Join');
 })();
 </script>
 </body>
